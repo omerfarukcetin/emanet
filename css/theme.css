@@ -264,3 +264,7 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .seg button{padding:6px 13px;font-size:.82rem}
 .delta{flex-wrap:nowrap;white-space:nowrap;max-width:100%}
 .hero-spark{margin-bottom:0}
+
+/* şifre alanındaki Göster/Gizle düğmesi: yalnızca sağ uçta, kutunun üstünü kaplamaz */
+.auth-card .pw .btn,.pw .btn{width:auto;left:auto;right:6px;padding:6px 10px;z-index:1}
+.pw input{padding-right:92px}
