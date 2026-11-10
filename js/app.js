@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.5";
+const APP_VERSION="1.6";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -484,7 +484,9 @@ async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx)
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
 
 /* ---------- bulut: Supabase (e-posta ile giriş, satır başına bir kullanıcı) ---------- */
-function setSync(kind,text){const el=$("#sync");el.className="sync"+(kind==="cloud"?" cloud":"");el.querySelector("span").textContent=text}
+/* Eşitleme durumu yalnızca dikkat gerektiğinde görünür (çevrimdışı, kaydedilemedi, buluta ulaşılamadı). */
+const QUIET=/^(Bu cihazda tutuluyor|Girişsiz · bu cihazda|Eşitlendi|Eşitleniyor…|Kaydediliyor…|Yükleniyor)$/;
+function setSync(kind,text){const el=$("#sync");el.className="sync"+(kind==="cloud"?" cloud":"")+(QUIET.test(text)?" quiet":"");el.querySelector("span").textContent=text}
 const cloudOn=()=>!!(sb&&sbUser);
 function scheduleSave(){if(!cloudOn())return;clearTimeout(saveTimer);saveTimer=setTimeout(flush,800)}
 async function flush(){
@@ -614,7 +616,8 @@ const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["bor
 
 /* ---------- render ---------- */
 function render(){
-  $("#nav").innerHTML=TABS.map(([k,l])=>`<button data-tab="${k}" ${view.tab===k?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`).join("");
+  const tabBtn=([k,l])=>`<button data-tab="${k}" ${view.tab===k?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
+  $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}</button>`+TABS.slice(2).map(tabBtn).join("");
   $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
   if(!ready&&!state){m.innerHTML='<div class="skel" aria-label="Verileriniz yükleniyor" role="status"><i class="sk-hero"></i><i></i><i></i></div>';fab.hidden=true;return}
@@ -626,6 +629,7 @@ function render(){
   m.innerHTML=R();
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   if(F){fab.hidden=false;fab.innerHTML=I.plus+"<span>"+F[0]+"</span>";fab.onclick=F[1]}else fab.hidden=true;
+  const na=$("#navAdd");if(na){na.disabled=!F;na.setAttribute("aria-label",F?F[0]:"Ekle");na.title=F?F[0]:"";na.onclick=F?F[1]:null}
 }
 
 function onboarding(){
@@ -668,26 +672,34 @@ function rOzet(){
     ${others>0?`<div class="sub" style="margin-top:8px">${others} portföy daha var; hepsini Portföy sekmesinde görebilirsiniz.</div>`:""}
   </section>`
   :`<section class="card"><div class="empty"><b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
-  <section class="card" style="display:flex;flex-direction:column;gap:12px">
-    <div class="sec"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü</button></div>
-    <div class="trio" style="border:0;padding:0">
-      <div><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div>
-      <div><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div>
-      <div><span class="label">Kalan</span><div class="v">${fmt(ms.i-ms.o)}</div></div>
+  <section class="card">
+    <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü ›</button></div>
+    <div class="flow">
+      <dl class="flow-n">
+        <div><dt><i class="dot" style="background:var(--pos)"></i>Gelir</dt><dd class="num">${fmt(ms.i)}</dd></div>
+        <div><dt><i class="dot" style="background:var(--neg);opacity:.6"></i>Gider</dt><dd class="num">${fmt(ms.o)}</dd></div>
+        <div class="tot"><dt>Kalan</dt><dd class="num ${ms.i-ms.o>=0?"pos-t":"neg-t"}">${fmt(ms.i-ms.o)}</dd></div>
+      </dl>
+      ${flowChart(true)}
     </div>
-    ${flowChart()}
   </section>
   ${goalsCard()}
   ${upcoming.length?`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
   `;
 }
 
-function flowChart(){
+function flowChart(compact){
   const months=[];const [y,mo]=todayISO().slice(0,7).split("-").map(Number);
   for(let k=5;k>=0;k--){const d=new Date(y,mo-1-k,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
   const data=months.map(m=>({m,...monthSum(m)}));
   const max=Math.max(1,...data.flatMap(d=>[d.i,d.o]));
   if(data.every(d=>!d.i&&!d.o))return `<div class="sub">Son 6 ayda kayıt yok.</div>`;
+  if(compact){
+    const W=168,H=78,pb=14,bw=7,gw=W/6;
+    const bars=data.map((d,k)=>{const x=k*gw+gw/2,hi=(H-pb-4)*d.i/max,ho=(H-pb-4)*d.o/max,cur=k===5;
+      return `<rect x="${(x-bw-1).toFixed(1)}" y="${(H-pb-hi).toFixed(1)}" width="${bw}" height="${Math.max(hi,0).toFixed(1)}" rx="${Math.min(3.5,hi/2).toFixed(1)}" fill="var(--pos)" opacity="${cur?1:.45}"/><rect x="${(x+1).toFixed(1)}" y="${(H-pb-ho).toFixed(1)}" width="${bw}" height="${Math.max(ho,0).toFixed(1)}" rx="${Math.min(3.5,ho/2).toFixed(1)}" fill="var(--neg)" opacity="${cur?.75:.3}"/><text x="${x.toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="9" font-weight="${cur?700:500}" fill="var(${cur?"--fg":"--muted"})">${MONTHS[+d.m.slice(5)-1].slice(0,1)}</text>`}).join("");
+    return `<svg class="flow-c" viewBox="0 0 ${W} ${H}" role="img" aria-label="Son altı ay gelir ve gider; bu ay vurgulu">${bars}</svg>`;
+  }
   const W=320,H=130,pb=20,bw=9,gw=W/6;
   const bars=data.map((d,k)=>{const x=k*gw+gw/2;const hi=(H-pb-8)*d.i/max,ho=(H-pb-8)*d.o/max;
     return `<rect x="${x-bw-1.5}" y="${H-pb-hi}" width="${bw}" height="${Math.max(hi,0)}" rx="${Math.min(4.5,hi/2)}" fill="var(--pos)"/><rect x="${x+1.5}" y="${H-pb-ho}" width="${bw}" height="${Math.max(ho,0)}" rx="${Math.min(4.5,ho/2)}" fill="var(--neg)" opacity=".6"/><text x="${x}" y="${H-5}" text-anchor="middle" font-size="10" fill="var(--muted)">${MONTHS[+d.m.slice(5)-1].slice(0,3)}</text>`}).join("");
