@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.3";
+const APP_VERSION="1.4";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -154,21 +154,21 @@ function dayPL(h){
 function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);if(d){pl+=d.pl;b+=d.base;plU+=d.plU;bU+=d.baseU;n++}});return n?{pl,pct:b?pl/b*100:0,plU,pctU:bU?plU/bU*100:0}:null}
 const dayLabel=()=>{const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
 const plMode=()=>S().plMode==="day"?"day":"total";
-const plSeg=()=>`<div class="seg plseg" role="group" aria-label="Kâr/zarar görünümü">${[["total","Toplam"],["day","Günlük"]].map(([k,l])=>`<button data-act="plmode" data-k="${k}" aria-pressed="${plMode()===k}">${l}</button>`).join("")}</div>`;
-/* TL ve dolar bazında kâr/zarar; seçime göre toplam (maliyete göre) ya da günlük (önceki güne göre) */
+/* Toplam kartının tek istatistik satırı: Maliyet | K/Z TL | K/Z Dolar.
+   "Toplam K/Z" başlığı aynı zamanda seçicidir: dokununca Günlük K/Z'ye, tekrar dokununca Toplam'a döner. */
 function plLine(hs,v,c){
-  const cell=(l,amt,pct,cur,ok)=>`<div><span class="label">${l}</span><div class="v num ${ok?"pos-t":"neg-t"}">${S().hide?"••••":(amt>0?"+":"")+fmt(amt,cur,{dec:0})} <small>${fmtPct(pct)}</small></div></div>`;
-  let cells;
-  if(plMode()==="day"){
-    const d=daySum(hs);
-    cells=d?cell("Günlük K/Z · TL",d.pl,d.pct,S().base,d.pl>=0)+cell("Günlük K/Z · Dolar",d.plU,d.pctU,"USD",d.plU>=0)
-      :`<div style="grid-column:1/-1" class="sub">Günlük kâr/zarar yarından itibaren görünür: karşılaştırma için önceki günün fiyatları gerekiyor.</div>`;
-  }else{
+  const day=plMode()==="day";
+  const val=(amt,pct,cur)=>`<div class="v num ${amt>=0?"pos-t":"neg-t"}">${S().hide?"••••":(amt>0?"+":"")+fmt(amt,cur,{dec:0})}</div><small class="pct ${amt>=0?"pos-t":"neg-t"}">${fmtPct(pct)}</small>`;
+  const none=`<div class="v">—</div><small class="pct">yarın</small>`;
+  let tl,us;
+  if(day){const d=daySum(hs);tl=d?val(d.pl,d.pct,S().base):none;us=d?val(d.plU,d.pctU,"USD"):none}
+  else{
     const pl=v-c,plp=c?pl/c*100:0;
     const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0),plU=vU-cU,plpU=cU?plU/cU*100:0;
-    cells=cell("Toplam K/Z · TL",pl,plp,S().base,pl>=0)+cell("Toplam K/Z · Dolar",plU,plpU,"USD",plU>=0);
+    tl=val(pl,plp,S().base);us=val(plU,plpU,"USD");
   }
-  return `<div class="ufe-line"><div class="plhead">${plSeg()}${plMode()==="day"&&dayRef()?`<span class="sub">${dayLabel()}</span>`:""}</div>${cells}</div>`;
+  const tgl=`<button class="plt" data-act="plmode" data-k="${day?"total":"day"}" aria-label="${day?"Günlük kâr/zarar gösteriliyor. Toplam kâr/zarara geç":"Toplam kâr/zarar gösteriliyor. Günlük kâr/zarara geç"}">${day?"Günlük":"Toplam"} K/Z<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 4 4 7M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/></svg></button>`;
+  return `<div class="trio stat"><div><span class="label">Maliyet</span><div class="v num">${fmt(c)}</div><small class="pct">${hs.length} varlık</small></div><div>${tgl}${tl}</div><div><span class="label">Dolar${day&&dayRef()?" · "+dayLabel():""}</span>${us}</div></div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
 const eyeBtn=()=>`<button class="icon-btn" data-act="hide" aria-label="${S().hide?"Tutarları göster":"Tutarları gizle"}" aria-pressed="${S().hide}">${S().hide?I.eyeOff:I.eye}</button>`;
@@ -301,7 +301,7 @@ function histCard(ids,title){
     const line=pts.map((p,i)=>(i?"L":"M")+X(p).toFixed(1)+" "+Y(p).toFixed(1)).join(" ");
     const first=pts[0],last=pts[pts.length-1],chg=last.y-first.y,pct=first.y?chg/first.y*100:0,up=chg>=0;
     const col=up?"var(--pos)":"var(--neg)";
-    body=`<div class="hist-top"><div><div class="num hist-val">${S().hide?"••••":fu(last.y)}</div><div class="sub"><span class="${up?"pos-t":"neg-t"}">${S().hide?"••••":(up?"+":"")+fu(chg)} · ${fmtPct(pct)}</span> · ${fmtDate(first.d)} – ${fmtDate(last.d)}</div></div></div>
+    body=`<div class="hist-top"><div><div class="num hist-val ${up?"pos-t":"neg-t"}">${S().hide?"••••":(up?"+":"")+fu(chg)} <small>${fmtPct(pct)}</small></div><div class="sub">${fmtDate(first.d)} – ${fmtDate(last.d)} arası değişim</div></div></div>
     <svg class="hist" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(title)}: ${fmtDate(first.d)} ile ${fmtDate(last.d)} arası değişim ${fmtPct(pct)}">
       <defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".22"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
       ${[0,.5,1].map(f=>`<line x1="${pl}" x2="${W-pr}" y1="${(pt+(H-pt-pb)*f).toFixed(1)}" y2="${(pt+(H-pt-pb)*f).toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("")}
@@ -651,11 +651,7 @@ function rOzet(){
       ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Ana portföy</span><select data-act="mainpf" aria-label="Ana portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
       <div class="big amt" style="margin-top:6px">${money(t.v)}</div>${mp?dayDelta(hs):""}${eqvChips(t.v)}</div>${eyeBtn()}</div>
     ${mp?spark([mp.id]):""}
-    <div class="trio duo">
-      <div><span class="label">Maliyet</span><div class="v">${fmt(t.c)}</div></div>
-      <div><span class="label">Varlık</span><div class="v">${hs.length}</div></div>
-    </div>
-    ${mp&&t.c?plLine(mp.holdings.filter(h=>+h.qty>0),t.v,t.c):""}
+    ${mp&&hs.length?plLine(hs,t.v,t.c):""}
   </section>
   ${mp&&hs.length?histCard([mp.id],"Değer geçmişi"):""}
   ${mp?`<section class="card">
@@ -729,8 +725,7 @@ function rPortfoy(){
   </div>
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span><div class="big">${money(v)}</div>${dayDelta(hs)}</div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
-    <div class="trio"><div><span class="label">Maliyet</span><div class="v">${fmt(c)}</div></div><div><span class="label">Dolar</span><div class="v">${fmt(rate("USD")?v*rate(S().base)/rate("USD"):0,"USD",{dec:0})}</div></div><div><span class="label">Varlık</span><div class="v">${hs.length}</div></div></div>
-    ${c?plLine(hs,v,c):""}
+    ${hs.length?plLine(hs,v,c):""}
     ${(()=>{const u=ufeSum(hs);if(!u.c)return ufe?"":"";return `<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub" style="margin-top:-6px">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`})()}
     ${cashIn?`<div class="sub">${esc(mpv.name)} içinde gelir-gider bakiyesi: <b class="num">${fmt(cb)}</b></div>`:""}
     ${realized?`<div class="sub">Gerçekleşen kâr/zarar (satışlar, komisyon düşülmüş): <b class="num ${realized>=0?"pos-t":"neg-t"}">${fmt(realized)}</b></div>`:""}

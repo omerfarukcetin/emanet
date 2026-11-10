@@ -277,3 +277,14 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .hero.net .plseg button[aria-pressed="true"]{background:#fff;color:var(--acc-l);box-shadow:none}
 .hero.net .plhead .sub{font-size:.76rem}
 .trio.duo{grid-template-columns:repeat(2,1fr)}
+
+/* toplam kartının tek istatistik satırı; K/Z başlığı dokununca Toplam ↔ Günlük değişir */
+.trio.stat>div{min-width:0}
+.trio.stat .pct{display:block;font-size:.74rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:1px;color:rgba(255,255,255,.7)}
+.hero.net .trio.stat .pct.pos-t{color:var(--pos)} .hero.net .trio.stat .pct.neg-t{color:var(--neg)}
+.plt{display:inline-flex;align-items:center;gap:4px;margin:-3px 0 -3px -8px;padding:3px 8px;border:0;border-radius:99px;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:.74rem;font-weight:700;white-space:nowrap;cursor:pointer}
+.plt svg{opacity:.8}
+.plt:hover{background:rgba(255,255,255,.22)}
+.hist-val{font-size:1.45rem}
+.hist-val small{font-size:.6em;font-weight:700}
+.plt{margin-left:-2px}
