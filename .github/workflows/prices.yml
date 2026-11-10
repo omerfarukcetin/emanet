@@ -27,5 +27,10 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add data/market.json
             git commit -m "Fiyatlar güncellendi"
-            git push
+            # Bu sırada depoya başka bir gönderim yapıldıysa önce onu al, sonra gönder (3 deneme)
+            for i in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0
+              sleep 5
+            done
+            exit 1
           fi
