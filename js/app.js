@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.1";
+const APP_VERSION="1.2";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -227,6 +227,27 @@ function histSeries(ids,unit,range){
   if(range&&range!=="all"){const from=addDays(todayISO(),-range);rows=rows.filter(r=>r.d>=from)}
   const conv=r=>unit==="USD"?(r.usd?r.v/r.usd:0):unit==="GAU"?(r.g?r.v/r.g:0):r.v;
   return rows.map(r=>({d:r.d,y:conv(r)}));
+}
+/* büyük tutar: para birimi simgesi küçük ve soluk */
+const money=(v,cur,o)=>fmt(v,cur,o).replace(/([₺$€])/,'<span class="cur">$1</span>');
+function histSum(ids){const by={};ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{by[r[0]]=(by[r[0]]||0)+r[1]}));return Object.keys(by).sort().map(d=>({d,y:by[d]}))}
+/* bir önceki kayıt gününe göre değişim rozeti */
+function dayDelta(ids){
+  const a=histSum(ids);if(a.length<2)return"";
+  const last=a[a.length-1],prev=a[a.length-2];if(last.d!==todayISO()||!(prev.y>0))return"";
+  const chg=(last.y-prev.y)/rate(S().base),pct=(last.y-prev.y)/prev.y*100,up=chg>=0;
+  const gap=daysBetween(prev.d,last.d),since=gap===1?"bugün":"son "+gap+" günde";
+  return `<div class="delta ${up?"up":"down"}"><b>${up?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(chg),null,{dec:0})}</b><span>%${fmtN(Math.abs(pct),2)}</span><small>${since}</small></div>`;
+}
+/* toplam kartının içindeki ince eğilim çizgisi (son 60 kayıt) */
+let sparkDrawn=false;
+function spark(ids){
+  const a=histSum(ids).slice(-60);if(a.length<3)return"";
+  const W=300,H=56,ys=a.map(p=>p.y),mn=Math.min(...ys),mx=Math.max(...ys),sp=(mx-mn)||1;
+  const X=i=>(W*i/(a.length-1)).toFixed(1),Y=v=>(4+(H-8)*(1-(v-mn)/sp)).toFixed(1);
+  const d=a.map((p,i)=>(i?"L":"M")+X(i)+" "+Y(p.y)).join(" ");
+  const first=!sparkDrawn;sparkDrawn=true;
+  return `<svg class="hero-spark${first?" draw":""}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><path d="${d} L${W} ${H} L0 ${H} Z" fill="url(#sg)"/><path class="ln" d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function histCard(ids,title){
   const unit=view.hUnit||"TRY",range=view.hRange||90;
@@ -592,7 +613,8 @@ function rOzet(){
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
       ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Ana portföy</span><select data-act="mainpf" aria-label="Ana portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
-      <div class="big amt" style="margin-top:6px">${fmt(net)}</div>${eqvChips(net)}</div>${eyeBtn()}</div>
+      <div class="big amt" style="margin-top:6px">${money(net)}</div>${mp?dayDelta([mp.id]):""}${eqvChips(net)}</div>${eyeBtn()}</div>
+    ${mp?spark([mp.id]):""}
     <div class="trio">
       <div><span class="label">Portföy</span><div class="v">${fmt(t.v)}</div></div>
       <div><span class="label">Maliyet</span><div class="v">${fmt(t.c)}</div></div>
@@ -631,10 +653,10 @@ function flowChart(){
   const data=months.map(m=>({m,...monthSum(m)}));
   const max=Math.max(1,...data.flatMap(d=>[d.i,d.o]));
   if(data.every(d=>!d.i&&!d.o))return `<div class="sub">Son 6 ayda kayıt yok.</div>`;
-  const W=320,H=130,pb=20,bw=13,gw=W/6;
+  const W=320,H=130,pb=20,bw=9,gw=W/6;
   const bars=data.map((d,k)=>{const x=k*gw+gw/2;const hi=(H-pb-8)*d.i/max,ho=(H-pb-8)*d.o/max;
-    return `<rect x="${x-bw-1}" y="${H-pb-hi}" width="${bw}" height="${Math.max(hi,0)}" rx="3" fill="var(--pos)" opacity=".85"/><rect x="${x+1}" y="${H-pb-ho}" width="${bw}" height="${Math.max(ho,0)}" rx="3" fill="var(--neg)" opacity=".75"/><text x="${x}" y="${H-5}" text-anchor="middle" font-size="10" fill="var(--muted)">${MONTHS[+d.m.slice(5)-1].slice(0,3)}</text>`}).join("");
-  return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:520px;display:block" role="img" aria-label="Son altı ay gelir ve gider"><line x1="0" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="var(--line)"/>${bars}</svg></div><div class="sub" style="display:flex;gap:14px"><span><span class="dot" style="display:inline-block;background:var(--pos)"></span> Gelir</span><span><span class="dot" style="display:inline-block;background:var(--neg)"></span> Gider</span></div>`;
+    return `<rect x="${x-bw-1.5}" y="${H-pb-hi}" width="${bw}" height="${Math.max(hi,0)}" rx="${Math.min(4.5,hi/2)}" fill="var(--pos)"/><rect x="${x+1.5}" y="${H-pb-ho}" width="${bw}" height="${Math.max(ho,0)}" rx="${Math.min(4.5,ho/2)}" fill="var(--neg)" opacity=".6"/><text x="${x}" y="${H-5}" text-anchor="middle" font-size="10" fill="var(--muted)">${MONTHS[+d.m.slice(5)-1].slice(0,3)}</text>`}).join("");
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:520px;display:block" role="img" aria-label="Son altı ay gelir ve gider">${[.33,.66].map(f=>`<line x1="0" x2="${W}" y1="${(8+(H-pb-8)*f).toFixed(1)}" y2="${(8+(H-pb-8)*f).toFixed(1)}" stroke="var(--line)" stroke-dasharray="2 4"/>`).join("")}<line x1="0" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="var(--line)"/>${bars}</svg></div><div class="sub" style="display:flex;gap:14px"><span><span class="dot" style="display:inline-block;background:var(--pos)"></span> Gelir</span><span><span class="dot" style="display:inline-block;background:var(--neg)"></span> Gider</span></div>`;
 }
 
 function donut(parts){
@@ -671,7 +693,7 @@ function rPortfoy(){
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
   <section class="hero net">
-    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span><div class="big">${fmt(v)}</div></div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
+    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span><div class="big">${money(v)}</div>${dayDelta((cur?[cur]:vis).map(p=>p.id))}</div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
     <div class="trio"><div><span class="label">Maliyet</span><div class="v">${fmt(c)}</div></div><div><span class="label">Dolar</span><div class="v">${fmt(rate("USD")?v*rate(S().base)/rate("USD"):0,"USD",{dec:0})}</div></div><div><span class="label">Varlık</span><div class="v">${hs.length}</div></div></div>
     ${c?plLine(hs,v,c):""}
     ${(()=>{const u=ufeSum(hs);if(!u.c)return ufe?"":"";return `<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub" style="margin-top:-6px">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`})()}
@@ -717,7 +739,7 @@ function hLine(h,pfId,sub,av){
   const val=hVal(h),cs=hCost(h),pl=val-cs,p=cs?pl/cs*100:0;
   const vU=rate("USD")?val*rate(S().base)/rate("USD"):0,plU=vU-costIn(h,"USD");
   const sg=v=>v>0?"+":"",cl=v=>v>=0?"pos-t":"neg-t";
-  const plTxt=S().hide?"••••":`<span class="${cl(pl)}">${sg(pl)}${fmt(pl,null,{dec:0})} <b>${fmtPct(p)}</b></span><span class="${cl(plU)}">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span>`;
+  const plTxt=S().hide?"••••":`<span class="${cl(pl)}">${sg(pl)}${fmt(pl,null,{dec:0})}</span><span class="usd">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span><b class="chg ${pl>=0?"up":"down"}">${fmtPct(p)}</b>`;
   return `<button class="row hr" data-act="edit-h" data-pf="${pfId}" data-id="${h.id}">${av?`<div class="av" style="color:var(${KIND_COLOR[h.kind]||"--c7"})">${esc((h.symbol||h.name||"?").slice(0,3).toUpperCase())}</div>`:""}<div class="main">
     <div class="l1"><span class="t">${esc(h.name)}</span><span class="num v1">${fmt(val)}</span></div>
     <div class="l2"><span class="s">${sub}${priceFlag(h)}</span><span class="pl2">${plTxt}</span></div></div></button>`;
@@ -772,7 +794,7 @@ function rAkis(){
   return `
   <div class="sec"><div class="month-sw"><button class="icon-btn" data-act="month" data-d="-1" aria-label="Önceki ay">${I.left}</button><b>${MONTHS[mo-1]} ${y}</b><button class="icon-btn" data-act="month" data-d="1" aria-label="Sonraki ay">${I.right}</button></div></div>
   <section class="hero net">
-    <div class="hero-top"><div><span class="label">Aylık net</span><div class="big ${ms.i-ms.o>=0?"":"neg-t"}">${fmt(ms.i-ms.o)}</div>${ms.i?`<div class="sub">Gelirin %${fmtN(savings,1)}'i kaldı${pendOut?` · bekleyen sabit ödemeler ${fmt(pendOut)}`:""}</div>`:pendOut?`<div class="sub">Bekleyen sabit ödemeler ${fmt(pendOut)}</div>`:""}</div>${eyeBtn()}</div>
+    <div class="hero-top"><div><span class="label">Aylık net</span><div class="big ${ms.i-ms.o>=0?"":"neg-t"}">${money(ms.i-ms.o)}</div>${ms.i?`<div class="sub">Gelirin %${fmtN(savings,1)}'i kaldı${pendOut?` · bekleyen sabit ödemeler ${fmt(pendOut)}`:""}</div>`:pendOut?`<div class="sub">Bekleyen sabit ödemeler ${fmt(pendOut)}</div>`:""}</div>${eyeBtn()}</div>
     <div class="trio"><div><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div><div><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div><div><span class="label">${budTot?"Bütçeden kalan":"İşlem"}</span><div class="v ${budTot&&budTot-ms.o<0?"neg-t":""}">${budTot?fmt(budTot-ms.o):monthTx(m).length}</div></div></div>
     ${budTot?`<div class="bar" aria-label="Bütçe kullanımı"><i style="width:${Math.min(100,ms.o/budTot*100)}%;background:var(${ms.o>budTot?"--neg":ms.o>budTot*.9?"--warn":"--accent"})"></i></div>`:""}
   </section>
@@ -837,7 +859,7 @@ function rZekat(){
     :stale?`<div class="note warn">Altın ve kur fiyatları ${s.ratesUpdated?fmtDate(s.ratesUpdated)+" tarihinden beri":"bir süredir"} güncellenmedi. <button class="btn ghost sm" data-act="rates" style="padding:0;color:inherit;text-decoration:underline">Güncelle</button></div>`:""}
   <section class="hero net">
     <div><span class="label">${z.reached?(z.hawl?"Bu dönem ödenecek zekât":"Nisaba ulaşıldı · tahmini zekât"):"Zekât durumu"}</span>
-      <div class="big">${!g.gram?"Fiyat bekleniyor":z.reached?fmt(z.left):"Nisap altında"}</div>
+      <div class="big">${!g.gram?"Fiyat bekleniyor":z.reached?money(z.left):"Nisap altında"}</div>
       <div class="sub">${!g.gram?"":z.reached?`Toplam ${fmt(z.due)} · ödenen ${fmt(z.paid)}`:`Nisaba ${gTxt(Math.max(0,s.nisabGram-z.netGram))} altın karşılığı kaldı`}</div></div>
     <div class="trio"><div><span class="label">Tabi varlık</span><div class="v">${gTxt(z.netGram)}</div></div><div><span class="label">Nisap</span><div class="v">${fmtN(s.nisabGram)} g</div></div><div><span class="label">Havl</span><div class="v">${z.hawl?z.hawl.left+" gün":"—"}</div></div></div>
     ${g.gram?`<div class="bar" aria-hidden="true"><i style="width:${Math.min(100,z.netGram/s.nisabGram*100)}%"></i></div>`:""}
