@@ -1,0 +1,24 @@
+{
+ "updatedAt": "2026-11-10T18:31:06+03:00",
+ "fx": {
+  "EUR": 56.1515,
+  "USD": 50.2326
+ },
+ "gold": {
+  "ata": 45019.56,
+  "aziz": null,
+  "ceyrek": 10887,
+  "cumhuriyet": 43373,
+  "gram": 6655.82,
+  "gumus": 83.7382,
+  "hamit": 43405.95,
+  "resat": 43405.95,
+  "resatAlis": 42734.554,
+  "resatSatis": 43421.499,
+  "tam": 43421.23,
+  "yarim": 21765
+ },
+ "quotes": {},
+ "source": "başlangıç verisi",
+ "errors": []
+}
