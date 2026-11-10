@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.2";
+const APP_VERSION="1.3";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -126,11 +126,49 @@ const hCost=h=>toBase(costIn(h,"TRY"),"TRY");
 const gramPrice=()=>AUTO()&&market.gold&&+market.gold.gram>0?+market.gold.gram:goldInfo().gram;
 function eqv(baseVal){const tl=baseVal*rate(S().base);const g=gramPrice();return{USD:rate("USD")?tl/rate("USD"):0,EUR:rate("EUR")?tl/rate("EUR"):0,g:g?tl/g:0}}
 /* TL ve dolar bazında kâr/zarar: dolar maliyeti her alımın kendi günündeki kurla */
+/* ---------- günlük kâr/zarar ----------
+   state.day: bugünün ve bir önceki kayıt gününün birim değerleri (TL) ve dolar kuru.
+   Günlük K/Z = miktar × (şimdiki birim değer − önceki günün birim değeri). Bugün alınan varlıkta baz, alış maliyetidir. */
+function dayRoll(){
+  const d=todayISO();let ch=false;
+  const D=state.day=state.day&&state.day.cur?state.day:{d,cur:{},ref:null};
+  if(D.d!==d){if(Object.keys(D.cur).length)D.ref={d:D.d,h:D.cur};D.d=d;D.cur={};ch=true}
+  const usd=+rate("USD").toFixed(4),live=new Set();
+  state.portfolios.forEach(p=>p.holdings.forEach(h=>{if(!(+h.qty>0))return;live.add(h.id);
+    const u=+(effPrice(h).p*rate(h.cur)).toFixed(6),o=D.cur[h.id];
+    if(!o||o.u!==u||o.s!==usd){D.cur[h.id]={u,s:usd};ch=true}}));
+  Object.keys(D.cur).forEach(id=>{if(!live.has(id)){delete D.cur[id];ch=true}});
+  return ch;
+}
+const dayRef=()=>state.day&&state.day.ref&&state.day.d===todayISO()?state.day.ref:null;
+function dayPL(h){
+  const ref=dayRef(),q=+h.qty||0;if(!ref||!(q>0))return null;
+  const uNow=effPrice(h).p*rate(h.cur),usd=rate("USD"),r=ref.h[h.id];
+  let u0,s0;
+  if(r){u0=r.u;s0=r.s}
+  else if(h.buyDate&&h.buyDate>ref.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}
+  else return null;
+  if(!(u0>0)||!(s0>0)||!(usd>0))return null;
+  return{pl:q*(uNow-u0)/rate(S().base),base:q*u0/rate(S().base),plU:q*(uNow/usd-u0/s0),baseU:q*u0/s0};
+}
+function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);if(d){pl+=d.pl;b+=d.base;plU+=d.plU;bU+=d.baseU;n++}});return n?{pl,pct:b?pl/b*100:0,plU,pctU:bU?plU/bU*100:0}:null}
+const dayLabel=()=>{const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
+const plMode=()=>S().plMode==="day"?"day":"total";
+const plSeg=()=>`<div class="seg plseg" role="group" aria-label="Kâr/zarar görünümü">${[["total","Toplam"],["day","Günlük"]].map(([k,l])=>`<button data-act="plmode" data-k="${k}" aria-pressed="${plMode()===k}">${l}</button>`).join("")}</div>`;
+/* TL ve dolar bazında kâr/zarar; seçime göre toplam (maliyete göre) ya da günlük (önceki güne göre) */
 function plLine(hs,v,c){
-  const pl=v-c,plp=c?pl/c*100:0;
-  const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0),plU=vU-cU,plpU=cU?plU/cU*100:0;
   const cell=(l,amt,pct,cur,ok)=>`<div><span class="label">${l}</span><div class="v num ${ok?"pos-t":"neg-t"}">${S().hide?"••••":(amt>0?"+":"")+fmt(amt,cur,{dec:0})} <small>${fmtPct(pct)}</small></div></div>`;
-  return `<div class="ufe-line">${cell("Kâr / Zarar · TL",pl,plp,S().base,pl>=0)}${cell("Kâr / Zarar · Dolar",plU,plpU,"USD",plU>=0)}</div>`;
+  let cells;
+  if(plMode()==="day"){
+    const d=daySum(hs);
+    cells=d?cell("Günlük K/Z · TL",d.pl,d.pct,S().base,d.pl>=0)+cell("Günlük K/Z · Dolar",d.plU,d.pctU,"USD",d.plU>=0)
+      :`<div style="grid-column:1/-1" class="sub">Günlük kâr/zarar yarından itibaren görünür: karşılaştırma için önceki günün fiyatları gerekiyor.</div>`;
+  }else{
+    const pl=v-c,plp=c?pl/c*100:0;
+    const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0),plU=vU-cU,plpU=cU?plU/cU*100:0;
+    cells=cell("Toplam K/Z · TL",pl,plp,S().base,pl>=0)+cell("Toplam K/Z · Dolar",plU,plpU,"USD",plU>=0);
+  }
+  return `<div class="ufe-line"><div class="plhead">${plSeg()}${plMode()==="day"&&dayRef()?`<span class="sub">${dayLabel()}</span>`:""}</div>${cells}</div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
 const eyeBtn=()=>`<button class="icon-btn" data-act="hide" aria-label="${S().hide?"Tutarları göster":"Tutarları gizle"}" aria-pressed="${S().hide}">${S().hide?I.eyeOff:I.eye}</button>`;
@@ -204,7 +242,7 @@ function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e
 /* ---------- değer geçmişi: her portföy için günde bir kayıt [tarih, değer TL, maliyet TL, dolar kuru, gram altın] ---------- */
 function snapshot(){
   if(!state||!ready)return false;
-  const d=todayISO(),usd=rate("USD"),g=gramPrice();let ch=false;
+  const d=todayISO(),usd=rate("USD"),g=gramPrice();let ch=dayRoll();
   state.hist=state.hist||{};
   const live=new Set(state.portfolios.map(p=>p.id));
   Object.keys(state.hist).forEach(k=>{if(!live.has(k)){delete state.hist[k];ch=true}});
@@ -232,12 +270,10 @@ function histSeries(ids,unit,range){
 const money=(v,cur,o)=>fmt(v,cur,o).replace(/([₺$€])/,'<span class="cur">$1</span>');
 function histSum(ids){const by={};ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{by[r[0]]=(by[r[0]]||0)+r[1]}));return Object.keys(by).sort().map(d=>({d,y:by[d]}))}
 /* bir önceki kayıt gününe göre değişim rozeti */
-function dayDelta(ids){
-  const a=histSum(ids);if(a.length<2)return"";
-  const last=a[a.length-1],prev=a[a.length-2];if(last.d!==todayISO()||!(prev.y>0))return"";
-  const chg=(last.y-prev.y)/rate(S().base),pct=(last.y-prev.y)/prev.y*100,up=chg>=0;
-  const gap=daysBetween(prev.d,last.d),since=gap===1?"bugün":"son "+gap+" günde";
-  return `<div class="delta ${up?"up":"down"}"><b>${up?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(chg),null,{dec:0})}</b><span>%${fmtN(Math.abs(pct),2)}</span><small>${since}</small></div>`;
+function dayDelta(hs){
+  const d=daySum(hs);if(!d)return"";
+  const up=d.pl>=0;
+  return `<div class="delta ${up?"up":"down"}"><b>${up?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(d.pl),null,{dec:0})}</b><span>%${fmtN(Math.abs(d.pct),2)}</span><small>${dayLabel()}</small></div>`;
 }
 /* toplam kartının içindeki ince eğilim çizgisi (son 60 kayıt) */
 let sparkDrawn=false;
@@ -613,7 +649,7 @@ function rOzet(){
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
       ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Ana portföy</span><select data-act="mainpf" aria-label="Ana portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
-      <div class="big amt" style="margin-top:6px">${money(net)}</div>${mp?dayDelta([mp.id]):""}${eqvChips(net)}</div>${eyeBtn()}</div>
+      <div class="big amt" style="margin-top:6px">${money(net)}</div>${mp?dayDelta(hs):""}${eqvChips(net)}</div>${eyeBtn()}</div>
     ${mp?spark([mp.id]):""}
     <div class="trio">
       <div><span class="label">Portföy</span><div class="v">${fmt(t.v)}</div></div>
@@ -693,7 +729,7 @@ function rPortfoy(){
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
   <section class="hero net">
-    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span><div class="big">${money(v)}</div>${dayDelta((cur?[cur]:vis).map(p=>p.id))}</div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
+    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span><div class="big">${money(v)}</div>${dayDelta(hs)}</div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
     <div class="trio"><div><span class="label">Maliyet</span><div class="v">${fmt(c)}</div></div><div><span class="label">Dolar</span><div class="v">${fmt(rate("USD")?v*rate(S().base)/rate("USD"):0,"USD",{dec:0})}</div></div><div><span class="label">Varlık</span><div class="v">${hs.length}</div></div></div>
     ${c?plLine(hs,v,c):""}
     ${(()=>{const u=ufeSum(hs);if(!u.c)return ufe?"":"";return `<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub" style="margin-top:-6px">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`})()}
@@ -736,10 +772,11 @@ function priceFlag(h){
   return"";
 }
 function hLine(h,pfId,sub,av){
-  const val=hVal(h),cs=hCost(h),pl=val-cs,p=cs?pl/cs*100:0;
-  const vU=rate("USD")?val*rate(S().base)/rate("USD"):0,plU=vU-costIn(h,"USD");
+  const val=hVal(h),cs=hCost(h);
+  let pl=val-cs,p=cs?pl/cs*100:0,plU=(rate("USD")?val*rate(S().base)/rate("USD"):0)-costIn(h,"USD"),none=false;
+  if(plMode()==="day"){const d=dayPL(h);if(d){pl=d.pl;p=d.base?d.pl/d.base*100:0;plU=d.plU}else none=true}
   const sg=v=>v>0?"+":"",cl=v=>v>=0?"pos-t":"neg-t";
-  const plTxt=S().hide?"••••":`<span class="${cl(pl)}">${sg(pl)}${fmt(pl,null,{dec:0})}</span><span class="usd">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span><b class="chg ${pl>=0?"up":"down"}">${fmtPct(p)}</b>`;
+  const plTxt=none?`<span class="usd">günlük veri yok</span>`:S().hide?"••••":`<span class="${cl(pl)}">${sg(pl)}${fmt(pl,null,{dec:0})}</span><span class="usd">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span><b class="chg ${pl>=0?"up":"down"}">${fmtPct(p)}</b>`;
   return `<button class="row hr" data-act="edit-h" data-pf="${pfId}" data-id="${h.id}">${av?`<div class="av" style="color:var(${KIND_COLOR[h.kind]||"--c7"})">${esc((h.symbol||h.name||"?").slice(0,3).toUpperCase())}</div>`:""}<div class="main">
     <div class="l1"><span class="t">${esc(h.name)}</span><span class="num v1">${fmt(val)}</span></div>
     <div class="l2"><span class="s">${sub}${priceFlag(h)}</span><span class="pl2">${plTxt}</span></div></div></button>`;
@@ -1413,6 +1450,7 @@ document.addEventListener("click",e=>{
     if(!Object.values(c).some(v=>v>0)&&!goldInfo().gram){toast("En az bir altın lira fiyatı girin");return}
     S().rates.USD=u;S().rates.EUR=eu;S().coins=c;S().ratesUpdated=todayISO();commit("Fiyatlar kaydedildi");return}
   if(a==="export")return exportData();
+  if(a==="plmode"){S().plMode=t.dataset.k==="day"?"day":"total";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");
