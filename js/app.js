@@ -7,6 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
+const APP_VERSION="1.1";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -70,6 +71,7 @@ function normalize(s){
   if(!s.settings.hawlBy){s.settings.hawlBy={};if(s.settings.hawlH)s.settings.hawlBy[s.settings.mainOwner||"Ben"]=s.settings.hawlH}
   s.settings.hawlH=null;
   ["portfolios","tx","debts","zakatPaid","cards","recurring","goals"].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[]});
+  if(!s.hist||typeof s.hist!=="object"||Array.isArray(s.hist))s.hist={};
   if(!s.budgets||typeof s.budgets!=="object")s.budgets={};
   s.tx.forEach(t=>{if(t.cat in CAT_MAP)t.cat=CAT_MAP[t.cat]||(t.type==="in"?"Diğer gelir":"Diğer gider")});
   s.portfolios.forEach(p=>{if(!Array.isArray(p.holdings))p.holdings=[];if(!p.owner)p.owner=s.settings.mainOwner||"Ben";if(p.inSummary===undefined)p.inSummary=true;
@@ -100,7 +102,7 @@ function effPrice(h){
     if(h.kind==="gumus"){const v=market.gold&&+market.gold.gumus;if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
     const sy=(h.symbol||"").toUpperCase().trim();
     const q=market.quotes&&sy&&(market.quotes[h.kind+":"+sy]||(h.kind==="abd"?market.quotes["hisse:"+sy]:null));
-    if(q&&+q.p>0&&(!q.cur||q.cur===h.cur))return{p:+q.p,auto:true};
+    if(q&&+q.p>0&&(!q.cur||q.cur===h.cur))return{p:+q.p,auto:true,t:q.t};
   }
   return{p:+h.price||0,auto:false};
 }
@@ -199,7 +201,61 @@ function zakat(o){
 
 /* ---------- persistence ---------- */
 function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
-function commit(msg){state.updatedAt=Date.now();lastLocalWrite=state.updatedAt;cacheLocal();applyPrefs();render();if(msg)toast(msg);scheduleSave();syncWatch()}
+/* ---------- değer geçmişi: her portföy için günde bir kayıt [tarih, değer TL, maliyet TL, dolar kuru, gram altın] ---------- */
+function snapshot(){
+  if(!state||!ready)return false;
+  const d=todayISO(),usd=rate("USD"),g=gramPrice();let ch=false;
+  state.hist=state.hist||{};
+  const live=new Set(state.portfolios.map(p=>p.id));
+  Object.keys(state.hist).forEach(k=>{if(!live.has(k)){delete state.hist[k];ch=true}});
+  state.portfolios.forEach(p=>{
+    if(/\(örnek\)/.test(p.name||"")&&!p.holdings.length)return;
+    const t=pfTotals(p),b=rate(S().base),v=Math.round(t.v*b),c=Math.round(t.c*b);
+    if(!(v>0)&&!(state.hist[p.id]||[]).length)return;
+    const a=state.hist[p.id]=state.hist[p.id]||[],last=a[a.length-1],row=[d,v,c,+usd.toFixed(4),Math.round(g)];
+    if(last&&last[0]===d){if(last[1]!==v||last[2]!==c){a[a.length-1]=row;ch=true}}
+    else{a.push(row);if(a.length>1500)a.splice(0,a.length-1500);ch=true}
+  });
+  return ch;
+}
+/* fiyat güncellenince ya da gün değişince: kayıt değiştiyse sessizce kaydet */
+function snapshotSave(){if(snapshot()){state.updatedAt=Date.now();cacheLocal();scheduleSave();return true}return false}
+function histSeries(ids,unit,range){
+  const by={};
+  ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
+  let rows=Object.keys(by).sort().map(d=>({d,...by[d]}));
+  if(range&&range!=="all"){const from=addDays(todayISO(),-range);rows=rows.filter(r=>r.d>=from)}
+  const conv=r=>unit==="USD"?(r.usd?r.v/r.usd:0):unit==="GAU"?(r.g?r.v/r.g:0):r.v;
+  return rows.map(r=>({d:r.d,y:conv(r)}));
+}
+function histCard(ids,title){
+  const unit=view.hUnit||"TRY",range=view.hRange||90;
+  const all=histSeries(ids,unit,"all"),pts=histSeries(ids,unit,range);
+  const segU=`<div class="seg" role="group" aria-label="Birim">${[["TRY","₺"],["USD","$"],["GAU","g altın"]].map(([k,l])=>`<button data-act="hunit" data-k="${k}" aria-pressed="${unit===k}">${l}</button>`).join("")}</div>`;
+  const segR=`<div class="seg" role="group" aria-label="Dönem">${[[30,"1A"],[90,"3A"],[365,"1Y"],["all","Tümü"]].map(([k,l])=>`<button data-act="hrange" data-k="${k}" aria-pressed="${String(range)===String(k)}">${l}</button>`).join("")}</div>`;
+  const fu=v=>unit==="GAU"?fmtN(v,1)+" g":fmt(v,unit,{dec:0});
+  let body;
+  if(all.length<2)body=`<div class="sub">Grafik günlük kayıtlardan oluşur. İlk kayıt bugün alındı; uygulamayı açtığınız her gün yeni bir nokta eklenir.</div>`;
+  else if(pts.length<2)body=`<div class="sub">Bu dönemde yeterli kayıt yok. Daha uzun bir dönem seçin.</div>`;
+  else{
+    const W=640,H=200,pl=6,pr=6,pt=14,pb=24,ys=pts.map(p=>p.y),mn=Math.min(...ys),mx=Math.max(...ys),sp=(mx-mn)||Math.abs(mx)||1,lo=mn-sp*.12,hi=mx+sp*.12;
+    const t0=new Date(pts[0].d).getTime(),t1=new Date(pts[pts.length-1].d).getTime()||t0+1;
+    const X=p=>pl+(W-pl-pr)*((new Date(p.d).getTime()-t0)/((t1-t0)||1)),Y=p=>pt+(H-pt-pb)*(1-(p.y-lo)/(hi-lo));
+    const line=pts.map((p,i)=>(i?"L":"M")+X(p).toFixed(1)+" "+Y(p).toFixed(1)).join(" ");
+    const first=pts[0],last=pts[pts.length-1],chg=last.y-first.y,pct=first.y?chg/first.y*100:0,up=chg>=0;
+    const col=up?"var(--pos)":"var(--neg)";
+    body=`<div class="hist-top"><div><div class="num hist-val">${S().hide?"••••":fu(last.y)}</div><div class="sub"><span class="${up?"pos-t":"neg-t"}">${S().hide?"••••":(up?"+":"")+fu(chg)} · ${fmtPct(pct)}</span> · ${fmtDate(first.d)} – ${fmtDate(last.d)}</div></div></div>
+    <svg class="hist" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(title)}: ${fmtDate(first.d)} ile ${fmtDate(last.d)} arası değişim ${fmtPct(pct)}">
+      <defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".22"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+      ${[0,.5,1].map(f=>`<line x1="${pl}" x2="${W-pr}" y1="${(pt+(H-pt-pb)*f).toFixed(1)}" y2="${(pt+(H-pt-pb)*f).toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("")}
+      <path d="${line} L${X(last).toFixed(1)} ${H-pb} L${X(first).toFixed(1)} ${H-pb} Z" fill="url(#hg)"/>
+      <path d="${line}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="hist-x"><span>${fmtDate(first.d)}</span><span>en düşük ${S().hide?"••":fu(mn)} · en yüksek ${S().hide?"••":fu(mx)}</span><span>${fmtDate(last.d)}</span></div>`;
+  }
+  return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>${esc(title)}</h2>${segU}</div>${body}${all.length>=2?`<div style="margin-top:12px">${segR}</div>`:""}</section>`;
+}
+function commit(msg){snapshot();state.updatedAt=Date.now();lastLocalWrite=state.updatedAt;cacheLocal();applyPrefs();render();if(msg)toast(msg);scheduleSave();syncWatch()}
 function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if(+h.qty>0&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));return out}
 /* İzlenen kodlar: giriş yapıldıysa ortak izleme listesine eklenir; fiyat işi (GitHub Actions) bu listeyi okur. */
 async function syncWatch(){
@@ -360,7 +416,7 @@ async function loadMarket(announce){
   if(!got){if(announce)toast("Fiyat dosyasına ulaşılamadı; internet bağlantınızı kontrol edin");return}
   const changed=!market||market.updatedAt!==got.updatedAt;
   market=got;try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
-  if(changed&&ready){render();fillFx()}
+  if(changed&&ready){snapshotSave();render();fillFx()}
   if(announce)toast(changed?"Fiyatlar güncellendi":"Fiyatlar güncel · "+marketWhen());
 }
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
@@ -398,7 +454,7 @@ async function onLogin(user){
   try{localStorage.setItem(OWN,user.id);localStorage.removeItem(GUEST)}catch(e){}
   hideAuth();mode="cloud";setSync("cloud","Eşitleniyor…");
   await pull(true);
-  ready=true;applyPrefs();render();setTimeout(()=>{fillFx();syncWatch()},0);
+  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(()=>{fillFx();syncWatch()},0);
 }
 async function signOut(){
   try{clearTimeout(saveTimer);await flush()}catch(e){}
@@ -410,6 +466,8 @@ async function boot(){
   loadMarket();loadUfe();
   setInterval(()=>{if(!document.hidden)loadMarket()},10*6e4);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadMarket();pull()}});
+  const net=()=>{if(!navigator.onLine)setSync("local","Çevrimdışı · değişiklikler cihazda");else if(cloudOn()){pull()}else if(ready)setSync("local",sb?"Girişsiz · bu cihazda":"Bu cihazda tutuluyor")};
+  window.addEventListener("offline",net);window.addEventListener("online",net);
   if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
   if(!(CFG.supabaseUrl&&CFG.supabaseKey&&window.supabase)){goLocal();return}
   try{sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey)}catch(e){sb=null;goLocal();return}
@@ -421,7 +479,7 @@ async function boot(){
   if(session){if(!sbUser)await onLogin(session.user)}
   else{let g=null;try{g=localStorage.getItem(GUEST)}catch(e){}if(g)goLocal("Girişsiz · bu cihazda");else showAuth()}
 }
-function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();render();setTimeout(fillFx,0)}
+function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(fillFx,0)}
 
 /* ---------- giriş ekranı ---------- */
 const AUTH_ERR={"Invalid login credentials":"E-posta veya şifre hatalı.","Email not confirmed":"E-posta adresiniz henüz onaylanmamış. Gelen kutunuzdaki bağlantıya tıklayın.","User already registered":"Bu e-posta ile zaten bir hesap var. Giriş yapın."};
@@ -434,7 +492,7 @@ function showAuth(){
     <h2>Birikiminiz, zekâtınız ve bütçeniz tek defterde.</h2>
     <form id="authF" novalidate class="form">
       <div class="field"><label for="auE">E-posta</label><input id="auE" type="email" autocomplete="email" inputmode="email" placeholder="ornek@eposta.com"></div>
-      <div class="field"><label for="auP">Şifre</label><input id="auP" type="password" autocomplete="current-password" placeholder="En az 6 karakter"></div>
+      <div class="field"><label for="auP">Şifre</label><div class="pw"><input id="auP" type="password" autocomplete="current-password" placeholder="En az 6 karakter"><button type="button" class="btn ghost sm" id="auShow" aria-pressed="false">Göster</button></div></div>
       <div class="err" id="auErr" role="alert"></div>
       <button class="btn primary" type="submit" id="auIn">Giriş yap</button>
       <button class="btn" type="button" id="auUp">Hesap oluştur</button>
@@ -454,6 +512,7 @@ function showAuth(){
     const{data,error}=await sb.auth.signUp({email:E.value.trim(),password:P.value,options:{emailRedirectTo:back}});busy(b,false,"Hesap oluştur");
     if(error)say(authMsg(error));else if(data&&data.session){if(!sbUser)onLogin(data.session.user)}else say("Onay e-postası gönderildi. Gelen kutunuzdaki bağlantıya tıklayın, sonra giriş yapın.",true)};
   el.querySelector("#auReset").onclick=async()=>{if(!need(false))return;const{error}=await sb.auth.resetPasswordForEmail(E.value.trim(),{redirectTo:back});say(error?authMsg(error):"Şifre yenileme bağlantısı e-posta adresinize gönderildi.",!error)};
+  el.querySelector("#auShow").onclick=e=>{const on=P.type==="password";P.type=on?"text":"password";e.currentTarget.textContent=on?"Gizle":"Göster";e.currentTarget.setAttribute("aria-pressed",on)};
   el.querySelector("#auGuest").onclick=()=>{try{localStorage.setItem(GUEST,"1")}catch(e){}goLocal("Girişsiz · bu cihazda")};
 }
 function newPassSheet(){
@@ -497,7 +556,7 @@ function render(){
   $("#nav").innerHTML=TABS.map(([k,l])=>`<button data-tab="${k}" ${view.tab===k?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`).join("");
   $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
-  if(!ready&&!state){m.innerHTML='<div class="loading">Verileriniz yükleniyor…</div>';fab.hidden=true;return}
+  if(!ready&&!state){m.innerHTML='<div class="skel" aria-label="Verileriniz yükleniyor" role="status"><i class="sk-hero"></i><i></i><i></i></div>';fab.hidden=true;return}
   if(!state||(!state.updatedAt&&!state.portfolios.length&&!state.tx.length&&!state.debts.length)){
     if(!state)state=emptyState();
     if(view.tab!=="ayarlar"){m.innerHTML=onboarding();fab.hidden=true;return}
@@ -541,6 +600,7 @@ function rOzet(){
     </div>
     ${mp&&t.c?plLine(mp.holdings.filter(h=>+h.qty>0),t.v,t.c):""}
   </section>
+  ${mp&&hs.length?histCard([mp.id],"Değer geçmişi"):""}
   ${mp?`<section class="card">
     <div class="sec" style="margin-bottom:8px"><h2>Bileşim</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Portföye git ›</button></div>
     ${kinds.length?`<div class="stack" aria-hidden="true">${kinds.map(([k,v])=>`<i style="flex:${v};background:var(${k==="__cash"?"--c3":(KIND_COLOR[k]||"--c7")})"></i>`).join("")}</div>
@@ -620,6 +680,7 @@ function rPortfoy(){
   </section>
   ${multi?pfListCard(vis,v):""}
   ${parts.length?`<section class="card"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`:""}
+  ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
   ${hs.length?eqvCard(v,hs):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
@@ -642,6 +703,16 @@ function hPL(h){const val=hVal(h),cs=hCost(h),pl=val-cs;
   const sg=v=>v>0?"+":"";
   return `<div class="hpl"><span class="${pl>=0?"pos-t":"neg-t"}">${sg(pl)}${fmt(pl,null,{dec:0})}</span><span class="${plU>=0?"pos-t":"neg-t"}">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span></div>`}
 /* iki satırlık kompakt varlık satırı: ad · değer / alt bilgi · kâr-zarar */
+/* otomatik fiyatı beklenen ama gelmeyen ya da bayatlamış varlıklar için uyarı etiketi */
+function priceFlag(h){
+  if(S().autoPrices===false||!market||!(+h.qty>0))return"";
+  const wants=(PRICED.includes(h.kind)&&h.kind!=="diger"&&!!h.symbol)||h.kind==="altin"||h.kind==="gumus";
+  if(!wants)return"";
+  const ep=effPrice(h);
+  if(!ep.auto)return h.cur==="TRY"||PRICED.includes(h.kind)?` <span class="flag" title="Otomatik fiyat henüz gelmedi; elle girilen fiyat kullanılıyor">fiyat elle</span>`:"";
+  if(ep.t){const age=(Date.now()-new Date(ep.t).getTime())/864e5;if(age>5)return ` <span class="flag" title="Son fiyat ${esc(fmtDate(String(ep.t).slice(0,10)))} tarihli">fiyat eski</span>`}
+  return"";
+}
 function hLine(h,pfId,sub,av){
   const val=hVal(h),cs=hCost(h),pl=val-cs,p=cs?pl/cs*100:0;
   const vU=rate("USD")?val*rate(S().base)/rate("USD"):0,plU=vU-costIn(h,"USD");
@@ -649,7 +720,7 @@ function hLine(h,pfId,sub,av){
   const plTxt=S().hide?"••••":`<span class="${cl(pl)}">${sg(pl)}${fmt(pl,null,{dec:0})} <b>${fmtPct(p)}</b></span><span class="${cl(plU)}">${sg(plU)}${fmt(plU,"USD",{dec:0})}</span>`;
   return `<button class="row hr" data-act="edit-h" data-pf="${pfId}" data-id="${h.id}">${av?`<div class="av" style="color:var(${KIND_COLOR[h.kind]||"--c7"})">${esc((h.symbol||h.name||"?").slice(0,3).toUpperCase())}</div>`:""}<div class="main">
     <div class="l1"><span class="t">${esc(h.name)}</span><span class="num v1">${fmt(val)}</span></div>
-    <div class="l2"><span class="s">${sub}</span><span class="pl2">${plTxt}</span></div></div></button>`;
+    <div class="l2"><span class="s">${sub}${priceFlag(h)}</span><span class="pl2">${plTxt}</span></div></div></button>`;
 }
 function hRow(h,showPf){
   const val=hVal(h),cs=hCost(h),p=cs?(val-cs)/cs*100:0,ows=owners();
@@ -847,9 +918,11 @@ function rAyarlar(){
     ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Hesap</b><small>${esc(sbUser.email||"")} · veriler hesabınızda saklanır, diğer cihazlarınızda da açılır</small></div><button class="btn sm" data-act="signout">Çıkış yap</button></div>`
       :`<div class="set-row"><div class="lbl"><b>Kayıt yeri</b><small>Yalnızca bu cihazda. ${sb?"Giriş yaparsanız verileriniz hesabınıza taşınır ve diğer cihazlarınızda da açılır.":"Bulut eşitleme henüz kurulmadı; yedek almayı unutmayın."}</small></div>${sb?`<button class="btn sm primary" data-act="signin">Giriş yap</button>`:""}</div>`}
     <div class="set-row"><div class="lbl"><b>Yedek</b><small>Tüm veriler JSON dosyası olarak</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="export">Yedeği indir</button><label class="btn sm" for="importIn" style="cursor:pointer">Yedek yükle</label><input type="file" id="importIn" accept="application/json,.json" hidden></div></div>
+    <div class="set-row"><div class="lbl"><b>Excel'e aktar</b><small>Excel ve Google E-Tablolar'da açılan CSV dosyaları</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="csv-h">Varlıklar</button><button class="btn sm" data-act="csv-t">Gelir-gider</button></div></div>
     <div class="set-row"><div class="lbl"><b>Tüm verileri sil</b><small>Portföyler, işlemler, borçlar ve zekât kayıtları silinir; ayarlar kalır</small></div><button class="btn sm danger" data-act="wipe">Sil</button></div>
   </div></section>
-  <button class="btn" data-tab="${s.start||"ozet"}" style="align-self:flex-start">Geri dön</button>`;
+  <button class="btn" data-tab="${s.start||"ozet"}" style="align-self:flex-start">Geri dön</button>
+  <p class="sub" style="margin:0;text-align:center">Emanet ${APP_VERSION} · <a href="https://github.com/omerfarukcetin/emanet" target="_blank" rel="noopener">kaynak kod</a></p>`;
 }
 
 /* ---------- sheet ---------- */
@@ -898,7 +971,7 @@ function formSheet({title,fields,onSave,onDelete,extra="",onChange,onOpen}){
     form.addEventListener("change",e=>onChange&&onChange(form,e.target.name));
     sh.querySelector("#sfCancel").onclick=closeSheet;
     form.addEventListener("submit",e=>{e.preventDefault();const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const err=onSave(vals);if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()});
-    if(onDelete){const d=sh.querySelector("#sfDel");d.onclick=()=>{if(d.dataset.c){onDelete();closeSheet()}else{d.dataset.c="1";d.textContent="Evet, sil";d.classList.add("solid")}}}
+    if(onDelete){const d=sh.querySelector("#sfDel");d.onclick=()=>{if(d.dataset.c){withUndo(onDelete);closeSheet()}else{d.dataset.c="1";d.textContent="Evet, sil";d.classList.add("solid")}}}
     onOpen&&onOpen(form,sh);
   });
 }
@@ -1318,6 +1391,10 @@ document.addEventListener("click",e=>{
     if(!Object.values(c).some(v=>v>0)&&!goldInfo().gram){toast("En az bir altın lira fiyatı girin");return}
     S().rates.USD=u;S().rates.EUR=eu;S().coins=c;S().ratesUpdated=todayISO();commit("Fiyatlar kaydedildi");return}
   if(a==="export")return exportData();
+  if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
+  if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
+  if(a==="csv-h")return exportCSV("varliklar");
+  if(a==="csv-t")return exportCSV("islemler");
   if(a==="signout")return signOut();
   if(a==="signin"){try{localStorage.removeItem(GUEST)}catch(e){}return showAuth()}
   if(a==="owner"){view.owner=t.dataset.k;view.pf="all";render();return}
@@ -1325,7 +1402,7 @@ document.addEventListener("click",e=>{
   if(a==="hawl-clear"){setHawl(zOwner(),null);commit("Zekât günü kaldırıldı");return}
   if(a==="hawl-today"){setHawl(zOwner(),toH(todayISO()));commit("Zekât günü "+fmtH(todayISO())+" olarak başlatıldı");return}
   if(a==="refresh")return refreshNow(t);
-  if(a==="wipe"){if(t.dataset.c){state.portfolios=[];state.tx=[];state.debts=[];state.zakatPaid=[];commit("Tüm kayıtlar silindi")}else{t.dataset.c="1";t.textContent="Evet, hepsini sil";t.classList.add("solid")}return}
+  if(a==="wipe"){if(t.dataset.c){withUndo(()=>{state.portfolios=[];state.tx=[];state.debts=[];state.zakatPaid=[];state.cards=[];state.recurring=[];state.goals=[];state.budgets={};state.hist={};commit("Tüm kayıtlar silindi")})}else{t.dataset.c="1";t.textContent="Evet, hepsini sil";t.classList.add("solid")}return}
 });
 document.addEventListener("change",e=>{
   const t=e.target;
@@ -1353,7 +1430,35 @@ function exportData(){
   catch(e){toast("Yedek indirilemedi")}
 }
 
-let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+function saveFile(name,text,type){
+  try{const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);return true}catch(e){return false}
+}
+/* Excel'in Türkçe ayarlarla doğrudan açabildiği CSV: noktalı virgül ayraç, ondalık virgül, UTF-8 BOM */
+function exportCSV(kind){
+  const n=v=>v==null||v===""||isNaN(v)?"":String(Math.round(v*1e6)/1e6).replace(".",",");
+  const q=v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  let rows;
+  if(kind==="varliklar"){
+    rows=[["Portföy","Sahibi","Varlık","Kod","Tür","Para birimi","Miktar","Ortalama maliyet","Güncel fiyat","Değer (TL)","Maliyet (TL)","Kâr/Zarar (TL)","Kâr/Zarar %","Dolar maliyeti","Dolar değeri","Alış tarihi"]];
+    state.portfolios.forEach(p=>p.holdings.filter(h=>+h.qty>0).forEach(h=>{const b=rate(S().base),v=hVal(h)*b,c=hCost(h)*b;
+      rows.push([p.name,ownerOf(p),h.name,h.symbol||"",KINDS[h.kind]||h.kind,h.cur,n(+h.qty),n(+h.cost),n(effPrice(h).p),n(v),n(c),n(v-c),n(c?(v-c)/c*100:0),n(costIn(h,"USD")),n(rate("USD")?v/rate("USD"):0),h.buyDate||""])}));
+  }else{
+    rows=[["Tarih","Tür","Kategori","Tutar","Para birimi","Ödeme şekli","Taksit","Not"]];
+    state.tx.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")).forEach(t=>{const c=cardById(t.type==="card"?t.card:t.method);
+      rows.push([t.date||"",t.type==="in"?"Gelir":t.type==="card"?"Kart ödemesi":"Gider",t.cat||"",n(+t.amount),t.cur||"TRY",c?c.name:(t.type==="out"?"Nakit / banka kartı":""),t.inst||"",t.note||""])});
+  }
+  if(rows.length<2){toast("Aktarılacak kayıt yok");return}
+  const ok=saveFile("emanet-"+kind+"-"+todayISO()+".csv","\ufeff"+rows.map(r=>r.map(q).join(";")).join("\r\n"),"text/csv;charset=utf-8");
+  toast(ok?"Dosya indirildi":"Dosya indirilemedi");
+}
+let toastT;
+function toast(m,undoSnap){
+  const t=$("#toast");t.textContent=m;clearTimeout(toastT);
+  if(undoSnap){const b=document.createElement("button");b.type="button";b.textContent="Geri al";b.onclick=()=>{try{state=normalize(JSON.parse(undoSnap))}catch(e){return}commit("Geri alındı")};t.appendChild(b)}
+  t.hidden=false;toastT=setTimeout(()=>t.hidden=true,undoSnap?7000:2400);
+}
+/* silme işlemlerinden sonra birkaç saniye "Geri al" sunar */
+function withUndo(fn){const snap=JSON.stringify(state);fn();const t=$("#toast");toast(t.hidden?"Silindi":t.textContent,snap)}
 
 applyPrefs();render();boot();
 })();

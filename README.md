@@ -5,6 +5,7 @@ Aile portföyü, gelir-gider, borç ve zekât defteri. Telefona uygulama gibi ku
 - **Portföy:** birden fazla portföy; altın, hisse (BIST ve ABD), fon, döviz, kripto, BES; alım-satım, komisyon, stopaj; TL ve dolar bazında kâr/zarar, Yİ-ÜFE'ye göre reel getiri.
 - **Gelir-gider:** sabit ödemeler, kredi kartları ve taksitler, kategori bütçeleri, birikim hedefleri.
 - **Borç:** verilen ve alınan borçlar, parça parça ödeme, vade uyarıları.
+- **Değer geçmişi:** her portföy için günlük kayıt; TL, dolar ve gram altın cinsinden grafik.
 - **Zekât:** portföy bazında nisap (altın gramı), hicri zekât günü (havl), ödeme kayıtları.
 
 ## Nasıl çalışır

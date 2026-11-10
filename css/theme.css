@@ -180,3 +180,25 @@ main{gap:var(--gap);padding-top:8px}
 .auth-card .sub{margin:0}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- değer geçmişi grafiği ---------- */
+.hist{display:block;width:100%;height:clamp(150px,34vw,210px);overflow:visible}
+.hist-val{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.hist-top{margin-bottom:8px}
+.hist-x{display:flex;justify-content:space-between;gap:10px;font-size:.74rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-14px}
+.hist-x span:nth-child(2){text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- küçük uyarı etiketi, geri al, şifre alanı, yükleme iskeleti ---------- */
+.flag{display:inline-block;margin-left:4px;padding:0 7px;border-radius:99px;background:var(--warn-bg);color:var(--warn);font-size:.68rem;font-weight:700;vertical-align:1px}
+.toast{display:flex;align-items:center;gap:12px}
+.toast button{border:0;background:none;color:var(--acc-d);font:inherit;font-weight:800;padding:2px 0;cursor:pointer;white-space:nowrap}
+@media (prefers-color-scheme:dark){:root:not([data-app-theme="light"]) .toast button{color:var(--acc-l)}}
+:root[data-app-theme="dark"] .toast button{color:var(--acc-l)}
+.pw{position:relative}
+.pw input{padding-right:84px}
+.pw .btn{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+.skel{display:flex;flex-direction:column;gap:var(--gap)}
+.skel i{display:block;height:120px;border-radius:var(--r);background:linear-gradient(100deg,var(--surface-2) 30%,color-mix(in srgb,var(--surface-2) 55%,var(--surface)) 50%,var(--surface-2) 70%) 0 0/200% 100%;animation:skel 1.3s linear infinite}
+.skel .sk-hero{height:210px}
+@keyframes skel{to{background-position:-200% 0}}
+main a{color:var(--accent)}
