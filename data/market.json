@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-10T18:31:06+03:00",
+ "updatedAt": "2026-11-10T16:13:36.471Z",
  "fx": {
-  "EUR": 56.1515,
-  "USD": 50.2326
+  "EUR": 56.3213,
+  "USD": 50.224
  },
  "gold": {
   "ata": 45019.56,
@@ -18,7 +18,28 @@
   "tam": 43421.23,
   "yarim": 21765
  },
- "quotes": {},
- "source": "başlangıç verisi",
- "errors": []
+ "quotes": {
+  "abd:LPTH": {
+   "p": 7.905,
+   "cur": "USD",
+   "t": "2026-11-10T16:13:24.000Z"
+  },
+  "hisse:SOKE": {
+   "p": 7.13,
+   "cur": "TRY",
+   "t": "2026-11-10T15:08:01.000Z"
+  },
+  "hisse:BALSU": {
+   "p": 7.52,
+   "cur": "TRY",
+   "t": "2026-11-10T15:09:49.000Z"
+  }
+ },
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance",
+ "errors": [
+  "Altın/döviz kaynağı yanıt vermedi (Unterminated string in JSON at position 6800); altın fiyatları korundu",
+  "KLU: fon fiyatı alınamadı (www.tefas.gov.tr 404)",
+  "ENR: fon fiyatı alınamadı (www.tefas.gov.tr 404)",
+  "TEFAS'a ulaşılamadı; fon fiyatlarını uygulamada elle girebilirsiniz"
+ ]
 }
