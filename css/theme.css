@@ -276,3 +276,4 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .hero.net .plseg button{color:rgba(255,255,255,.82);padding:5px 14px;font-size:.78rem}
 .hero.net .plseg button[aria-pressed="true"]{background:#fff;color:var(--acc-l);box-shadow:none}
 .hero.net .plhead .sub{font-size:.76rem}
+.trio.duo{grid-template-columns:repeat(2,1fr)}

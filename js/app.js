@@ -649,12 +649,11 @@ function rOzet(){
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
       ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Ana portföy</span><select data-act="mainpf" aria-label="Ana portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
-      <div class="big amt" style="margin-top:6px">${money(net)}</div>${mp?dayDelta(hs):""}${eqvChips(net)}</div>${eyeBtn()}</div>
+      <div class="big amt" style="margin-top:6px">${money(t.v)}</div>${mp?dayDelta(hs):""}${eqvChips(t.v)}</div>${eyeBtn()}</div>
     ${mp?spark([mp.id]):""}
-    <div class="trio">
-      <div><span class="label">Portföy</span><div class="v">${fmt(t.v)}</div></div>
+    <div class="trio duo">
       <div><span class="label">Maliyet</span><div class="v">${fmt(t.c)}</div></div>
-      <div><span class="label">Net alacak</span><div class="v ${recv-pay>=0?"pos-t":"neg-t"}">${fmt(recv-pay)}</div></div>
+      <div><span class="label">Varlık</span><div class="v">${hs.length}</div></div>
     </div>
     ${mp&&t.c?plLine(mp.holdings.filter(h=>+h.qty>0),t.v,t.c):""}
   </section>
