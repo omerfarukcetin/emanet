@@ -1,22 +1,22 @@
 {
- "updatedAt": "2026-11-10T21:47:24.970Z",
+ "updatedAt": "2026-11-11T01:53:57.405Z",
  "fx": {
-  "EUR": 56.0898,
-  "USD": 50.2382
+  "EUR": 56.1641,
+  "USD": 50.2405
  },
  "gold": {
-  "ata": 43681,
+  "ata": 43839,
   "aziz": null,
-  "ceyrek": 10678,
-  "cumhuriyet": 43681,
-  "gram": 6509.77,
-  "gumus": 83.27,
-  "hamit": 43681,
-  "resat": 43681,
-  "resatAlis": 43427,
-  "resatSatis": 43681,
-  "tam": 42544,
-  "yarim": 21350
+  "ceyrek": 10717,
+  "cumhuriyet": 43839,
+  "gram": 6533.27,
+  "gumus": 84.58,
+  "hamit": 43839,
+  "resat": 43839,
+  "resatAlis": 43584,
+  "resatSatis": 43839,
+  "tam": 42698,
+  "yarim": 21428
  },
  "quotes": {
   "abd:LPTH": {
@@ -45,6 +45,6 @@
    "t": "2026-11-10"
   }
  },
- "source": "finans.truncgil.com (v3), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, Yahoo Finance, TEFAS",
  "errors": []
 }
