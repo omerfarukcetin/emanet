@@ -453,3 +453,17 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .hero.flat .dayrow .dr-r small{color:var(--muted)}
 .hero.flat .sub{color:var(--muted)}
 .hero.flat .bar{background:var(--surface-2)}
+
+/* ================= 2.1: tutarın altında Günlük + Toplam rozetleri, ₺/$ seçici üstte ================= */
+.hero-acts{display:flex;align-items:center;gap:6px;flex:none}
+.curseg.h{flex-direction:row;gap:2px;padding:3px;border-radius:99px}
+.curseg.h button{width:30px;height:30px;border-radius:50%}
+.plchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}
+.plchips .delta{margin:0;border:1px solid transparent;font:inherit;font-size:.78rem;color:inherit;cursor:pointer;padding:5px 11px;gap:6px}
+.plchips .delta small{font-size:.72rem;font-weight:600}
+.plchips .delta[aria-pressed="true"]{border-color:rgba(255,255,255,.55)}
+.hero.flat .plchips .delta[aria-pressed="true"]{border-color:var(--accent)}
+.hero.net .subrow,.hero.flat .subrow{margin-top:-4px}
+.plchips{gap:5px}
+.plchips .delta{font-size:.74rem;padding:4px 8px;gap:4px;white-space:nowrap}
+.plchips .delta small{font-size:.68rem}
