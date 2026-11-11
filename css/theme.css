@@ -394,3 +394,11 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
   .nav button.nav-add{display:none}
   .seg.subtabs{display:none}
 }
+
+/* günlük harcama limiti satırı */
+.dayrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;align-items:end;border-top:1px solid rgba(255,255,255,.18);padding-top:12px}
+.dayrow .v{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;color:var(--hn-fg)}
+.dayrow .dr-r{text-align:right;min-width:0;display:flex;flex-direction:column;gap:1px}
+.dayrow .dr-r b{font-size:.86rem;font-weight:700}
+.dayrow .dr-r small{font-size:.74rem;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dayrow .bar{grid-column:1/-1;height:6px}

@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.9";
+const APP_VERSION="1.10";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -843,6 +843,15 @@ function rAkis(){
   const recPend=recs.filter(r=>!recPaid(r,m));
   const pendOut=recPend.filter(r=>r.type==="out").reduce((a,r)=>a+toBase(r.amount,r.cur),0);
   const curM=m===todayISO().slice(0,7);
+  /* Günlük harcama limiti: (gelir − gider − bekleyen sabit ödemeler) ÷ ayın kalan günleri (bugün dahil).
+     Bugünkü harcama limite geri eklenir ki limit gün içinde harcadıkça küçülmesin; "bugün kalan" ayrıca gösterilir. */
+  const dLeft=curM?dim(y,mo)-(+todayISO().slice(8))+1:0;
+  const todayOut=curM?monthTx(m).filter(t=>t.type==="out"&&t.date===todayISO()).reduce((a,t)=>a+toBase(t.amount,t.cur),0):0;
+  const spendable=ms.i-ms.o-pendOut, dayLimit=dLeft?(spendable+todayOut)/dLeft:0, todayLeft=dayLimit-todayOut;
+  const dayRow=!curM||!(ms.i>0||ms.o>0)?"":dayLimit>0
+    ?`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num">${fmt(dayLimit,null,{dec:0})}</div></div><div class="dr-r"><b class="num ${todayLeft>=0?"pos-t":"neg-t"}">${S().hide?"••••":todayLeft>=0?"bugün "+fmt(todayLeft,null,{dec:0})+" kaldı":"bugün "+fmt(-todayLeft,null,{dec:0})+" aşıldı"}</b><small>${dLeft} gün kaldı · harcanabilir ${fmt(spendable,null,{dec:0})}</small></div>
+      <div class="bar" aria-hidden="true"><i style="width:${Math.min(100,dayLimit?todayOut/dayLimit*100:0)}%;background:var(${todayLeft<0?"--neg":todayOut>dayLimit*.8?"--warn":"--pos"})"></i></div></div>`
+    :`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num neg-t">${fmt(0)}</div></div><div class="dr-r"><b class="neg-t">Bu ay harcanabilir tutar kalmadı</b><small>${dLeft} gün kaldı · açık ${fmt(-spendable,null,{dec:0})}</small></div></div>`;
   const recRow=r=>{const pd=recPaid(r,m);const due=dayIn(m,r.day);const late=!pd&&curM&&due<todayISO();
     return `<div class="row"><div class="av" style="color:var(${r.type==="in"?"--pos":"--neg"})">${String(r.day||1).padStart(2,"0")}</div><div class="main"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.cat)}${r.method&&cardById(r.method)?" · "+esc(cardById(r.method).name):""}</div></div><div class="end"><div class="num">${fmt(r.amount,r.cur)}</div>${pd?`<span class="pill pos">${r.type==="in"?"Alındı":"Ödendi"}</span>`:`<span style="display:inline-flex;gap:4px"><button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":"Öde"}</button><button class="btn ghost sm" data-act="rec-edit" data-id="${r.id}" aria-label="Düzenle">${I.edit.replace('aria-hidden="true"','width="16" height="16" aria-hidden="true"')}</button></span>`}</div></div>`};
   const txRow=t=>{const card=t.type==="card"?cardById(t.card):null;const mc=t.method&&cardById(t.method);
@@ -854,6 +863,7 @@ function rAkis(){
     <div class="hero-top"><div><span class="label">Aylık net</span><div class="big ${ms.i-ms.o>=0?"":"neg-t"}">${money(ms.i-ms.o)}</div>${ms.i?`<div class="sub">Gelirin %${fmtN(savings,1)}'i kaldı${pendOut?` · bekleyen sabit ödemeler ${fmt(pendOut)}`:""}</div>`:pendOut?`<div class="sub">Bekleyen sabit ödemeler ${fmt(pendOut)}</div>`:""}</div>${eyeBtn()}</div>
     <div class="trio"><div><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div><div><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div><div><span class="label">${budTot?"Bütçeden kalan":"İşlem"}</span><div class="v ${budTot&&budTot-ms.o<0?"neg-t":""}">${budTot?fmt(budTot-ms.o):monthTx(m).length}</div></div></div>
     ${budTot?`<div class="bar" aria-label="Bütçe kullanımı"><i style="width:${Math.min(100,ms.o/budTot*100)}%;background:var(${ms.o>budTot?"--neg":ms.o>budTot*.9?"--warn":"--accent"})"></i></div>`:""}
+    ${dayRow}
   </section>
   ${mainPf()?`<section class="card"><div class="sec"><div style="min-width:0"><h2>Nakit bakiyesi</h2><div class="sub">${cashOn()?`${esc(mainPf().name)} portföyünün zekâtına dahil · özet ve portföyde gösterilmez${S().cashStartDate?" · "+fmtDate(S().cashStartDate)+" tarihinden beri":""}`:"Portföye bağlı değil"}</div></div><div class="end" style="text-align:right"><div class="num" style="font-size:1.15rem;font-weight:600">${cashOn()?`<span class="${cashBal()<0?"neg-t":""}">${fmt(cashBal())}</span>`:"—"}</div><button class="btn ghost sm" data-act="cash-set">Ayarla</button></div></div></section>`:""}
   <section class="card">
