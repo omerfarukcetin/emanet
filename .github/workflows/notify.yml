@@ -1,15 +1,15 @@
-name: Gün sonu bildirimi
+name: Bildirim denemesi
 
+# Zamanlanmış bildirimler "Fiyatları güncelle" işinin sonunda gönderilir.
+# Bu iş yalnızca elle deneme içindir: ayarlara bakmadan, bildirimi açık olan bütün cihazlara bir bildirim yollar.
 on:
-  schedule:
-    - cron: "40 15 * * 1-5"   # hafta içi 18:40 (Türkiye saati); GitHub yoğunken birkaç dakika gecikebilir
-  workflow_dispatch:           # Actions sekmesinden elle de denenebilir
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  bildirim:
+  deneme:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -17,4 +17,5 @@ jobs:
       - name: Bildirimi gönder
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_FORCE: "1"
         run: node scripts/send-push.mjs

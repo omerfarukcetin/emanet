@@ -59,19 +59,22 @@ Derleme adımı yoktur; dosyalar olduğu gibi yayınlanır.
 
 MIT
 
-## Gün sonu bildirimi (isteğe bağlı)
+## Bildirimler (isteğe bağlı)
 
-Hafta içi her akşam 18:40 civarında, bildirimi açan cihazlara günlük kâr/zarar bildirimi gider.
-Sunucu yalnızca içi boş bir "uyandırma" yollar; tutarlar telefonda hesaplanır ve cihazdan çıkmaz.
+Gün sonu özeti, haftalık ve aylık özet ile büyük hareket uyarısı. Her cihaz kendi saatini ve hangi bildirimleri
+istediğini Ayarlar → Bildirim'den seçer. Sunucu yalnızca içi boş bir "uyandırma" yollar; bildirimin metni telefonda
+hesaplanır, tutarlar cihazdan çıkmaz. Büyük hareket uyarısı için yalnızca portföyün yüzde dağılımı saklanır.
 
 Kurulum (bir kez):
 
-1. Supabase → SQL Editor'da `supabase/schema.sql` dosyasının sonundaki `emanet_push` bölümünü çalıştırın.
+1. Supabase → SQL Editor'da `supabase/schema.sql` dosyasının sonundaki "Bildirimler" bölümünü çalıştırın.
 2. GitHub deposunda Settings → Secrets and variables → Actions → New repository secret:
    ad `VAPID_PRIVATE_KEY`, değer bildirim anahtarının gizli yarısı. Açık yarısı `js/config.js` içindeki `vapidPublicKey` değeridir.
-3. Uygulamada Ayarlar → Bildirim → "Gün sonu bildirimi"ni açın (her cihazda ayrı). iPhone'da önce uygulamayı ana ekrana ekleyin.
+   Anahtar değişirse `schema.sql` içindeki iki işlevde yazan özet (sha256) de değişmelidir.
+3. Uygulamada Ayarlar → Bildirim'den açın (her cihazda ayrı). iPhone'da önce uygulamayı ana ekrana ekleyin.
 
-Zamanlama `.github/workflows/notify.yml`, gönderim `scripts/send-push.mjs` dosyasındadır.
+Bildirimler "Fiyatları güncelle" işinin sonunda `scripts/send-push.mjs` ile gönderilir; bu yüzden zamanında gelmeleri
+o işin düzenli çalışmasına bağlıdır. "Bildirim denemesi" işi (Actions sekmesi) ayarlara bakmadan herkese bir bildirim yollar.
 
 ## Getiri karşılaştırması
 

@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.6";
+const APP_VERSION="2.7";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -1038,13 +1038,45 @@ async function notifSnap(){
   try{
     const D=state.day,t=todayISO(),mp=mainPf();
     const ref=D?(D.d===t?D.ref:(D.cur&&Object.keys(D.cur).length?{d:D.d,h:D.cur}:D.ref)):null;
-    const snap={at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
+    const per=n=>{try{const b=mp&&benchCalc([mp.id],n);return b&&b.days>=Math.min(n,3)?{from:b.from,pct:+b.items[0].v.toFixed(2)}:null}catch(e){return null}};
+    const ma=monthAgg(t.slice(0,7));
+    const snap={prefs:notifPrefs(),per:{w:per(7),m:per(31)},mon:{ym:t.slice(0,7),n:MONTHS[+t.slice(5,7)-1],i:Math.round(ma.i*rate(S().base)),o:Math.round(ma.o*rate(S().base))},at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
       ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
       pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0).map(h=>{
         const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
-        return{id:h.id,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
+        return{id:h.id,n:h.name,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
     await(await caches.open(NK)).put(notifKey(),new Response(JSON.stringify(snap),{headers:{"content-type":"application/json"}}));
   }catch(e){}
+  notifSync();
+}
+/* cihazın bildirim ayarları (yalnızca bu cihazda): d günlük özet, t saat, we hafta sonu, w haftalık, m aylık, bm büyük hareket eşiği (%) */
+const NP="emanet-notif-prefs";
+function notifPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(NP)||"{}")||{}}catch(e){}
+  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0}}
+function notifPrefSet(k,v){const p=notifPrefs();p[k]=v;try{localStorage.setItem(NP,JSON.stringify(p))}catch(e){}notifSnap();notifSync(true);render()}
+/* büyük hareket uyarısı için: ana portföyün hangi fiyata yüzde kaç bağlı olduğu (tutar yok) */
+function notifWeights(){
+  const mp=mainPf(),w={};if(!mp||!market)return w;
+  const hs=mp.holdings.filter(h=>+h.qty>0),V=hs.reduce((a,h)=>a+hVal(h),0);if(!(V>0))return w;
+  const add=(k,x)=>{w[k]=+((w[k]||0)+x).toFixed(3)};
+  hs.forEach(h=>{const sh=hVal(h)/V,sy=(h.symbol||"").toUpperCase().trim();
+    const gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
+    if(gk&&market.gold&&+market.gold[gk]>0)add("gold:"+gk,sh);
+    else if(sy&&market.quotes){const k=[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]).find(x=>market.quotes[x]&&+market.quotes[x].p>0);if(k)add("q:"+k,sh)}
+    if(h.cur!=="TRY")add("fx:"+h.cur,sh)});
+  return w;
+}
+let nsT=null;
+function notifSync(now){
+  if(!notifOnLocal()||!cloudOn())return;
+  clearTimeout(nsT);nsT=setTimeout(async()=>{try{
+    const reg=await swReady(),sub=await reg.pushManager.getSubscription();if(!sub)return;
+    const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,off:-new Date().getTimezoneOffset()},weights:pr.bm?notifWeights():{}};
+    const sig=JSON.stringify(row);if(sig===localStorage.getItem("emanet-notif-sent"))return;
+    const {error}=await sb.from("emanet_push").upsert(row,{onConflict:"endpoint"});
+    if(!error)localStorage.setItem("emanet-notif-sent",sig);
+    else if(now)toast(/column|prefs|weights|schema cache/i.test(error.message||"")?"Ayar kaydedilemedi: Supabase'de bildirim kurulum SQL'inin yeni hâlini çalıştırmanız gerekiyor.":"Bildirim ayarı kaydedilemedi: "+(error.message||""));
+  }catch(e){}},now?300:8000);
 }
 const b64uBytes=x=>{x=x.replace(/-/g,"+").replace(/_/g,"/");const b=atob(x+"=".repeat((4-x.length%4)%4));return Uint8Array.from(b,c=>c.charCodeAt(0))};
 const notifSupport=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
@@ -1055,19 +1087,20 @@ async function notifSet(on){
     if(on){
       if(await Notification.requestPermission()!=="granted")throw new Error("Bildirim izni verilmedi.");
       if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(CFG.vapidPublicKey)});
-      const {error}=await sb.from("emanet_push").upsert({endpoint:sub.endpoint,user_id:sbUser.id},{onConflict:"endpoint"});
-      if(error)throw new Error(/emanet_push|relation|schema cache|not find/i.test(error.message||"")?"Bildirim tablosu henüz kurulmamış; Supabase'de kurulum SQL'ini bir kez çalıştırmak gerekiyor.":"Cihaz kaydedilemedi: "+(error.message||"bilinmeyen hata"));
-      localStorage.setItem(NK,"1");await notifSnap();toast("Gün sonu bildirimi bu cihazda açıldı");
+      const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,off:-new Date().getTimezoneOffset()},weights:{}};
+      const {error}=await sb.from("emanet_push").upsert(row,{onConflict:"endpoint"});
+      if(error)throw new Error(/emanet_push|relation|schema cache|not find|column/i.test(error.message||"")?"Bildirim tablosu kurulmamış ya da eski; Supabase'de kurulum SQL'inin son hâlini bir kez çalıştırmak gerekiyor.":"Cihaz kaydedilemedi: "+(error.message||"bilinmeyen hata"));
+      localStorage.setItem(NK,"1");localStorage.removeItem("emanet-notif-sent");await notifSnap();toast("Gün sonu bildirimi bu cihazda açıldı");
     }else{
       if(sub){try{if(sb)await sb.from("emanet_push").delete().eq("endpoint",sub.endpoint)}catch(e){}await sub.unsubscribe()}
-      localStorage.removeItem(NK);try{await caches.delete(NK)}catch(e){}
+      localStorage.removeItem(NK);localStorage.removeItem("emanet-notif-sent");try{await caches.delete(NK)}catch(e){}
       toast("Gün sonu bildirimi bu cihazda kapatıldı");
     }
   }catch(e){toast(e.message||"Bildirim ayarlanamadı")}
   render();
 }
-async function notifTest(){
-  try{await notifSnap();const reg=await swReady();if(!reg.active)throw new Error("Uygulama dosyaları henüz hazır değil.");reg.active.postMessage({type:"gun-sonu",test:true});toast("Deneme bildirimi gönderildi")}
+async function notifTest(kind){
+  try{await notifSnap();const reg=await swReady();if(!reg.active)throw new Error("Uygulama dosyaları henüz hazır değil.");reg.active.postMessage({type:"gun-sonu",test:true,kind:kind||"daily"});toast("Deneme bildirimi gönderildi")}
   catch(e){toast(e.message||"Deneme bildirimi gönderilemedi")}
 }
 function notifCard(){
@@ -1076,12 +1109,29 @@ function notifCard(){
     :!cloudOn()?"Bildirim için e-posta ile giriş yapmış olmanız gerekir."
     :!CFG.vapidPublicKey?"Bildirim anahtarı tanımlı değil."
     :Notification.permission==="denied"?"Bu site için bildirim izni kapalı. Telefonun ya da tarayıcının ayarlarından Emanet için bildirime izin verin.":"";
+  const p=notifPrefs();
+  const tg=(k,label,small)=>`<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><label class="toggle"><input type="checkbox" data-np="${k}" ${p[k]?"checked":""}><span></span></label></div>`;
+  const times=[];for(let h=7;h<24;h++)for(const m of ["00","30"])times.push(String(h).padStart(2,"0")+":"+m);
+  const sel=(k,opts,val)=>`<select class="inline-in" style="width:auto;font-family:var(--f-body);text-align:left" data-np="${k}" aria-label="${k==="t"?"Bildirim saati":"Eşik"}">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===String(v)?"selected":""}>${l}</option>`).join("")}</select>`;
   return `<section class="card"><div class="set-group">
-    <div class="set-row"><div class="lbl"><b>Gün sonu bildirimi</b><small>Hafta içi her akşam 18:40 civarında ana portföyünüzün günlük kâr/zararı bu cihaza bildirim olarak gelir. Başka portföyleriniz varsa onlar da bildirimin altında yazar.</small></div><label class="toggle"><input type="checkbox" id="notifTog" ${on?"checked":""} ${why&&!on?"disabled":""}><span></span></label></div>
+    <div class="set-row"><div class="lbl"><b>Bildirimler</b><small>Bu cihaza bildirim gönderilsin. Aşağıdaki seçenekler her cihazda ayrı tutulur.</small></div><label class="toggle"><input type="checkbox" id="notifTog" ${on?"checked":""} ${why&&!on?"disabled":""}><span></span></label></div>
     ${why?`<div class="note warn">${why}</div>`:""}
-    ${on?`<div class="set-row"><div class="lbl"><b>Deneme</b><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><button class="btn sm" data-act="notif-test">Deneme bildirimi</button></div>`:""}
-    <div class="note">Bildirim her cihazda ayrı açılır. Tutarlarınız sunucuya gönderilmez; hesap bu cihazda yapılır. “Tutarları gizle” açıksa bildirimde yalnızca yüzde yazar. Bildirim birkaç dakika gecikebilir; telefon pil tasarrufundaysa daha da gecikebilir.</div>
-  </div></section>`;
+  </div></section>
+  ${on?`<section class="card"><h2 style="margin-bottom:4px">Özetler</h2><div class="set-group">
+    ${tg("d","Gün sonu özeti","Ana portföyün günlük kâr/zararı; diğer portföyler altında")}
+    <div class="set-row"><div class="lbl"><b>Saat</b><small>Özetler bu saatten sonraki ilk fiyat güncellemesiyle gelir (çoğunlukla yarım saat içinde)</small></div>${sel("t",times.map(x=>[x,x]),p.t)}</div>
+    ${tg("we","Hafta sonu da gönder","Altın, döviz ve kripto hafta sonu da oynar")}
+    ${tg("w","Haftalık özet","Her cuma, haftanın değişimi")}
+    ${tg("m","Aylık özet","Ayın son günü: gelir, gider, birikim oranı ve portföyün aylık değişimi")}
+  </div></section>
+  <section class="card"><h2 style="margin-bottom:4px">Uyarılar</h2><div class="set-group">
+    <div class="set-row"><div class="lbl"><b>Büyük hareket uyarısı</b><small>Ana portföy gün içinde bu oranda yükselir ya da düşerse akşamı beklemeden haber verir (günde en çok bir kez, 08:00–23:00 arası)</small></div>${sel("bm",[[0,"Kapalı"],[1,"%1"],[1.5,"%1,5"],[2,"%2"],[3,"%3"],[5,"%5"]],p.bm)}</div>
+    ${p.bm?`<div class="note">Bu uyarı için portföyünüzün yalnızca yüzde dağılımı (örneğin “%57 gram altın”) hesabınızda saklanır; tutarlar saklanmaz.</div>`:""}
+  </div></section>
+  <section class="card"><h2 style="margin-bottom:4px">Deneme</h2><div class="set-group">
+    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
+    <div class="note">Tutarlarınız sunucuya gönderilmez; bildirimin metni bu cihazda hesaplanır. “Tutarları gizle” açıksa yalnızca yüzdeler yazar. Telefon pil tasarrufundaysa bildirim gecikebilir.</div>
+  </div></section>`:""}`;
 }
 
 /* ---------- getiri karşılaştırması ----------
@@ -1173,6 +1223,7 @@ function txFilterBar(){
 document.addEventListener("input",e=>{if(e.target.id==="txQ"){view.txQ=e.target.value;const l=$("#txList");if(l)l.innerHTML=txList()}});
 document.addEventListener("change",e=>{
   if(e.target.id==="txCat"){view.txCat=e.target.value;render()}
+  if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
   if(e.target.id==="notifTog"){e.target.disabled=true;notifSet(e.target.checked)}
 });
@@ -1796,7 +1847,7 @@ document.addEventListener("click",e=>{
   if(a==="theme"){const st=S();st.tone=t.dataset.v;st.theme=t.dataset.th==="dark"?"dark":(st.theme==="system"?"system":"light");commit();return}
   if(a==="setg"){view.setG=t.dataset.k;render();return}
   if(a==="txclear"){view.txQ="";view.txCat="";render();return}
-  if(a==="notif-test"){notifTest();return}
+  if(a==="notif-test"){notifTest(t.dataset.k);return}
   if(a==="rates"||a==="zset"){view.tab="ayarlar";view.setG=a==="rates"?"fiyat":"zekat";render();setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
   if(a==="set"){S()[t.dataset.k]=t.dataset.v;commit();return}
   if(a==="nisab"){S().nisabGram=+t.dataset.v;commit();return}

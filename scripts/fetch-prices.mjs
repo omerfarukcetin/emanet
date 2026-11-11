@@ -281,3 +281,15 @@ try {
     console.log(`BIST 100: ${keys.length} günlük kayıt (son ${keys[keys.length - 1]}: ${out[keys[keys.length - 1]]})`);
   }
 } catch (e) { console.log("BIST 100 alınamadı: " + e.message); }
+
+// ---------- gün içi değişim için: bugünün ve bir önceki günün fiyatları (data/close.json) ----------
+// Büyük hareket uyarısı bu dosyadan hesaplanır. Gün (Türkiye saatiyle) değişince bugünün son fiyatları "önceki gün" olur.
+try {
+  const CF = "data/close.json", C = await readJSON(CF, {}), flat = {};
+  for (const [k, v] of Object.entries(fx || {})) if (+v > 0) flat["fx:" + k] = +v;
+  for (const [k, v] of Object.entries(gold || {})) if (typeof v === "number" && v > 0) flat["gold:" + k] = v;
+  for (const [k, q] of Object.entries(quotes || {})) if (q && +q.p > 0) flat["q:" + k] = +q.p;
+  const D = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+  const out = C.d === D ? { d: D, prev: C.prev || null, cur: flat } : { d: D, prev: C.cur ? { d: C.d, p: C.cur } : (C.prev || null), cur: flat };
+  if (JSON.stringify(out) !== JSON.stringify(C)) await fs.writeFile(CF, JSON.stringify(out) + "\n");
+} catch (e) { console.log("Gün içi kayıt yazılamadı: " + e.message); }
