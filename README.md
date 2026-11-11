@@ -14,7 +14,7 @@ Aile portföyü, gelir-gider, borç ve zekât defteri. Telefona uygulama gibi ku
 | --- | --- |
 | Uygulama | GitHub Pages (bu deponun kökü) |
 | Giriş ve veriler | Supabase (ücretsiz plan): e-posta + şifre, kullanıcı başına tek satır, satır güvenliği (RLS) |
-| Fiyatlar | `.github/workflows/prices.yml` yarım saatte bir `scripts/fetch-prices.mjs` betiğini çalıştırır, sonucu `data/market.json` dosyasına yazar |
+| Fiyatlar | `.github/workflows/prices.yml` 10 dakikada bir (Supabase zamanlayıcısıyla tetiklenir) `scripts/fetch-prices.mjs` betiğini çalıştırır, sonucu `data/market.json` dosyasına yazar |
 | Geçmiş kurlar | Alış tarihindeki dolar/euro kuru tarayıcıdan frankfurter.dev üzerinden alınır (Avrupa Merkez Bankası referans kuru) |
 
 Supabase ayarlanmadıysa uygulama yalnızca o cihazda çalışır; veriler tarayıcıda saklanır.
@@ -40,7 +40,7 @@ Sonraki çalışmalar kendiliğinden olur.
 ## Bilinmesi gerekenler
 
 - İzlenen kodlar (ör. `THYAO`, `AAPL`) `emanet_watch` tablosunda ve `data/market.json` dosyasında herkese açıktır. Tutarlar ve kişisel veriler açık değildir.
-- Fiyatlar canlı değildir: iş yarım saatte bir çalışır, kaynaklar da gecikmeli olabilir.
+- Fiyatlar canlı değildir: iş 10 dakikada bir çalışır; fiyat dosyaları `fiyat` dalında durur, kaynaklar da gecikmeli olabilir.
 - TEFAS yurt dışı sunuculardan gelen istekleri zaman zaman reddeder. Fon fiyatı gelmezse uygulamada elle girilebilir; durum Ayarlar → *Son güncelleme* satırında görünür.
 - Yİ-ÜFE endeksi `data/ufe.json` dosyasındadır ve ayda bir elle güncellenir (`idx` içine `"YYYY-AA": değer`, `latest` alanına son ay).
 - Supabase kurulmadan kullanılıyorsa, fiyatı çekilecek kodlar `data/watchlist.json` dosyasına yazılır:

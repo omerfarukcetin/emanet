@@ -2,7 +2,7 @@ name: Fiyatları güncelle
 
 on:
   schedule:
-    - cron: "7,37 * * * *"   # yarım saatte bir (GitHub yoğunken birkaç dakika gecikebilir)
+    - cron: "7,37 * * * *"   # yedek: asıl tetikleme dışarıdan (Supabase zamanlayıcısı) 10 dakikada bir gelir
   workflow_dispatch:          # Actions sekmesinden elle de çalıştırılabilir
   push:                       # uygulama güncellenince de bir kez çalışır (GitHub zamanlanmış işleri sık sık geciktirir)
     branches: [main]
@@ -21,18 +21,27 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      # Fiyat dosyaları "fiyat" dalında tutulur: sık güncellenirler ve her güncellemede sitenin yeniden yayınlanması gerekmez.
+      - uses: actions/checkout@v5
+        with:
+          ref: fiyat
+          path: _fiyat
+      - name: Önceki fiyat dosyalarını al
+        run: cp _fiyat/data/market.json _fiyat/data/bench.json _fiyat/data/close.json data/ 2>/dev/null || true
       - name: Fiyatları çek
         run: node scripts/fetch-prices.mjs
       - name: Değişiklik varsa kaydet
         run: |
-          if [ -n "$(git status --porcelain data/market.json data/bench.json data/close.json)" ]; then
+          cp data/market.json data/bench.json data/close.json _fiyat/data/
+          cd _fiyat
+          if [ -n "$(git status --porcelain data)" ]; then
             git config user.name "emanet-fiyat"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data/market.json data/bench.json data/close.json
-            git commit -m "Fiyatlar güncellendi"
-            # Bu sırada depoya başka bir gönderim yapıldıysa önce onu al, sonra gönder (3 deneme)
+            git add data
+            git commit -q -m "Fiyatlar güncellendi"
+            # Aynı anda başka bir çalışma göndermişse önce onu al, sonra gönder (3 deneme)
             for i in 1 2 3; do
-              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0
+              git pull -q --rebase origin fiyat && git push -q origin HEAD:fiyat && exit 0
               sleep 5
             done
             exit 1

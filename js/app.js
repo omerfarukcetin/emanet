@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.13";
+const APP_VERSION="2.14";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -331,7 +331,7 @@ async function syncWatch(){
     const{error}=await sb.from("emanet_watch").upsert(fresh.map(i=>({kind:i.k,symbol:i.s,cur:i.c})),{onConflict:"kind,symbol",ignoreDuplicates:true});
     if(error)return;
     lastWatch=j;try{localStorage.setItem(WK,j)}catch(e){}
-    if(S().autoPrices!==false&&fresh.some(i=>!(market&&market.quotes&&market.quotes[i.k+":"+i.s])))toast("Yeni ürünün fiyatı en geç yarım saat içinde gelir");
+    if(S().autoPrices!==false&&fresh.some(i=>!(market&&market.quotes&&market.quotes[i.k+":"+i.s])))toast("Yeni ürünün fiyatı birkaç dakika içinde gelir");
   }catch(e){}
 }
 /* Geçmiş tarihli alımlar için o günün kuru (Avrupa Merkez Bankası referans kuru, frankfurter.dev) */
@@ -462,17 +462,18 @@ function fillFx(){
 function marketWhen(){if(!market||!market.updatedAt)return"";const d=new Date(market.updatedAt);return d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}
 
 /* ---------- piyasa verisi ----------
-   Fiyatlar depodaki data/market.json dosyasından okunur; dosyayı .github/workflows/prices.yml yarım saatte bir günceller. */
+   Fiyatlar depodaki data/market.json dosyasından okunur; dosyayı .github/workflows/prices.yml 10 dakikada bir günceller ("fiyat" dalında). */
 function marketUrls(){
   const u=[];if(CFG.marketUrl)u.push(CFG.marketUrl);
   const m=location.hostname.match(/^([^.]+)\.github\.io$/),repo=location.pathname.split("/").filter(Boolean)[0];
-  if(m&&repo&&!/\.html?$/.test(repo))u.push("https://raw.githubusercontent.com/"+m[1]+"/"+repo+"/"+(CFG.branch||"main")+"/data/market.json");
+  if(m&&repo&&!/\.html?$/.test(repo))u.push("https://raw.githubusercontent.com/"+m[1]+"/"+repo+"/"+(CFG.dataBranch||CFG.branch||"main")+"/data/market.json");
   u.push("data/market.json");return u;
 }
 async function getJSON(url){const r=await fetch(url+(url.includes("?")?"&":"?")+"t="+Math.floor(Date.now()/6e4),{cache:"no-store"});if(!r.ok)throw new Error(String(r.status));return r.json()}
 async function loadMarket(announce){
   let got=null;
   for(const u of marketUrls()){try{const d=await getJSON(u);if(d&&d.updatedAt){got=d;break}}catch(e){}}
+  if(got&&market&&market.updatedAt&&got.updatedAt<market.updatedAt)got=market;   // yedek kopya elimizdekinden eskiyse kullanma
   if(!got){if(announce)toast("Fiyat dosyasına ulaşılamadı; internet bağlantınızı kontrol edin");return}
   const changed=!market||market.updatedAt!==got.updatedAt;
   market=got;try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
@@ -561,7 +562,7 @@ async function signOut(){
 }
 async function boot(){
   loadMarket();loadUfe();loadBench();
-  setInterval(()=>{if(!document.hidden)loadMarket()},10*6e4);
+  setInterval(()=>{if(!document.hidden)loadMarket()},3*6e4);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadMarket();pull()}});
   const net=()=>{if(!navigator.onLine)setSync("local","Çevrimdışı · değişiklikler cihazda");else if(cloudOn()){pull()}else if(ready)setSync("local",sb?"Girişsiz · bu cihazda":"Bu cihazda tutuluyor")};
   window.addEventListener("offline",net);window.addEventListener("online",net);
@@ -1224,7 +1225,7 @@ function alertSheet(a){
     {id:"op",label:"Ne zaman haber verilsin",type:"seg",value:a?a.op:"gte",options:[["gte","Üstüne çıkınca"],["lte","Altına inince"]]},
     {id:"v",label:"Sınır fiyat",type:"number",big:true,value:a?String(a.v).replace(".",","):"",ph:"0"}],
     extra:`<div class="note" id="alHint"></div>`,
-    onOpen:(form,sh)=>{const u=()=>{const i=ins.find(x=>x.k===form.elements.k.value),h=sh.querySelector("#alHint");if(i&&h)h.textContent="Şu anki fiyat: "+pnum(i.p)+" "+i.cur+". Fiyatlar yarım saatte bir denetlenir; bildirim 08:00–23:00 arasında gelir."};form.addEventListener("change",u);u()},
+    onOpen:(form,sh)=>{const u=()=>{const i=ins.find(x=>x.k===form.elements.k.value),h=sh.querySelector("#alHint");if(i&&h)h.textContent="Şu anki fiyat: "+pnum(i.p)+" "+i.cur+". Fiyatlar 10 dakikada bir denetlenir; bildirim 08:00–23:00 arasında gelir."};form.addEventListener("change",u);u()},
     onSave:v=>{const x=parseNum(v.v),i=ins.find(q=>q.k===v.k);if(!i)return"Bir fiyat seçin.";if(!(x>0))return"Sınır fiyatı girin.";
       if(v.op==="gte"&&i.p>=x)return"Fiyat zaten bu sınırın üstünde ("+pnum(i.p)+"). Daha yüksek bir sınır girin.";
       if(v.op==="lte"&&i.p<=x)return"Fiyat zaten bu sınırın altında ("+pnum(i.p)+"). Daha düşük bir sınır girin.";
@@ -1255,7 +1256,7 @@ function notifCard(){
   </div></section>
   ${on?`<section class="card"><h2 style="margin-bottom:4px">Özetler</h2><div class="set-group">
     ${tg("d","Gün sonu özeti","Ana portföyün günlük kâr/zararı; diğer portföyler altında")}
-    <div class="set-row"><div class="lbl"><b>Saat</b><small>Özetler bu saatten sonraki ilk fiyat güncellemesiyle gelir (çoğunlukla yarım saat içinde)</small></div>${sel("t",times.map(x=>[x,x]),p.t)}</div>
+    <div class="set-row"><div class="lbl"><b>Saat</b><small>Özetler bu saatte, fiyatlar güncellendikten hemen sonra gelir</small></div>${sel("t",times.map(x=>[x,x]),p.t)}</div>
     ${tg("we","Hafta sonu da gönder","Altın, döviz ve kripto hafta sonu da oynar")}
     ${tg("w","Haftalık özet","Her cuma, haftanın değişimi")}
     ${tg("m","Aylık özet","Ayın son günü: gelir, gider, birikim oranı ve portföyün aylık değişimi")}
@@ -1469,7 +1470,7 @@ function rAyarlar(){
       <div style="display:flex;gap:10px;flex-wrap:wrap">${[["fon","Fon"],["ppf","Para piyasası"],["hisse","BIST hisse"],["abd","ABD hisse"]].map(([k,l])=>`<label style="display:flex;align-items:center;gap:4px;font-size:.82rem">${l} %<input class="inline-in" style="width:4.2em" id="wht_${k}" data-act="wht" data-k="${k}" inputmode="decimal" placeholder="0" value="${(s.whtRates||{})[k]!=null&&(s.whtRates||{})[k]!==""?esc(String(s.whtRates[k]).replace(".",",")):""}"></label>`).join("")}</div></div>
   </div></section>`;
   G.fiyat=`<section class="card" id="ratesCard"><div class="set-group">
-    ${tog("autoPrices","Fiyatları otomatik al","Döviz, altın, hisse, fon ve kripto fiyatları yaklaşık yarım saatte bir kendiliğinden yenilenir")}
+    ${tog("autoPrices","Fiyatları otomatik al","Döviz, altın, hisse, fon ve kripto fiyatları yaklaşık 10 dakikada bir kendiliğinden yenilenir")}
     <div class="set-row"><div class="lbl"><b>Son güncelleme</b><small>${market?marketWhen()+(market.source?" · "+esc(market.source):""):"Henüz otomatik fiyat yok"}${market&&market.errors&&market.errors.length?"<br>Alınamayanlar: "+esc(market.errors.join("; ")):""}</small></div><button class="btn sm" data-act="refresh">Şimdi denetle</button></div>
     ${AUTO()?`<div class="note">Otomatik fiyat bulunan kalemlerde aşağıdaki elle girilen değerler kullanılmaz; bulunamayanlarda yedek olarak kullanılır. Hisse ve fonlarda varlığa kod girmeniz yeterli (ör. THYAO, AAPL, TTE).</div>`:""}
     <div class="set-row"><div class="lbl"><b>Gösterim para birimi</b><small>Toplamlar bu birimde gösterilir</small></div>${seg("base",CURS.map(c=>[c,c]))}</div>
@@ -1614,10 +1615,10 @@ function holdingSheet(pfId,h){
       const E=form.elements;
       const note=()=>{const k=E.kind.value;sh.querySelector("#hNote").textContent=
         (PRESETS[k]&&E.preset.value?"Fiyat otomatik takip edilir; alış fiyatı güncel satış fiyatıyla dolduruldu, değiştirebilirsiniz.":
-        k==="abd"?"ABD borsasındaki hisseler dolar cinsinden izlenir. Kodu girin (ör. AAPL); fiyat en geç yarım saat içinde gelir.":
+        k==="abd"?"ABD borsasındaki hisseler dolar cinsinden izlenir. Kodu girin (ör. AAPL); fiyat birkaç dakika içinde gelir.":
         k==="hisse"?"Borsa İstanbul hisseleri. Adını veya kodunu yazdıkça öneriler çıkar.":
-        k==="fon"?"TEFAS fon kodunu girin (ör. TTE); birim pay fiyatı en geç yarım saat içinde gelir. Satışta stopaj kesintisini girebilirsiniz.":
-        k==="ppf"?"Para piyasası fonları da TEFAS'tan fiyatlanır. Fon kodunu girin; fiyat en geç yarım saat içinde gelir. Satışta stopaj kesintisini girebilirsiniz.":
+        k==="fon"?"TEFAS fon kodunu girin (ör. TTE); birim pay fiyatı birkaç dakika içinde gelir. Satışta stopaj kesintisini girebilirsiniz.":
+        k==="ppf"?"Para piyasası fonları da TEFAS'tan fiyatlanır. Fon kodunu girin; fiyat birkaç dakika içinde gelir. Satışta stopaj kesintisini girebilirsiniz.":
         "Otomatik fiyat yoksa güncel fiyatı kendiniz girebilirsiniz.")+(multiT?" Bu varlıkta birden fazla işlem var; miktar ve maliyet işlemlerden hesaplanır. Değiştirmek için işlem geçmişinden ilgili alımı veya satışı düzenleyin.":" Geçmiş tarihli alımda o günün dolar ve euro kuru maliyete işlenir."+(h?"":" Aynı ürünü daha önce eklediyseniz bu alım o satıra eklenir; komisyon maliyete eklenir."))};
       const applyPreset=fill=>{const k=E.kind.value,c=E.preset.value;if(!PRESETS[k]||!c)return;const p=PRESETS[k].find(x=>x[0]===c);if(!p)return;
         E.name.value=p[1];E.symbol.value=p[0];
