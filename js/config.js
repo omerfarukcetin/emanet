@@ -5,5 +5,7 @@
 window.EMANET_CONFIG = {
   supabaseUrl: "https://clwgjupnigenndbbkcnk.supabase.co",
   supabaseKey: "sb_publishable_ankAPHs2d9ja8bJNIL8sIA_L8O4jVNq",
-  branch: "main"
+  branch: "main",
+  /* Bildirimler için açık anahtar. Gizli eşi yalnızca GitHub deposunun "Secrets" bölümünde (VAPID_PRIVATE_KEY) durur. */
+  vapidPublicKey: "BN213B5POUoVd-uY_cCPRR6RZg5ZGmbrPga0iNJlBtIMTxQTYpJKK6piWxF9nUL7teXB-hfaNiPDzx7DXcjnl68"
 };

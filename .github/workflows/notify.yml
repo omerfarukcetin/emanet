@@ -1,0 +1,20 @@
+name: Gün sonu bildirimi
+
+on:
+  schedule:
+    - cron: "40 15 * * 1-5"   # hafta içi 18:40 (Türkiye saati); GitHub yoğunken birkaç dakika gecikebilir
+  workflow_dispatch:           # Actions sekmesinden elle de denenebilir
+
+permissions:
+  contents: read
+
+jobs:
+  bildirim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Bildirimi gönder
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node scripts/send-push.mjs

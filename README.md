@@ -58,3 +58,22 @@ Derleme adımı yoktur; dosyalar olduğu gibi yayınlanır.
 ## Lisans
 
 MIT
+
+## Gün sonu bildirimi (isteğe bağlı)
+
+Hafta içi her akşam 18:40 civarında, bildirimi açan cihazlara günlük kâr/zarar bildirimi gider.
+Sunucu yalnızca içi boş bir "uyandırma" yollar; tutarlar telefonda hesaplanır ve cihazdan çıkmaz.
+
+Kurulum (bir kez):
+
+1. Supabase → SQL Editor'da `supabase/schema.sql` dosyasının sonundaki `emanet_push` bölümünü çalıştırın.
+2. GitHub deposunda Settings → Secrets and variables → Actions → New repository secret:
+   ad `VAPID_PRIVATE_KEY`, değer bildirim anahtarının gizli yarısı. Açık yarısı `js/config.js` içindeki `vapidPublicKey` değeridir.
+3. Uygulamada Ayarlar → Bildirim → "Gün sonu bildirimi"ni açın (her cihazda ayrı). iPhone'da önce uygulamayı ana ekrana ekleyin.
+
+Zamanlama `.github/workflows/notify.yml`, gönderim `scripts/send-push.mjs` dosyasındadır.
+
+## Getiri karşılaştırması
+
+Portföy sayfasındaki kart, portföyün getirisini aynı dönemde gram altın, dolar, BIST 100 ve enflasyonla (Yİ-ÜFE) karşılaştırır.
+BIST 100 günlük kapanışları fiyat görevi tarafından `data/bench.json` dosyasına yazılır.

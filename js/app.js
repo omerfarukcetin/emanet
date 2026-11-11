@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.2";
+const APP_VERSION="2.3";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -236,7 +236,7 @@ function zakat(o){
 }
 
 /* ---------- persistence ---------- */
-function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}}
+function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}notifSnap()}
 /* ---------- değer geçmişi: her portföy için günde bir kayıt [tarih, değer TL, maliyet TL, dolar kuru, gram altın] ---------- */
 function snapshot(){
   if(!state||!ready)return false;
@@ -473,6 +473,8 @@ async function loadMarket(announce){
   if(changed&&ready){snapshotSave();render();fillFx()}
   if(announce)toast(changed?"Fiyatlar güncellendi":"Fiyatlar güncel · "+marketWhen());
 }
+let bench=null;
+async function loadBench(){for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){bench=d;if(ready&&view.tab==="portfoy")render();return}}catch(e){}}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
 
@@ -519,12 +521,12 @@ async function signOut(){
   view.tab="ozet";showAuth();
 }
 async function boot(){
-  loadMarket();loadUfe();
+  loadMarket();loadUfe();loadBench();
   setInterval(()=>{if(!document.hidden)loadMarket()},10*6e4);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadMarket();pull()}});
   const net=()=>{if(!navigator.onLine)setSync("local","Çevrimdışı · değişiklikler cihazda");else if(cloudOn()){pull()}else if(ready)setSync("local",sb?"Girişsiz · bu cihazda":"Bu cihazda tutuluyor")};
   window.addEventListener("offline",net);window.addEventListener("online",net);
-  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(()=>{});
   if(!(CFG.supabaseUrl&&CFG.supabaseKey&&window.supabase)){goLocal();return}
   try{sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey)}catch(e){sb=null;goLocal();return}
   sb.auth.onAuthStateChange((ev,session)=>{
@@ -641,6 +643,10 @@ const I={
   coin:sv('<circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.300c-.5-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1 1.8 2.7 2.100c1.8.3 2.8.9 2.8 2.200s-1.2 2.1-2.8 2.100c-1.3 0-2.4-.6-2.9-1.600M12 6v1.900M12 16.300V18"/>'),
   hex:sv('<path d="M12 3.500l7.4 4.250v8.500L12 20.500l-7.4-4.250v-8.500z"/><path d="M12 8.500l3 1.750v3.500L12 15.500l-3-1.750v-3.500z"/>'),
   umbrella:sv('<path d="M3.5 12a8.5 8.5 0 0 1 17 0z"/><path d="M12 12v6.500a2 2 0 0 1-4 0M12 3.500v-1"/>'),
+  bell:sv('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),
+  user:sv('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
+  search:sv('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
+  brush:sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 7.5h4.5M12 12h6M12 16.5h4.5"/>'),
   building:sv('<path d="M5 20.500v-15A1.5 1.5 0 0 1 6.5 4h7A1.5 1.5 0 0 1 15 5.500v15M15 10h3a1.5 1.5 0 0 1 1.5 1.500v9M3.5 20.500h17M8.5 8h3M8.5 11.500h3M8.5 15h3"/>')
 };
 const ic=(svg,n=16)=>svg.replace('aria-hidden="true"',`width="${n}" height="${n}" aria-hidden="true"`);
@@ -820,6 +826,7 @@ function rPortfoy(){
   ${multi?pfListCard(vis,v):""}
   ${parts.length?`<section class="card side"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`:""}
   ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi").replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
+  ${hs.length?benchCard((cur?[cur]:vis).map(p=>p.id)):""}
   ${hs.length?eqvCard(v,hs).replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
@@ -919,10 +926,6 @@ function rAkis(){
   const recRow=r=>{const pd=recPaid(r,m),late=!pd&&curM&&dayIn(m,r.day)<todayISO(),c=r.method&&cardById(r.method);
     return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
       trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":"Öde"}</button>`})};
-  const txRow=t=>{const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card";
-    return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),inc?"--pos":cp?"--c2":"--accent"),title:cp?"Kart ödemesi":esc(t.cat),
-      sub:[cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
-      amount:(inc?"+":cp?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})};
   return `
   <div class="sec"><div class="month-sw"><button class="icon-btn" data-act="month" data-d="-1" aria-label="Önceki ay">${I.left}</button><b>${MONTHS[mo-1]} ${y}</b><button class="icon-btn" data-act="month" data-d="1" aria-label="Sonraki ay">${I.right}</button></div></div>
   <section class="hero flat">
@@ -954,10 +957,158 @@ function rAkis(){
   </section>
   <section class="card">
     <div class="sec" style="margin-bottom:8px;flex-wrap:wrap"><h2>İşlemler</h2><div class="seg" role="group">${[["all","Tümü"],["in","Gelir"],["out","Gider"]].map(([k,l])=>`<button data-act="txtype" data-k="${k}" aria-pressed="${view.txType===k}">${l}</button>`).join("")}</div></div>
-    ${Object.keys(groups).length?Object.entries(groups).map(([d,ts])=>`<div class="label" style="margin-top:10px">${fmtDate(d)}</div><div class="list">${ts.map(txRow).join("")}</div>`).join("")
-      :`<div class="empty"><b>Bu ay kayıt yok</b>Gelir veya gider eklemek için alttaki düğmeyi kullanın.</div>`}
+    ${txFilterBar()}<div id="txList">${txList()}</div>
   </section>`;
 }
+
+/* ---------- gün sonu bildirimi ----------
+   Sunucu yalnızca içi boş bir "uyandırma" bildirimi yollar. Günlük kâr/zararı servis çalışanı hesaplar;
+   bunun için gereken en küçük veri (miktarlar, fiyatın nereden okunacağı, önceki günün birim değerleri)
+   bu cihazın önbelleğine yazılır. Açma/kapama cihaz başınadır. */
+const NK="emanet-notif";
+const notifOnLocal=()=>{try{return localStorage.getItem(NK)==="1"}catch(e){return false}};
+const notifKey=()=>new URL("__notif/snap",location.href).href;
+async function notifSnap(){
+  if(!notifOnLocal()||!state||!("caches" in window))return;
+  try{
+    const D=state.day,t=todayISO(),mp=mainPf();
+    const ref=D?(D.d===t?D.ref:(D.cur&&Object.keys(D.cur).length?{d:D.d,h:D.cur}:D.ref)):null;
+    const snap={at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
+      ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
+      pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0).map(h=>{
+        const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
+        return{id:h.id,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
+    await(await caches.open(NK)).put(notifKey(),new Response(JSON.stringify(snap),{headers:{"content-type":"application/json"}}));
+  }catch(e){}
+}
+const b64uBytes=x=>{x=x.replace(/-/g,"+").replace(/_/g,"/");const b=atob(x+"=".repeat((4-x.length%4)%4));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+const notifSupport=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+const swReady=()=>Promise.race([navigator.serviceWorker.ready,new Promise((_,r)=>setTimeout(()=>r(new Error("Uygulama dosyaları henüz hazır değil; sayfayı yenileyip yeniden deneyin.")),8000))]);
+async function notifSet(on){
+  try{
+    const reg=await swReady();let sub=await reg.pushManager.getSubscription();
+    if(on){
+      if(await Notification.requestPermission()!=="granted")throw new Error("Bildirim izni verilmedi.");
+      if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(CFG.vapidPublicKey)});
+      const {error}=await sb.from("emanet_push").upsert({endpoint:sub.endpoint,user_id:sbUser.id},{onConflict:"endpoint"});
+      if(error)throw new Error(/emanet_push|relation|schema cache|not find/i.test(error.message||"")?"Bildirim tablosu henüz kurulmamış; Supabase'de kurulum SQL'ini bir kez çalıştırmak gerekiyor.":"Cihaz kaydedilemedi: "+(error.message||"bilinmeyen hata"));
+      localStorage.setItem(NK,"1");await notifSnap();toast("Gün sonu bildirimi bu cihazda açıldı");
+    }else{
+      if(sub){try{if(sb)await sb.from("emanet_push").delete().eq("endpoint",sub.endpoint)}catch(e){}await sub.unsubscribe()}
+      localStorage.removeItem(NK);try{await caches.delete(NK)}catch(e){}
+      toast("Gün sonu bildirimi bu cihazda kapatıldı");
+    }
+  }catch(e){toast(e.message||"Bildirim ayarlanamadı")}
+  render();
+}
+async function notifTest(){
+  try{await notifSnap();const reg=await swReady();if(!reg.active)throw new Error("Uygulama dosyaları henüz hazır değil.");reg.active.postMessage({type:"gun-sonu",test:true});toast("Deneme bildirimi gönderildi")}
+  catch(e){toast(e.message||"Deneme bildirimi gönderilemedi")}
+}
+function notifCard(){
+  const on=notifOnLocal();
+  const why=!notifSupport()?"Bu tarayıcı bildirimi desteklemiyor. iPhone ve iPad'de önce Safari'de Paylaş → Ana Ekrana Ekle ile uygulamayı kurun, sonra uygulamanın içinden burayı açın."
+    :!cloudOn()?"Bildirim için e-posta ile giriş yapmış olmanız gerekir."
+    :!CFG.vapidPublicKey?"Bildirim anahtarı tanımlı değil."
+    :Notification.permission==="denied"?"Bu site için bildirim izni kapalı. Telefonun ya da tarayıcının ayarlarından Emanet için bildirime izin verin.":"";
+  return `<section class="card"><div class="set-group">
+    <div class="set-row"><div class="lbl"><b>Gün sonu bildirimi</b><small>Hafta içi her akşam 18:40 civarında ana portföyünüzün günlük kâr/zararı bu cihaza bildirim olarak gelir. Başka portföyleriniz varsa onlar da bildirimin altında yazar.</small></div><label class="toggle"><input type="checkbox" id="notifTog" ${on?"checked":""} ${why&&!on?"disabled":""}><span></span></label></div>
+    ${why?`<div class="note warn">${why}</div>`:""}
+    ${on?`<div class="set-row"><div class="lbl"><b>Deneme</b><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><button class="btn sm" data-act="notif-test">Deneme bildirimi</button></div>`:""}
+    <div class="note">Bildirim her cihazda ayrı açılır. Tutarlarınız sunucuya gönderilmez; hesap bu cihazda yapılır. “Tutarları gizle” açıksa bildirimde yalnızca yüzde yazar. Bildirim birkaç dakika gecikebilir; telefon pil tasarrufundaysa daha da gecikebilir.</div>
+  </div></section>`;
+}
+
+/* ---------- getiri karşılaştırması ----------
+   Portföy getirisi "zaman ağırlıklı" hesaplanır: para ekleyip çekmek getiriyi değiştirmez, yalnızca fiyat hareketi ölçülür.
+   Günler arası para girişi = maliyet değişimi; satışta elde edilen para maliyet + kâr olduğundan satış kârı ayrıca düşülür.
+   Altın ve dolar, her günün kaydındaki gram fiyatı ve kurdan; BIST 100, fiyat görevinin tuttuğu günlük kapanışlardan gelir. */
+function histRows(ids,range){
+  const by={};
+  ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
+  let rows=Object.keys(by).sort().map(d=>({d,...by[d]}));
+  if(range&&range!=="all"){const from=addDays(todayISO(),-range);rows=rows.filter(r=>r.d>=from)}
+  return rows;
+}
+function benchAt(d){const x=bench&&bench.xu100;if(!x)return 0;for(let i=0;i<8;i++){const v=+x[addDays(d,-i)];if(v>0)return v}return 0}
+function ufeLevel(d){
+  if(!ufe||!ufe.idx)return null;
+  const L=ufe.latest||Object.keys(ufe.idx).sort().pop(),gl=ufeAt(L)/(ufeAt(prevMonth(L+"-15"))||ufeAt(L));
+  const mdiff=(a,b)=>(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5,7)-+a.slice(5,7));
+  const at=ym=>ufeAt(ym)||(ym>L?ufeAt(L)*Math.pow(gl,mdiff(L,ym)):0);
+  const ym=d.slice(0,7),v0=at(prevMonth(d)),v1=at(ym);if(!v0||!v1)return null;
+  return{v:v0*Math.pow(v1/v0,(+d.slice(8))/dim(+ym.slice(0,4),+ym.slice(5,7))),est:ym>L};
+}
+function benchCalc(ids,range){
+  const rows=histRows(ids,range);if(rows.length<2)return null;
+  const a=rows[0],z=rows[rows.length-1];
+  const sellPL={};state.portfolios.filter(p=>ids.includes(p.id)).forEach(p=>p.holdings.forEach(h=>(h.trades||[]).forEach(t=>{if(t.type==="sell"&&t.date&&t.pl!=null)sellPL[t.date]=(sellPL[t.date]||0)+(+t.pl||0)*rate(h.cur)})));
+  const sd=Object.keys(sellPL);
+  let idx=1;
+  for(let i=1;i<rows.length;i++){const p=rows[i-1],r=rows[i];if(!(p.v>0))continue;
+    let F=r.c-p.c;sd.forEach(d=>{if(d>p.d&&d<=r.d)F-=sellPL[d]});
+    const g=(r.v-F)/p.v;if(g>0&&isFinite(g))idx*=g}
+  const items=[{k:"pf",n:"Portföy",v:(idx-1)*100}];
+  if(a.g>0&&z.g>0)items.push({k:"g",n:"Gram altın",v:(z.g/a.g-1)*100});
+  if(a.usd>0&&z.usd>0)items.push({k:"usd",n:"Dolar",v:(z.usd/a.usd-1)*100});
+  const x0=benchAt(a.d),x1=benchAt(z.d);if(x0>0&&x1>0)items.push({k:"xu",n:"BIST 100",v:(x1/x0-1)*100});
+  const u0=ufeLevel(a.d),u1=ufeLevel(z.d);let est=false;
+  if(u0&&u1){items.push({k:"ufe",n:"Enflasyon (Yİ-ÜFE)",v:(u1.v/u0.v-1)*100});est=u0.est||u1.est}
+  return{from:a.d,to:z.d,days:daysBetween(a.d,z.d),items,est};
+}
+function benchCard(ids){
+  const range=view.hRange||90,b=benchCalc(ids,range);
+  const segR=`<div class="seg" role="group" aria-label="Dönem">${[[30,"1A"],[90,"3A"],[365,"1Y"],["all","Tümü"]].map(([k,l])=>`<button data-act="hrange" data-k="${k}" aria-pressed="${String(range)===String(k)}">${l}</button>`).join("")}</div>`;
+  if(!b)return `<section class="card side"><div class="sec"><h2>Getiri karşılaştırması</h2></div><div class="sub" style="margin-top:6px">Karşılaştırma için en az iki ayrı günün kaydı gerekir. Uygulamayı açtığınız her gün portföy değeri kaydedilir; ${histRows(ids,"all").length>=2?"daha uzun bir dönem seçerseniz görünür.":"yarından itibaren burada görünür."}</div>${histRows(ids,"all").length>=2?`<div style="margin-top:10px">${segR}</div>`:""}</section>`;
+  const it=b.items.slice().sort((x,y)=>y.v-x.v),mx=Math.max(...it.map(i=>Math.abs(i.v)),.01);
+  const pf=b.items[0],ufeI=b.items.find(i=>i.k==="ufe"),alt=it.filter(i=>i.k!=="pf"&&i.k!=="ufe"),best=alt[0];
+  const pts=v=>fmtN(Math.abs(v),1)+" puan";
+  let verdict="";
+  if(best)verdict=pf.v>=best.v?`Portföyünüz bu dönemde altın, dolar ve borsanın hepsinden iyi getirdi; en yakını ${best.n} (${pts(pf.v-best.v)} geride).`:`Bu dönemin en iyisi ${best.n} oldu; portföyünüz ondan ${pts(best.v-pf.v)} geride kaldı.`;
+  const real=ufeI?((1+pf.v/100)/(1+ufeI.v/100)-1)*100:null;
+  return `<section class="card side"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Getiri karşılaştırması</h2>${segR}</div>
+    <div class="bn" role="list">${it.map(i=>`<div class="bn-row ${i.k==="pf"?"me":""}" role="listitem"><span class="bn-n">${i.n}</span><span class="bn-bar" aria-hidden="true"><i class="${i.v<0?"neg":""}" style="width:${Math.max(2,Math.abs(i.v)/mx*100).toFixed(1)}%"></i></span><b class="num ${i.v>=0?"pos-t":"neg-t"}">${fmtPct(i.v)}</b></div>`).join("")}</div>
+    ${verdict?`<p class="bn-v">${verdict}${real!=null?` Enflasyondan arındırılmış getiriniz <b class="${real>=0?"pos-t":"neg-t"}">${fmtPct(real)}</b>.`:""}</p>`:""}
+    <div class="sub">${fmtDate(b.from)} – ${fmtDate(b.to)} · ${b.days} gün. Para ekleyip çekmeniz getiriyi değiştirmez; yalnızca fiyat hareketi ölçülür.${b.est?" Son ayın enflasyonu henüz açıklanmadığı için tahminidir.":""}${b.items.some(i=>i.k==="xu")?"":" BIST 100 verisi birkaç saat içinde eklenecek."}</div></section>`;
+}
+
+/* ---------- gelir-gider: arama ve süzme ---------- */
+function txRow(t){const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card";
+  return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),inc?"--pos":cp?"--c2":"--accent"),title:cp?"Kart ödemesi":esc(t.cat),
+    sub:[cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
+    amount:(inc?"+":cp?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})}
+function txMatch(){
+  const q=trLow((view.txQ||"").trim()),cat=view.txCat||"",ty=view.txType||"all";
+  const dq=q.replace(/[.\s₺]/g,"").replace(",","."),isNum=/^\d+(\.\d+)?$/.test(dq);
+  const list=(q?state.tx:monthTx(view.month)).filter(t=>{
+    if(ty!=="all"&&!(ty==="out"?(t.type==="out"||t.type==="card"):t.type===ty))return false;
+    if(cat&&t.cat!==cat)return false;
+    if(!q)return true;
+    const c=cardById(t.card)||cardById(t.method);
+    if(trLow([t.cat,t.note,c&&c.name,fmtDate(t.date),t.type==="card"?"kart ödemesi":""].filter(Boolean).join(" ")).includes(q))return true;
+    return isNum&&String(+t.amount).startsWith(String(+dq));
+  }).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  return{list,q,active:!!(q||cat)};
+}
+function txList(){
+  const {list,q,active}=txMatch();
+  if(!list.length)return `<div class="empty"><b>${active?"Eşleşen işlem yok":"Bu ay kayıt yok"}</b>${active?"Aramayı ya da kategori seçimini değiştirin.":"Gelir veya gider eklemek için “İşlem ekle” düğmesini kullanın."}</div>`;
+  let i=0,o=0;list.forEach(t=>{const v=toBase(t.amount,t.cur);if(t.type==="in")i+=v;else if(t.type==="out")o+=v});
+  const N=200,groups={};list.slice(0,N).forEach(t=>(groups[t.date]=groups[t.date]||[]).push(t));
+  return (active?`<div class="tx-sum"><span>${q?"Tüm aylarda ":""}<b>${list.length}</b> işlem</span>${o?`<span>Gider <b class="num">${fmt(o)}</b></span>`:""}${i?`<span>Gelir <b class="num pos-t">${fmt(i)}</b></span>`:""}<button class="btn ghost sm" data-act="txclear">Temizle</button></div>`:"")
+    +Object.entries(groups).map(([d,ts])=>`<div class="label" style="margin-top:10px">${fmtDate(d)}</div><div class="list">${ts.map(txRow).join("")}</div>`).join("")
+    +(list.length>N?`<div class="sub" style="margin-top:8px">İlk ${N} işlem gösteriliyor; aramayı daraltın.</div>`:"");
+}
+function txFilterBar(){
+  const cats=[...new Set([...CATS.out,...CATS.in,...state.tx.map(t=>t.cat).filter(Boolean)])];
+  return `<div class="txf"><label class="search">${ic(I.search,18)}<span class="sr">İşlemlerde ara</span><input id="txQ" type="search" enterkeyhint="search" placeholder="Not, kategori ya da tutar ara" value="${esc(view.txQ||"")}" autocomplete="off"></label>
+    <select id="txCat" aria-label="Kategoriye göre süz"><option value="">Tüm kategoriler</option>${cats.map(c=>`<option value="${esc(c)}" ${view.txCat===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`;
+}
+document.addEventListener("input",e=>{if(e.target.id==="txQ"){view.txQ=e.target.value;const l=$("#txList");if(l)l.innerHTML=txList()}});
+document.addEventListener("change",e=>{
+  if(e.target.id==="txCat"){view.txCat=e.target.value;render()}
+  if(e.target.id==="notifTog"){e.target.disabled=true;notifSet(e.target.checked)}
+});
 
 function debtRow(d){
   const left=debtLeft(d),tot=+d.amount||0,pct=tot?(tot-left)/tot*100:0,lent=d.dir==="lent";
@@ -1035,8 +1186,8 @@ function rAyarlar(){
   const seg=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="set" data-k="${key}" data-v="${v}" aria-pressed="${s[key]===v}">${l}</button>`).join("")}</div>`;
   const tog=(key,label,small,path)=>{const val=path?s[path][key]:s[key];return `<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><label class="toggle"><input type="checkbox" id="t-${path||"s"}-${key}" data-act="tog" data-k="${key}" ${path?`data-p="${path}"`:""} ${val?"checked":""}><span></span></label></div>`};
   const num=(id,label,val,small)=>`<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><input class="inline-in" id="${id}" inputmode="decimal" data-act="num" data-k="${id}" value="${esc(String(val).replace(".",","))}"></div>`;
-  return `
-  <section class="card"><h2 style="margin-bottom:4px">Görünüm</h2><div class="set-group">
+  const G={};
+  G.gorunum=`<section class="card"><div class="set-group">
     <div class="set-row"><div class="lbl"><b>Tema</b></div>${seg("theme",[["system","Sistem"],["light","Açık"],["dark","Koyu"]])}</div>
     <div class="set-row"><div class="lbl"><b>Vurgu rengi</b></div><div class="swatches">${[["kobalt","Kobalt","#2443b6"],["turkuaz","Turkuaz","#0c8a93"],["mercan","Mercan","#c7452c"],["zumrut","Zümrüt","#15775a"]].map(([k,l,c])=>`<button class="sw" data-act="set" data-k="accent" data-v="${k}" aria-pressed="${(["kobalt","turkuaz","mercan","zumrut"].includes(s.accent)?s.accent:"kobalt")===k}" aria-label="${l}"><i style="background:${c}"></i></button>`).join("")}</div></div>
     <div class="set-row"><div class="lbl"><b>Arka plan tonu</b></div><div class="swatches">${[["gri","Porselen","#eef1f6","#141b2e"],["krem","Krem","#f3ece0","#29241c"],["mavi","Buz mavisi","#dfe8f6","#12203a"],["adacayi","Adaçayı","#e1eae3","#1e2923"]].map(([k,l,c1,c2])=>`<button class="tone-sw" data-act="set" data-k="tone" data-v="${k}" aria-pressed="${(s.tone||"gri")===k}" aria-label="${l}" title="${l}"><i style="background:linear-gradient(135deg,${c1} 50%,${c2} 50%)"></i></button>`).join("")}</div></div>
@@ -1044,11 +1195,13 @@ function rAyarlar(){
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}
     ${tog("hide","Tutarları gizle","Başkalarının yanında açarken")}
     <div class="set-row"><div class="lbl"><b>Açılış ekranı</b></div><select class="inline-in" style="text-align:left;font-family:var(--f-body);width:auto" id="startSel" data-act="startsel">${TABS.map(([k,l])=>`<option value="${k}" ${s.start===k?"selected":""}>${l}</option>`).join("")}</select></div>
-  </div></section>
-  <section class="card" id="ratesCard"><h2 style="margin-bottom:4px">Para birimi ve fiyatlar</h2><div class="set-group">
+  </div></section>`;
+  G.islem=`<section class="card"><div class="set-group">
     <div class="set-row"><div class="lbl"><b>Varsayılan komisyon oranı</b><small>Alım ve satışta komisyon boş bırakılırsa tutarın bu yüzdesi kullanılır (ör. 0,2)</small></div><div style="display:flex;align-items:center;gap:6px"><span>%</span><input class="inline-in" style="width:5.5em" id="feeRateIn" inputmode="decimal" data-act="feerate" value="${esc(String(s.feeRate||0).replace(".",","))}"></div></div>
     <div class="set-row"><div class="lbl"><b>Varsayılan stopaj oranları</b><small>Satış ekranına önceden yazılır; her satışta değiştirebilirsiniz. Oranlar dönemsel değişir, aracı kurumunuzdan kontrol edin.</small></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${[["fon","Fon"],["ppf","Para piyasası"],["hisse","BIST hisse"],["abd","ABD hisse"]].map(([k,l])=>`<label style="display:flex;align-items:center;gap:4px;font-size:.82rem">${l} %<input class="inline-in" style="width:4.2em" id="wht_${k}" data-act="wht" data-k="${k}" inputmode="decimal" placeholder="0" value="${(s.whtRates||{})[k]!=null&&(s.whtRates||{})[k]!==""?esc(String(s.whtRates[k]).replace(".",",")):""}"></label>`).join("")}</div></div>
+  </div></section>`;
+  G.fiyat=`<section class="card" id="ratesCard"><div class="set-group">
     ${tog("autoPrices","Fiyatları otomatik al","Döviz, altın, hisse, fon ve kripto fiyatları yaklaşık yarım saatte bir kendiliğinden yenilenir")}
     <div class="set-row"><div class="lbl"><b>Son güncelleme</b><small>${market?marketWhen()+(market.source?" · "+esc(market.source):""):"Henüz otomatik fiyat yok"}${market&&market.errors&&market.errors.length?"<br>Alınamayanlar: "+esc(market.errors.join("; ")):""}</small></div><button class="btn sm" data-act="refresh">Şimdi denetle</button></div>
     ${AUTO()?`<div class="note">Otomatik fiyat bulunan kalemlerde aşağıdaki elle girilen değerler kullanılmaz; bulunamayanlarda yedek olarak kullanılır. Hisse ve fonlarda varlığa kod girmeniz yeterli (ör. THYAO, AAPL, TTE).</div>`:""}
@@ -1059,8 +1212,8 @@ function rAyarlar(){
     ${COINS.map(([k,n])=>num("coin_"+k,n+(AUTO()&&market.gold&&+market.gold[k]>0?" · oto "+fmtN(market.gold[k],0):""),s.coins[k]||"")).join("")}`}
     <div class="set-row"><div class="lbl"><b>Zekât için gram fiyatı</b><small>${goldInfo().coin?esc(goldInfo().coin.n)+" ÷ 7,2":"En az bir lira fiyatı girin"}</small></div><span class="num">${goldInfo().gram?fmt(goldInfo().gram,"TRY",{dec:2,show:true}):"—"}</span></div>
     ${AUTO()&&market.fx&&+market.fx.USD>0&&market.gold&&+market.gold.resatAlis>0?"":`<div class="set-row"><div class="lbl"><small>Elle güncelleme: ${s.ratesUpdated?fmtDate(s.ratesUpdated):"hiç"}</small></div><button class="btn primary sm" data-act="save-rates">Fiyatları kaydet</button></div>`}
-  </div></section>
-  <section class="card" id="zakatCard"><h2 style="margin-bottom:4px">Zekât</h2><div class="set-group">
+  </div></section>`;
+  G.zekat=`<section class="card" id="zakatCard"><div class="set-group">
     <div class="set-row"><div class="lbl"><b>Nisap</b><small>Gram cinsinden altın miktarı</small></div><div style="display:flex;align-items:center;gap:6px"><input class="inline-in" style="width:5em" id="nisabIn" inputmode="decimal" data-act="nisabin" value="${esc(String(s.nisabGram).replace(".",","))}"><span>g</span></div></div>
     <div class="set-row"><div class="lbl"><b>Zekât günü (hicri)${state.portfolios.length>1?" · "+esc(pfName(zo)):""}</b><small>${state.portfolios.length>1?`<select class="inline-in" style="width:auto;font-family:var(--f-body);text-align:left;margin:4px 0" id="zoSel" data-act="zosel" aria-label="Portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${p.id===zo?"selected":""}>${esc(pfName(p.id))}</option>`).join("")}</select><br>`:""}${hh?"Nisaba ilk ulaşılan hicri tarih. Miladi karşılığı: "+fmtDate(fromH(hh.y,hh.m,hh.d)):"Belirlenmedi. Nisaba ulaşmadıysanız boş bırakın."}</small></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1073,14 +1226,20 @@ function rAyarlar(){
     ${tog("zakatDebt","Borçları düş")}
     <div class="label" style="margin-top:12px">Dahil edilen varlık türleri</div>
     ${Object.keys(KINDS).map(k=>tog(k,KINDS[k],"","zakatKinds")).join("")}
-  </div></section>
-  <section class="card"><h2 style="margin-bottom:4px">Veri</h2><div class="set-group">
+  </div></section>`;
+  G.veri=`<section class="card"><div class="set-group">
     ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Hesap</b><small>${esc(sbUser.email||"")} · veriler hesabınızda saklanır, diğer cihazlarınızda da açılır</small></div><button class="btn sm" data-act="signout">Çıkış yap</button></div>`
       :`<div class="set-row"><div class="lbl"><b>Kayıt yeri</b><small>Yalnızca bu cihazda. ${sb?"Giriş yaparsanız verileriniz hesabınıza taşınır ve diğer cihazlarınızda da açılır.":"Bulut eşitleme henüz kurulmadı; yedek almayı unutmayın."}</small></div>${sb?`<button class="btn sm primary" data-act="signin">Giriş yap</button>`:""}</div>`}
     <div class="set-row"><div class="lbl"><b>Yedek</b><small>Tüm veriler JSON dosyası olarak</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="export">Yedeği indir</button><label class="btn sm" for="importIn" style="cursor:pointer">Yedek yükle</label><input type="file" id="importIn" accept="application/json,.json" hidden></div></div>
     <div class="set-row"><div class="lbl"><b>Excel'e aktar</b><small>Excel ve Google E-Tablolar'da açılan CSV dosyaları</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="csv-h">Varlıklar</button><button class="btn sm" data-act="csv-t">Gelir-gider</button></div></div>
     <div class="set-row"><div class="lbl"><b>Tüm verileri sil</b><small>Portföyler, işlemler, borçlar ve zekât kayıtları silinir; ayarlar kalır</small></div><button class="btn sm danger" data-act="wipe">Sil</button></div>
-  </div></section>
+  </div></section>`;
+  G.bildirim=notifCard();
+  const GN=[["gorunum","Görünüm",I.brush],["fiyat","Fiyat ve kur",I.trend],["islem","Alım-satım",I.buy],["zekat","Zekât",I.zekat],["bildirim","Bildirim",I.bell],["veri","Hesap ve veri",I.user]];
+  const g=G[view.setG]?view.setG:"gorunum";
+  return `
+  <div class="chips setnav" role="group" aria-label="Ayar grubu">${GN.map(([k,l,icn])=>`<button class="chip" data-act="setg" data-k="${k}" aria-pressed="${g===k}">${ic(icn,16)}${l}</button>`).join("")}</div>
+  ${G[g]}
   <button class="btn" data-tab="${s.start||"ozet"}" style="align-self:flex-start">Geri dön</button>
   <p class="sub" style="margin:0;text-align:center">Emanet ${APP_VERSION} · <a href="https://github.com/omerfarukcetin/emanet" target="_blank" rel="noopener">kaynak kod</a></p>`;
 }
@@ -1551,7 +1710,10 @@ document.addEventListener("click",e=>{
   if(a==="dpf"){view.debtPf=t.dataset.k;render();return}
   if(a==="open-debt")return debtDetail(state.debts.find(x=>x.id===id));
   if(a==="edit-zp")return zakatSheet(state.zakatPaid.find(x=>x.id===id));
-  if(a==="rates"||a==="zset"){view.tab="ayarlar";render();setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
+  if(a==="setg"){view.setG=t.dataset.k;render();return}
+  if(a==="txclear"){view.txQ="";view.txCat="";render();return}
+  if(a==="notif-test"){notifTest();return}
+  if(a==="rates"||a==="zset"){view.tab="ayarlar";view.setG=a==="rates"?"fiyat":"zekat";render();setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
   if(a==="set"){S()[t.dataset.k]=t.dataset.v;commit();return}
   if(a==="nisab"){S().nisabGram=+t.dataset.v;commit();return}
   if(a==="save-rates"){const u=$("#rUSD")?parseNum($("#rUSD").value):S().rates.USD,eu=$("#rEUR")?parseNum($("#rEUR").value):S().rates.EUR;

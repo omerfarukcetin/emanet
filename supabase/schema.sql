@@ -31,3 +31,26 @@ create policy "emanet_watch_oku" on public.emanet_watch for select using (true);
 
 drop policy if exists "emanet_watch_ekle" on public.emanet_watch;
 create policy "emanet_watch_ekle" on public.emanet_watch for insert to authenticated with check (true);
+
+-- ---------------------------------------------------------------------------
+-- Gün sonu bildirimi: bildirimi açan cihazların adresleri.
+-- Burada yalnızca tarayıcının verdiği bildirim adresi durur; tutar ya da portföy bilgisi yoktur.
+-- Adresler, deponun gizli anahtarı olmadan bildirim göndermeye yaramaz.
+-- ---------------------------------------------------------------------------
+create table if not exists public.emanet_push (
+  endpoint   text primary key,
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.emanet_push enable row level security;
+drop policy if exists "push_oku"     on public.emanet_push;
+drop policy if exists "push_ekle"    on public.emanet_push;
+drop policy if exists "push_guncelle" on public.emanet_push;
+drop policy if exists "push_sil"     on public.emanet_push;
+create policy "push_oku"      on public.emanet_push for select using (true);
+create policy "push_ekle"     on public.emanet_push for insert to authenticated with check (auth.uid() = user_id);
+create policy "push_guncelle" on public.emanet_push for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "push_sil"      on public.emanet_push for delete to authenticated using (auth.uid() = user_id);
+revoke all on public.emanet_push from anon;
+grant select (endpoint) on public.emanet_push to anon;
+grant select, insert, update, delete on public.emanet_push to authenticated;
