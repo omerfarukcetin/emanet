@@ -467,3 +467,76 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .plchips{gap:5px}
 .plchips .delta{font-size:.74rem;padding:4px 8px;gap:4px;white-space:nowrap}
 .plchips .delta small{font-size:.68rem}
+
+/* ================= 2.2: ikon seti, pencereler, geniş ekranda iki sütun ================= */
+/* --- ikonlar --- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn svg{flex:none}
+.btn.ghost svg{margin-inline:-2px -5px}
+.mk svg{display:block}
+.icon-btn.sm{width:32px;height:32px;box-shadow:none;border:1px solid var(--line);color:var(--muted);background:transparent}
+.icon-btn.sm:hover{color:var(--neg);border-color:currentColor}
+
+/* --- pencere: başlık ve eylem çubuğu yerinde durur, içerik aralarında kayar --- */
+.sheet{padding:0 18px}
+.sheet:not(:has(.actions))::after{content:"";display:block;height:calc(18px + env(safe-area-inset-bottom,0px))}
+.sh-head{position:sticky;top:0;z-index:3;background:var(--surface);margin:0 -18px 6px;padding:8px 18px 10px}
+.sh-head .grip{margin:0 auto 10px}
+.sh-title{display:flex;align-items:center;gap:12px}
+.sheet .sh-title h3{margin:0;flex:1;min-width:0;display:flex;align-items:center;gap:12px;font-size:1.2rem;line-height:1.2}
+.sh-title h3 .mk{width:40px;height:40px;border-radius:12px}
+.h3-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.h3-t small{font-size:.78rem;font-weight:600;color:var(--muted);letter-spacing:0}
+.icon-btn.sh-x{width:36px;height:36px;box-shadow:none;border:0;background:var(--surface-2);color:var(--muted)}
+.sh-x svg{width:18px;height:18px}
+@media (min-width:640px){.sh-head .grip{display:none}.sh-head{padding-top:18px}}
+.sheet .actions{position:sticky;bottom:0;z-index:2;flex-wrap:nowrap;gap:8px;background:var(--surface);border-top:1px solid var(--line);margin:10px -18px 0;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px))}
+.sheet .actions .btn{min-height:48px;white-space:nowrap}
+.sheet .actions .grow,.sheet .actions.eq .btn{flex:1}
+.sheet .actions.eq .btn{padding-inline:8px}
+.sheet .actions .btn.danger:not(.solid){border-color:transparent;background:color-mix(in srgb,var(--neg) 9%,var(--surface))}
+/* --- ayrıntı pencereleri: büyük rakam, durum rozeti, kutucuklar --- */
+.dsum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 0 12px}
+.dsum .dv{font-size:1.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.chg{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;background:var(--surface-2);color:var(--muted);font-size:.8rem;white-space:nowrap;margin-bottom:3px}
+.chg.up{color:var(--pos);background:color-mix(in srgb,var(--pos) 11%,var(--surface))}
+.chg.down{color:var(--neg);background:color-mix(in srgb,var(--neg) 10%,var(--surface))}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.tiles>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
+.tiles .label{font-size:.72rem}
+.tiles b{font-size:.98rem;font-weight:700;overflow-wrap:anywhere}
+.tiles .w2{grid-column:1/-1}
+.tiles b.txt{font-weight:500;font-size:.9rem}
+.label.sh-sec{display:block;margin:18px 0 8px;font-size:.84rem;font-weight:700;color:var(--fg)}
+.form .label.sh-sec{margin-bottom:-2px}
+.sheet .kv{font-size:.9rem}
+.sheet .kv>div{font-size:.88rem}
+/* --- form alanları --- */
+.field.big input{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;padding-block:9px}
+.field select,.field select:focus{-webkit-appearance:none;appearance:none;padding-right:36px;background-repeat:no-repeat;background-position:right 12px center;background-size:16px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d879c' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.field.big + .field select{height:100%}
+
+/* --- geniş ekran --- */
+@media (max-width:899px){.nav-add span{display:none}}
+@media (min-width:900px){
+  .fab{display:none!important}
+  .nav button.nav-add{display:flex;order:-1;justify-content:center;gap:8px;margin-bottom:14px;padding:12px;border-radius:99px;background:var(--accent);color:var(--on-accent);font-weight:700}
+  .nav button.nav-add:hover{background:var(--accent);filter:brightness(1.08)}
+  .nav button.nav-add svg{width:18px;height:18px;padding:0;background:none;color:inherit}
+  .nav button.nav-add:disabled{opacity:.4;filter:none;cursor:default}
+}
+@media (min-width:1160px){
+  .top-in,main{max-width:1180px}
+  body:not(.has-cols) main>*{max-width:880px}
+  .cols{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:var(--gap);align-items:start}
+  .col{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
+  .cols .grid2{grid-template-columns:1fr}
+}
+.field.big + .field select{flex:1;height:auto}
+.tiles>div:last-child:nth-child(odd){grid-column:1/-1}
+.sheet .kv>div>span:first-child{min-width:0}
+.sheet .kv>div>span:last-child{white-space:nowrap}
+@media (min-width:1160px){
+  body:not(.has-cols) main>*{max-width:none}
+  body:not(.has-cols) main,body:not(.has-cols) .top-in{max-width:880px;margin-left:max(0px,calc((100vw - 248px - 1180px)/2))}
+}

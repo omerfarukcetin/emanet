@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.1";
+const APP_VERSION="2.2";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -593,18 +593,61 @@ function applyPrefs(){
 /* ---------- icons ---------- */
 const STAR=`<svg class="star" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M24 4.2 29.8 10H38v8.2l5.8 5.8-5.8 5.8V38h-8.2L24 43.8 18.2 38H10v-8.2L4.2 24 10 18.2V10h8.2z"/><circle cx="24" cy="24" r="6.5" fill="var(--star-hole,#fff)"/></svg>`;
 const sv=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+/* Tek tip ikon seti: 24'lük ızgara, 1.8 çizgi, yuvarlak uç. Hepsi aynı elden; emoji ya da harf yok. */
 const I={
   ozet:sv('<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'),
-  portfoy:sv('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>'),
-  akis:sv('<path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/>'),
-  borc:sv('<path d="M4 7h13a3 3 0 0 1 0 6H8"/><path d="M8 9l-4 4 4 4"/>'),
-  zekat:sv('<path d="M12 3c3 3 5 5.5 5 9a5 5 0 0 1-10 0c0-3.5 2-6 5-9z"/><path d="M12 13v4M10 15h4"/>'),
+  portfoy:sv('<path d="M11 4a8.5 8.5 0 1 0 9 9h-9z"/><path d="M14.5 3.2a8 8 0 0 1 6.3 6.3h-6.3z"/>'),
+  akis:sv('<path d="M7 20V5M7 5 3.5 8.5M7 5l3.5 3.5M17 4v15M17 19l-3.5-3.5M17 19l3.5-3.5"/>'),
+  borc:sv('<path d="M4 8h15M19 8l-3.5-3.5M19 8l-3.5 3.5M20 16H5M5 16l3.5-3.5M5 16l3.5 3.5"/>'),
+  zekat:sv('<circle cx="14.5" cy="6.5" r="3"/><path d="M3 14h3l3.2-1.5a3 3 0 0 1 2.4-.1l3.2 1.3a1.5 1.5 0 0 1-.6 2.9H11"/><path d="M14.6 16.4l4.4-2a1.55 1.55 0 0 1 1.4 2.8l-5.6 3.1a4 4 0 0 1-3 .3L6 19H3"/>'),
   plus:sv('<path d="M12 5v14M5 12h14"/>'),
+  x:sv('<path d="M6 6l12 12M18 6 6 18"/>'),
+  check:sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  trash:sv('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),
   eye:sv('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   eyeOff:sv('<path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
   left:sv('<path d="M15 6l-6 6 6 6"/>'),right:sv('<path d="M9 6l6 6-6 6"/>'),
-  edit:sv('<path d="M4 20h4L19 9l-4-4L4 16v4z"/>')
+  edit:sv('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>'),
+  buy:sv('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/>'),
+  sell:sv('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/>'),
+  card:sv('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3"/>'),
+  wallet:sv('<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H17v3"/><path d="M4 7.5V17a2.5 2.5 0 0 0 2.5 2.5H20V8H6.5A2.5 2.5 0 0 1 4 7.5z"/><path d="M16 13.75h.01"/>'),
+  repeat:sv('<path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6H19M19 6l-3-3M19 6l-3 3M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H5M5 18l3-3M5 18l3 3"/>'),
+  target:sv('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/>'),
+  home:sv('<path d="M4 11l8-6.5 8 6.5"/><path d="M6 9.5v10h12v-10"/><path d="M10 19.5v-5h4v5"/>'),
+  cart:sv('<path d="M3 4h2.5l2.2 10.5h9.8l2-7.5H6.5"/><circle cx="9" cy="18.5" r="1.4"/><circle cx="16.5" cy="18.5" r="1.4"/>'),
+  bolt:sv('<path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/>'),
+  car:sv('<path d="M5 17v-5l1.8-4.6A2 2 0 0 1 8.7 6h6.6a2 2 0 0 1 1.9 1.4L19 12v5"/><path d="M5 12h14M4 17h16M6.5 17v2M17.5 17v2M8 14.5h.01M16 14.5h.01"/>'),
+  book:sv('<path d="M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5z"/><path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H18"/>'),
+  health:sv('<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/>'),
+  child:sv('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14a4 4 0 0 0 7 0M9 9.8h.01M15 9.8h.01"/>'),
+  shirt:sv('<path d="M8.5 4 4 7l2 3.5 2-1V20h8V9.5l2 1L20 7l-4.5-3a3.5 3.5 0 0 1-7 0z"/>'),
+  sofa:sv('<path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3"/><path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3z"/><path d="M6 18v2M18 18v2"/>'),
+  food:sv('<path d="M7 3v18M4.5 3v4.5a2.5 2.5 0 0 0 5 0V3"/><path d="M17 21V3c-2.2 1.2-3.5 3.6-3.5 6.5V13H17"/>'),
+  play:sv('<rect x="3.5" y="5" width="17" height="12" rx="2.5"/><path d="M10.5 9v4l3.5-2zM8 20.5h8"/>'),
+  gift:sv('<rect x="4" y="9" width="16" height="4" rx="1"/><path d="M5.5 13v7h13v-7M12 9v11"/><path d="M12 9C10.8 5.5 6.5 5 6.5 7.5S9.5 9 12 9zm0 0c1.2-3.5 5.5-4 5.5-1.5S14.5 9 12 9z"/>'),
+  heart:sv('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>'),
+  bank:sv('<path d="M4 9.5 12 4l8 5.500z"/><path d="M6.5 12.500v5M10.2 12.500v5M13.8 12.500v5M17.5 12.500v5M4 20h16"/>'),
+  brief:sv('<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3.5 13h17"/>'),
+  spark:sv('<path d="M12 4l1.9 5.100L19 11l-5.1 1.900L12 18l-1.9-5.100L5 11l5.1-1.900z"/>'),
+  trend:sv('<path d="M4 16.500l5-5 3.5 3.500L20 7.5"/><path d="M14.5 7.500H20V13"/>'),
+  key:sv('<circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.500M16 7l2.5 2.500M13.5 9.500l2 2"/>'),
+  dots:sv('<path d="M6 12h.01M12 12h.01M18 12h.01"/>'),
+  candle:sv('<path d="M7 4v3M7 15v4M17 5v4M17 15v5"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="9" width="4" height="6" rx="1"/>'),
+  globe:sv('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.500c2.6 2.4 3.8 5.2 3.8 8.500s-1.2 6.1-3.8 8.500c-2.6-2.4-3.8-5.2-3.8-8.500S9.4 5.9 12 3.500z"/>'),
+  layers:sv('<path d="M12 4 3.5 8.5 12 13l8.5-4.500z"/><path d="M3.5 12.5 12 17l8.5-4.500M3.5 16 12 20.5 20.5 16"/>'),
+  note:sv('<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 12h.01M17.5 12h.01"/>'),
+  ingot:sv('<path d="M8.5 5.500h7l2 5.500h-11z"/><path d="M5 13h6.500l1.8 5.500H3.200zM14.5 13H19l1.8 5.500h-7.5"/>'),
+  coin:sv('<circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.300c-.5-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1 1.8 2.7 2.100c1.8.3 2.8.9 2.8 2.200s-1.2 2.1-2.8 2.100c-1.3 0-2.4-.6-2.9-1.600M12 6v1.900M12 16.300V18"/>'),
+  hex:sv('<path d="M12 3.500l7.4 4.250v8.500L12 20.500l-7.4-4.250v-8.500z"/><path d="M12 8.500l3 1.750v3.500L12 15.500l-3-1.750v-3.500z"/>'),
+  umbrella:sv('<path d="M3.5 12a8.5 8.5 0 0 1 17 0z"/><path d="M12 12v6.500a2 2 0 0 1-4 0M12 3.500v-1"/>'),
+  building:sv('<path d="M5 20.500v-15A1.5 1.5 0 0 1 6.5 4h7A1.5 1.5 0 0 1 15 5.500v15M15 10h3a1.5 1.5 0 0 1 1.5 1.500v9M3.5 20.500h17M8.5 8h3M8.5 11.500h3M8.5 15h3"/>')
 };
+const ic=(svg,n=16)=>svg.replace('aria-hidden="true"',`width="${n}" height="${n}" aria-hidden="true"`);
+const KIND_ICON={hisse:I.candle,abd:I.globe,fon:I.layers,ppf:I.note,altin:I.ingot,gumus:I.ingot,doviz:I.coin,kripto:I.hex,nakit:I.wallet,bes:I.umbrella,emlak:I.building,diger:I.dots};
+/* kategori adından ikon: kullanıcı eski ya da kendi kategori adını da taşıyor olabilir, bu yüzden anahtar kelimeyle eşleşir */
+const CAT_ICONS=[[/maaş/i,"brief"],[/ek ödeme|ikramiye/i,"spark"],[/kira gelir/i,"key"],[/yatırım|temettü/i,"trend"],[/yan gelir|satış/i,"wallet"],[/kira|aidat/i,"home"],[/fatura/i,"bolt"],[/market|mutfak/i,"cart"],[/kart/i,"card"],[/kredi|taksit/i,"bank"],[/ulaşım|araç/i,"car"],[/eğitim/i,"book"],[/sağlık/i,"health"],[/çocuk/i,"child"],[/giyim/i,"shirt"],[/ev\b|eşya/i,"sofa"],[/yemek|eğlence/i,"food"],[/abone/i,"play"],[/hediye/i,"gift"],[/yardım|sadaka|bağış/i,"heart"]];
+const catIcon=c=>{const m=CAT_ICONS.find(([re])=>re.test(c||""));return I[m?m[1]:"dots"]};
 const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["borc","Borç"],["zekat","Zekât"]];
 
 /* ---------- render ---------- */
@@ -613,7 +656,23 @@ const wide=()=>window.matchMedia("(min-width:900px)").matches;
    [işaret] başlık + alt yazı | tutar + durum ya da tek bir eylem düğmesi.
    Satırın tamamı dokunulabilir (düzenleme/ayrıntı açar); sondaki düğme yalnızca kendi işini yapar. */
 const mk=(inner,color)=>`<span class="mk" style="color:var(${color||"--muted"})">${inner}</span>`;
-const mkIcon=(svg,color)=>mk(svg.replace('aria-hidden="true"','width="16" height="16" aria-hidden="true"'),color);
+const mkIcon=(svg,color)=>mk(ic(svg,18),color);
+/* Geniş ekranda iki sütun: "side" işaretli kartlar sağ sütuna, toplam kartından sonraki diğer her şey sola taşınır.
+   Telefonda hiçbir şey taşınmaz; sıra, şablonda yazıldığı gibidir. */
+const wide2=()=>window.matchMedia("(min-width:1160px)").matches;
+function twoCol(m){
+  const side=[...m.querySelectorAll(".side")],on=wide2()&&side.length>0;
+  document.body.classList.toggle("has-cols",on);
+  if(!on)return;
+  const kids=[...m.children],first=kids.findIndex(k=>k.matches(".hero,.card"));
+  if(first<0)return;
+  const cols=document.createElement("div"),a=document.createElement("div"),b=document.createElement("div");
+  cols.className="cols";a.className="col";b.className="col col-side";
+  kids.slice(first).forEach(k=>{if(!k.classList.contains("side"))a.appendChild(k)});
+  side.forEach(x=>b.appendChild(x));
+  cols.append(a,b);m.appendChild(cols);
+}
+window.matchMedia("(min-width:1160px)").addEventListener("change",()=>{if(state)render()});
 function li(o){
   return `<div class="row li" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
@@ -622,7 +681,7 @@ function render(){
   /* telefonda 5 öğe: Özet, Portföy, +, Gelir-Gider, Zekât. Borç, Gelir-Gider ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
   const cur=k=>view.tab===k||(k==="akis"&&view.tab==="borc"&&!wide());
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
-  $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}</button>`+TABS.slice(2).map(tabBtn).join("");
+  $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}<span>Ekle</span></button>`+TABS.slice(2).map(tabBtn).join("");
   $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
   if(!ready&&!state){m.innerHTML='<div class="skel" aria-label="Verileriniz yükleniyor" role="status"><i class="sk-hero"></i><i></i><i></i></div>';fab.hidden=true;return}
@@ -634,7 +693,8 @@ function render(){
   m.innerHTML=(view.tab==="akis"||view.tab==="borc"?subTabs():"")+R();
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   if(F){fab.hidden=false;fab.innerHTML=I.plus+"<span>"+F[0]+"</span>";fab.onclick=F[1]}else fab.hidden=true;
-  const na=$("#navAdd");if(na){na.disabled=!F;na.setAttribute("aria-label",F?F[0]:"Ekle");na.title=F?F[0]:"";na.onclick=F?F[1]:null}
+  const na=$("#navAdd");if(na){na.disabled=!F;na.setAttribute("aria-label",F?F[0]:"Ekle");na.title=F?F[0]:"";na.lastElementChild.textContent=F?F[0]:"Ekle";na.onclick=F?F[1]:null}
+  twoCol(m);
 }
 
 function onboarding(){
@@ -672,7 +732,7 @@ function rOzet(){
   </section>
   ${mp&&hs.length?histCard([mp.id],"Değer geçmişi"):""}
   ${mp?`<section class="card">
-    <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Portföye git ›</button></div>
+    <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Portföye git${ic(I.right,14)}</button></div>
     ${kinds.length?`<div class="stack" aria-hidden="true">${kinds.map(([k,v])=>`<i style="flex:${v};background:var(${k==="__cash"?"--c3":(KIND_COLOR[k]||"--c7")})"></i>`).join("")}</div>
     <div class="klist one">${kinds.map(([k,v])=>`<span><i class="dot" style="background:var(${k==="__cash"?"--c3":(KIND_COLOR[k]||"--c7")})"></i>${esc(k==="__cash"?CASH_LBL:(KINDS[k]||k))} <b class="num">%${fmtN(v/t.v*100,0)}</b></span>`).join("")}</div>
     <div class="list tbl">${hHead(hs.length)}${hs.map(h=>hLine(h,mp.id)).join("")}</div>`
@@ -681,8 +741,8 @@ function rOzet(){
   </section>`
   :`<section class="card"><div class="empty"><b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
   ${onMain?"":`<div class="note">Gelir-gider, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}
-  ${!onMain?"":`<section class="card">
-    <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü ›</button></div>
+  ${!onMain?"":`<section class="card side">
+    <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü${ic(I.right,14)}</button></div>
     <div class="flow">
       <dl class="flow-n">
         <div><dt><i class="dot" style="background:var(--pos)"></i>Gelir</dt><dd class="num">${fmt(ms.i)}</dd></div>
@@ -692,8 +752,8 @@ function rOzet(){
       ${flowChart(true)}
     </div>
   </section>`}
-  ${onMain?goalsCard():""}
-  ${onMain&&upcoming.length?`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
+  ${onMain?goalsCard().replace('<section class="card"','<section class="card side"'):""}
+  ${onMain&&upcoming.length?`<section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü${ic(I.right,14)}</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
   `;
 }
 
@@ -758,9 +818,9 @@ function rPortfoy(){
     ${realized?`<div class="sub">Gerçekleşen kâr/zarar (satışlar, komisyon düşülmüş): <b class="num ${realized>=0?"pos-t":"neg-t"}">${fmt(realized)}</b></div>`:""}
   </section>
   ${multi?pfListCard(vis,v):""}
-  ${parts.length?`<section class="card"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`:""}
-  ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
-  ${hs.length?eqvCard(v,hs):""}
+  ${parts.length?`<section class="card side"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`:""}
+  ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi").replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
+  ${hs.length?eqvCard(v,hs).replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
       ${ph.length||pc.length?`<div class="list tbl">${hHead(ph.length)}${ph.map(h=>hRow(h,false)).join("")}${pc.map(closedRow).join("")}</div>`:`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
@@ -860,7 +920,7 @@ function rAkis(){
     return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
       trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":"Öde"}</button>`})};
   const txRow=t=>{const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card";
-    return li({act:"edit-tx",id:t.id,mark:mk(inc?"+":cp?"⇄":"−",inc?"--pos":cp?"--c2":"--neg"),title:cp?"Kart ödemesi":esc(t.cat),
+    return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),inc?"--pos":cp?"--c2":"--accent"),title:cp?"Kart ödemesi":esc(t.cat),
       sub:[cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
       amount:(inc?"+":cp?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})};
   return `
@@ -871,16 +931,16 @@ function rAkis(){
     ${budTot?`<div class="bar" aria-label="Bütçe kullanımı"><i style="width:${Math.min(100,ms.o/budTot*100)}%;background:var(${ms.o>budTot?"--neg":ms.o>budTot*.9?"--warn":"--accent"})"></i></div>`:""}
     ${dayRow}
   </section>
-  ${mainPf()?`<section class="card"><div class="sec"><div style="min-width:0"><h2>Nakit bakiyesi</h2><div class="sub">${cashOn()?`${esc(mainPf().name)} portföyünün zekâtına dahil · özet ve portföyde gösterilmez${S().cashStartDate?" · "+fmtDate(S().cashStartDate)+" tarihinden beri":""}`:"Portföye bağlı değil"}</div></div><div class="end" style="text-align:right"><div class="num" style="font-size:1.15rem;font-weight:600">${cashOn()?`<span class="${cashBal()<0?"neg-t":""}">${fmt(cashBal())}</span>`:"—"}</div><button class="btn ghost sm" data-act="cash-set">Ayarla</button></div></div></section>`:""}
-  <section class="card">
+  ${mainPf()?`<section class="card side"><div class="sec"><div style="min-width:0"><h2>Nakit bakiyesi</h2><div class="sub">${cashOn()?`${esc(mainPf().name)} portföyünün zekâtına dahil · özet ve portföyde gösterilmez${S().cashStartDate?" · "+fmtDate(S().cashStartDate)+" tarihinden beri":""}`:"Portföye bağlı değil"}</div></div><div class="end" style="text-align:right"><div class="num" style="font-size:1.15rem;font-weight:600">${cashOn()?`<span class="${cashBal()<0?"neg-t":""}">${fmt(cashBal())}</span>`:"—"}</div><button class="btn ghost sm" data-act="cash-set">Ayarla</button></div></div></section>`:""}
+  <section class="card side">
     <div class="sec" style="margin-bottom:6px"><h2>Sabit ödemeler</h2><button class="btn ghost sm" data-act="rec-new">Ekle</button></div>
     ${recs.length?`${recOut.length?`<div class="list">${recOut.map(recRow).join("")}</div>`:""}${recIn.length?`<div class="label" style="margin-top:10px">Düzenli gelirler</div><div class="list">${recIn.map(recRow).join("")}</div>`:""}`
       :`<div class="empty"><b>Sabit ödeme yok</b>Kira, faturalar, abonelikler ve maaş gibi her ay tekrar eden kalemleri ekleyin; her ay tek dokunuşla işaretleyin.</div>`}
   </section>
-  <section class="card">
+  <section class="card side">
     <div class="sec" style="margin-bottom:6px"><h2>Kredi kartları</h2><button class="btn ghost sm" data-act="card-new">Kart ekle</button></div>
     ${state.cards.length?`<div class="list">${state.cards.map(c=>{const b=cardBal(c),nd=nextDue(c.dueDay),n=daysBetween(todayISO(),nd);
-      return li({act:"card-edit",id:c.id,mark:mkIcon(I.borc,"--c2"),title:esc(c.name),sub:`Son ödeme ${fmtDate(nd)} · ${n} gün${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}`,
+      return li({act:"card-edit",id:c.id,mark:mkIcon(I.card,"--c2"),title:esc(c.name),sub:`Son ödeme ${fmtDate(nd)} · ${n} gün${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}`,
         extra:c.limit?`<div class="share"><i style="width:${Math.min(100,b.bal/c.limit*100)}%;background:var(${b.bal>c.limit*.9?"--neg":"--c2"})"></i></div>`:"",amount:fmt(b.bal),cls:b.bal>0?"neg-t":"",
         trail:b.bal>0?`<button class="btn sm ${n<=3?"primary":""}" data-act="card-pay" data-id="${c.id}">Öde</button>`:`<span class="pill pos">Borç yok</span>`})}).join("")}</div>
       <div class="sub" style="margin-top:8px">Kartla yapılan harcamalar gider olarak o aya yazılır; kart ödemesi tekrar gider sayılmaz, yalnızca kart borcunu düşürür.</div>`
@@ -954,7 +1014,7 @@ function rZekat(){
     <div><span>Nisap (${fmtN(s.nisabGram)} g)</span><span>${g.gram?fmt(z.nisab):"—"}</span></div>
     <div class="total"><span>Zekât (%2,5)</span><span>${fmt(z.due)}</span></div>
   </div></section>
-  <section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Hicri yıl (havl)</h2>
+  <section class="card side" style="display:flex;flex-direction:column;gap:10px"><h2>Hicri yıl (havl)</h2>
     ${z.hawl?`<div class="kv"><div><span>Dönem başı</span><span style="font-family:var(--f-body)">${fmtH(z.hawl.start)}<br><small class="sub">${fmtDate(z.hawl.start)}</small></span></div><div><span>Zekât günü</span><span style="font-family:var(--f-body)">${fmtH(z.hawl.next)}<br><small class="sub">${fmtDate(z.hawl.next)}</small></span></div><div><span>Kalan</span><span>${z.hawl.left} gün</span></div></div>
     <div class="bar"><i style="width:${Math.min(100,Math.max(0,(z.hawl.total-z.hawl.left)/z.hawl.total*100))}%"></i></div>
     <div class="sub">Bugün ${fmtH(todayISO())}. Zekât günü her yıl aynı hicri tarihte döner.</div>
@@ -964,7 +1024,7 @@ function rZekat(){
     <div style="display:flex;gap:8px;flex-wrap:wrap">${z.reached?`<button class="btn sm primary" data-act="hawl-today">Bugünü zekât günü yap</button>`:""}<button class="btn sm" data-act="zset">Tarih gir</button></div>`}
   </section>
   </div>
-  <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Ödenen zekâtlar</h2></div>
+  <section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Ödenen zekâtlar</h2></div>
     ${state.zakatPaid.some(p=>p.pf===z.owner)?`<div class="list">${state.zakatPaid.filter(p=>p.pf===z.owner).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>li({act:"edit-zp",id:p.id,mark:mkIcon(I.zekat,"--accent"),title:esc(p.note||"Zekât ödemesi"),sub:fmtH(p.date)+" · "+fmtDate(p.date),amount:fmt(p.amount,p.cur)})).join("")}</div>`:`<div class="empty"><b>Henüz ödeme kaydı yok</b>Verdiğiniz zekâtı kaydederek kalan tutarı izleyin.</div>`}
   </section>
   <p class="sub" style="margin:0">Gram fiyatı, Reşat altının alış fiyatı 7,2'ye bölünerek bulunur. Hesap bilgilendirme amaçlıdır; fıkhi ayrıntılar için bir hocaya danışın.</p>`;
@@ -1027,7 +1087,7 @@ function rAyarlar(){
 
 /* ---------- sheet ---------- */
 let sheetOnClose=null;
-function openSheet(html,bind){const w=$("#sheetWrap"),sh=$("#sheet");sh.innerHTML='<div class="grip"></div>'+html;w.hidden=false;document.body.style.overflow="hidden";bind&&bind(sh);const f=sh.querySelector("input,select,button:not(.btn.ghost)");f&&setTimeout(()=>f.focus({preventScroll:true}),50)}
+function openSheet(html,bind){const w=$("#sheetWrap"),sh=$("#sheet");sh.innerHTML=html.replace(/<h3>([\s\S]*?)<\/h3>/,(_,t)=>`<div class="sh-head"><div class="grip"></div><div class="sh-title"><h3>${t}</h3><button type="button" class="icon-btn sh-x" aria-label="Kapat">${I.x}</button></div></div>`);const xb=sh.querySelector(".sh-x");if(xb)xb.onclick=closeSheet;sh.scrollTop=0;w.hidden=false;document.body.style.overflow="hidden";bind&&bind(sh);const f=sh.querySelector(".field.big input")||sh.querySelector("input:not([type=hidden]),select,button:not(.btn.ghost):not(.sh-x)");f&&setTimeout(()=>f.focus({preventScroll:true}),50)}
 function closeSheet(){$("#sheetWrap").hidden=true;$("#sheet").innerHTML="";document.body.style.overflow=""}
 $("#scrim").onclick=closeSheet;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheetWrap").hidden)closeSheet()});
@@ -1038,7 +1098,7 @@ function field(f){
   if(f.type==="select")return `<div class="field" id="w_${f.id}" ${f.hidden?"hidden":""}><label for="${id}">${f.label}</label><select id="${id}" name="${f.id}">${f.options.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(f.value)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
   if(f.type==="seg")return `<div class="field"><label>${f.label}</label><div class="seg full" role="group" data-seg="${f.id}">${f.options.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${f.value===v}">${l}</button>`).join("")}</div><input type="hidden" name="${f.id}" value="${esc(f.value)}"></div>`;
   const dl=f.list?`<datalist id="${id}_dl">${f.list.map(o=>`<option value="${esc(o)}">`).join("")}</datalist>`:"";
-  return `<div class="field" id="w_${f.id}"><label for="${id}">${f.label}</label>${dl}<input ${f.list?`list="${id}_dl"`:""} id="${id}" name="${f.id}" type="${f.type==="number"?"text":f.type||"text"}" ${f.type==="number"?'inputmode="decimal"':""} value="${esc(f.type==="number"&&f.value!==""&&f.value!=null?String(f.value).replace(".",","):f.value??"")}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`;
+  return `<div class="field${f.big?" big":""}" id="w_${f.id}"><label for="${id}">${f.label}</label>${dl}<input ${f.list?`list="${id}_dl"`:""} id="${id}" name="${f.id}" type="${f.type==="number"?"text":f.type||"text"}" ${f.type==="number"?'inputmode="decimal"':""} value="${esc(f.type==="number"&&f.value!==""&&f.value!=null?String(f.value).replace(".",","):f.value??"")}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`;
 }
 /* yazdıkça öneri: kod başlangıcına veya adın içine göre eşleşir */
 function attachSugg(inp,getList,onPick){
@@ -1065,11 +1125,10 @@ function attachSugg(inp,getList,onPick){
 }
 function formSheet({title,fields,onSave,onDelete,extra="",onChange,onOpen}){
   const rows=fields.map(f=>Array.isArray(f)?`<div class="frow">${f.map(field).join("")}</div>`:field(f)).join("");
-  openSheet(`<h3>${title}</h3><form class="form" id="sf" novalidate>${rows}${extra}<div class="err" id="sfErr"></div><div class="actions">${onDelete?`<button type="button" class="btn danger" id="sfDel">Sil</button>`:""}<div class="r"><button type="button" class="btn" id="sfCancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></div></form>`,sh=>{
+  openSheet(`<h3>${title}</h3><form class="form" id="sf" novalidate>${rows}${extra}<div class="err" id="sfErr"></div><div class="actions">${onDelete?`<button type="button" class="btn danger" id="sfDel">${ic(I.trash,18)}<span>Sil</span></button>`:""}<button type="submit" class="btn primary grow">Kaydet</button></div></form>`,sh=>{
     const form=sh.querySelector("#sf");
     sh.querySelectorAll("[data-seg]").forEach(g=>g.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;g.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));form.elements[g.dataset.seg].value=b.dataset.v;onChange&&onChange(form,g.dataset.seg)}));
     form.addEventListener("change",e=>onChange&&onChange(form,e.target.name));
-    sh.querySelector("#sfCancel").onclick=closeSheet;
     form.addEventListener("submit",e=>{e.preventDefault();const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const err=onSave(vals);if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()});
     if(onDelete){const d=sh.querySelector("#sfDel");d.onclick=()=>{if(d.dataset.c){withUndo(onDelete);closeSheet()}else{d.dataset.c="1";d.textContent="Evet, sil";d.classList.add("solid")}}}
     onOpen&&onOpen(form,sh);
@@ -1183,27 +1242,27 @@ function fxForDate(d){if(!d||d===todayISO())return{USD:rate("USD"),EUR:rate("EUR
 function holdingDetail(pfId,h){
   const pf=state.portfolios.find(p=>p.id===pfId);const ep=effPrice(h);const val=hVal(h),cs=hCost(h);
   const tr=(h.trades||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  openSheet(`<h3>${esc(h.name)}${h.symbol?` <span class="sub">${esc(h.symbol)}</span>`:""}</h3>
-    <div class="kv" style="margin-bottom:12px">
-      <div><span>Miktar</span><span>${fmtN(h.qty,4)}</span></div>
-      <div><span>Ortalama maliyet (komisyon dahil)</span><span>${S().hide?"••":fmtN(h.cost,4)+" "+esc(h.cur)}</span></div>
-      <div><span>Güncel fiyat${ep.auto?" (oto)":""}</span><span>${S().hide?"••":fmtN(ep.p,4)+" "+esc(h.cur)}</span></div>
-      <div class="total"><span>Değer</span><span>${fmt(val)}</span></div>
-      <div><span>Açık kâr/zarar</span><span class="${val>=cs?"pos-t":"neg-t"}">${fmt(val-cs)} (${fmtPct(cs?(val-cs)/cs*100:0)})</span></div>
-      ${(()=>{const u=ufeInfo(h);if(!u)return ufe&&!h.buyDate?`<div><span>Yİ-ÜFE'ye göre</span><span class="sub" style="font-family:var(--f-body)">alış tarihi gerekli</span></div>`:"";const inc=(u.ratio-1)*100;
+  const pl=val-cs,plp=cs?pl/cs*100:0;
+  const rest=`      ${(()=>{const u=ufeInfo(h);if(!u)return ufe&&!h.buyDate?`<div><span>Yİ-ÜFE'ye göre</span><span class="sub" style="font-family:var(--f-body)">alış tarihi gerekli</span></div>`:"";const inc=(u.ratio-1)*100;
         return `<div><span>Yİ-ÜFE ile güncel TL maliyet<br><small class="sub">${u.multi?"alımlar ayrı ayrı · ":""}${fmtYM(u.from)} → ${fmtYM(u.to)} · endeks artışı ${fmtPct(inc)}</small></span><span>${fmt(u.cost)}</span></div>
         <div><span>Reel kâr/zarar (Yİ-ÜFE)</span><span class="${val>=u.cost?"pos-t":"neg-t"}">${fmt(val-u.cost)} (${fmtPct(u.cost?(val-u.cost)/u.cost*100:0)})</span></div>
         ${inc>=10?`<div><span class="sub" style="font-family:var(--f-body);text-align:left">Endeks artışı %10'u aştığı için değer artış kazancı vergisinde maliyet bu yöntemle endekslenebilir. Vergi durumu varlık türüne ve elde tutma süresine göre değişir.</span></div>`:""}`})()}
       ${+h.realized?`<div><span>Gerçekleşen kâr/zarar</span><span class="${h.realized>=0?"pos-t":"neg-t"}">${fmt(+h.realized,h.cur)}</span></div>`:""}
       ${h.fxAt?`<div><span>Alış günü kuru${h.fxAt.multi?" (ağırlıklı)":""}<br><small class="sub">${esc(h.fxAt.src||"")}${h.fxAt.pending?" · bazı alımların kuru bekleniyor":""}</small></span><span>USD ${fmtN(h.fxAt.USD,4)}${+h.fxAt.EUR?"<br>EUR "+fmtN(h.fxAt.EUR,4):""}</span></div>
       <div><span>${h.cur==="USD"?"TL maliyeti":"Dolar maliyeti"}</span><span>${h.cur==="USD"?fmt(costIn(h,"TRY"),"TRY"):fmt(costIn(h,"USD"),"USD")}</span></div>
-      ${h.cur==="USD"?"":`<div><span>Dolar bazında kâr/zarar</span><span class="${(val*rate(S().base)/rate("USD"))>=costIn(h,"USD")?"pos-t":"neg-t"}">${fmt(val*rate(S().base)/rate("USD")-costIn(h,"USD"),"USD")}</span></div>`}`:fxWaiting(h)?`<div><span>Alış günü kuru</span><span style="font-family:var(--f-body)" class="sub">bekleniyor</span></div>`:""}
+      ${h.cur==="USD"?"":`<div><span>Dolar bazında kâr/zarar</span><span class="${(val*rate(S().base)/rate("USD"))>=costIn(h,"USD")?"pos-t":"neg-t"}">${fmt(val*rate(S().base)/rate("USD")-costIn(h,"USD"),"USD")}</span></div>`}`:fxWaiting(h)?`<div><span>Alış günü kuru</span><span style="font-family:var(--f-body)" class="sub">bekleniyor</span></div>`:""}`.trim();
+  openSheet(`<h3>${mkIcon(KIND_ICON[h.kind]||I.dots,KIND_COLOR[h.kind]||"--c7")}<span class="h3-t">${esc(h.name)}<small>${[h.symbol,KINDS[h.kind]].filter(Boolean).map(esc).join(" · ")}</small></span></h3>
+    <div class="dsum"><div><span class="label">Değer</span><div class="dv num">${fmt(val)}</div></div><span class="chg ${pl>=0?"up":"down"}"><b class="num">${pl>=0?"▲":"▼"} ${fmt(Math.abs(pl))}</b><span class="num">%${fmtN(Math.abs(plp),1)}</span></span></div>
+    <div class="tiles">
+      <div><span class="label">Miktar</span><b class="num">${fmtN(h.qty,4)}</b></div>
+      <div><span class="label">Toplam maliyet</span><b class="num">${fmt(cs)}</b></div>
+      <div><span class="label">Ortalama maliyet</span><b class="num">${S().hide?"••":fmtN(h.cost,4)+" "+esc(h.cur)}</b></div>
+      <div><span class="label">Güncel fiyat${ep.auto?" · otomatik":""}</span><b class="num">${S().hide?"••":fmtN(ep.p,4)+" "+esc(h.cur)}</b></div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="hBuy">Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">Satış yap</button>`:""}<button class="btn" id="hEdit">Düzenle</button></div>
-    <div class="label" style="margin-top:16px">İşlem geçmişi</div>
-    ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:8px 0">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}
-    <div class="actions"><span></span><div class="r"><button class="btn" id="hClose">Kapat</button></div></div>`,sh=>{
-      sh.querySelector("#hClose").onclick=closeSheet;
+    ${rest?`<div class="kv">${rest}</div>`:""}
+    <div class="label sh-sec">İşlem geçmişi</div>
+    ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:4px 0 8px">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}
+    <div class="actions eq"><button class="btn primary" id="hBuy">${ic(I.buy)}Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">${ic(I.sell)}Satış yap</button>`:""}<button class="btn" id="hEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
       sh.querySelector("#hEdit").onclick=()=>{closeSheet();holdingSheet(pfId,h)};
       sh.querySelector("#hBuy").onclick=()=>{closeSheet();tradeSheet(pfId,h,"buy")};
       const sb=sh.querySelector("#hSell");if(sb)sb.onclick=()=>{closeSheet();tradeSheet(pfId,h,"sell")};
@@ -1242,7 +1301,7 @@ function tradeSheet(pfId,h,type,tr){
 }
 function tradeRow(h,t,showName,pfId){
   const tot=(+t.qty||0)*(+t.price||0),buy=t.type==="buy";
-  return `<button class="row" type="button" data-act="edit-tr" data-pf="${pfId}" data-h="${h.id}" data-id="${t.id}"><div class="av" style="color:var(${buy?"--pos":"--neg"})">${buy?"AL":"SAT"}</div><div class="main"><div class="t">${showName?esc(h.name):`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)} ${esc(h.cur)}</span>`}</div><div class="s">${showName?`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)}</span> · `:""}${t.date?fmtDate(t.date):"tarih yok"}${+t.fee?" · komisyon "+(S().hide?"••":fmtN(t.fee,2)):""}${buy&&t.fx&&h.cur!=="USD"?" · USD "+fmtN(t.fx.USD,2):""}${buy&&t.fx&&h.cur==="USD"?" · kur "+fmtN(t.fx.USD,2):""}${!buy&&+t.tax?" · stopaj "+(S().hide?"••":fmtN(t.tax,2)):""}${t.legacy?" · açılış kaydı":""}${t.note?" · "+esc(t.note):""}</div></div><div class="end"><div class="num">${buy?"":"+"}${fmt(tot,h.cur)}</div>${!buy&&t.pl!=null?`<span class="pill ${t.pl>=0?"pos":"neg"}">K/Z ${fmt(t.pl,h.cur)}</span>`:""}</div></button>`;
+  return `<button class="row" type="button" data-act="edit-tr" data-pf="${pfId}" data-h="${h.id}" data-id="${t.id}">${mkIcon(buy?I.buy:I.sell,buy?"--pos":"--neg")}<span class="sr">${buy?"Alım":"Satış"}</span><div class="main"><div class="t">${showName?esc(h.name):`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)} ${esc(h.cur)}</span>`}</div><div class="s">${showName?`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)}</span> · `:""}${t.date?fmtDate(t.date):"tarih yok"}${+t.fee?" · komisyon "+(S().hide?"••":fmtN(t.fee,2)):""}${buy&&t.fx&&h.cur!=="USD"?" · USD "+fmtN(t.fx.USD,2):""}${buy&&t.fx&&h.cur==="USD"?" · kur "+fmtN(t.fx.USD,2):""}${!buy&&+t.tax?" · stopaj "+(S().hide?"••":fmtN(t.tax,2)):""}${t.legacy?" · açılış kaydı":""}${t.note?" · "+esc(t.note):""}</div></div><div class="end"><div class="num">${buy?"":"+"}${fmt(tot,h.cur)}</div>${!buy&&t.pl!=null?`<span class="pill ${t.pl>=0?"pos":"neg"}">K/Z ${fmt(t.pl,h.cur)}</span>`:""}</div></button>`;
 }
 function methodOpts(){return [["cash","Nakit / banka kartı"],...state.cards.map(c=>[c.id,"Kart · "+c.name])]}
 function txSheet(t,preset){
@@ -1251,7 +1310,7 @@ function txSheet(t,preset){
   const hasCards=state.cards.length>0;
   formSheet({title:t?"İşlemi düzenle":"Gelir / gider ekle",fields:[
     {id:"type",label:"Tür",type:"seg",value:type,options:hasCards?[["out","Gider"],["in","Gelir"],["card","Kart ödemesi"]]:[["out","Gider"],["in","Gelir"]]},
-    [{id:"amount",label:"Tutar",type:"number",value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CURS}],
+    [{id:"amount",label:"Tutar",type:"number",big:true,value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CURS}],
     [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:catOpts(type)},{id:"date",label:"Tarih",type:"date",value:t?t.date:todayISO()}],
     ...(hasCards?[[{id:"method",label:"Ödeme şekli",type:"select",value:t?(t.method||"cash"):"cash",options:methodOpts()},{id:"inst",label:"Taksit sayısı",type:"select",value:"1",options:[["1","Tek çekim"],...[2,3,4,5,6,9,12].map(n=>[String(n),n+" taksit"])]}],
       {id:"card",label:"Ödenen kart",type:"select",value:t&&t.card||(preset&&preset.card)||state.cards[0].id,options:state.cards.map(c=>[c.id,c.name])}]:[]),
@@ -1346,7 +1405,7 @@ function goalSheet(g){
     {id:"pf",label:"Portföy",type:"select",value:g&&g.pf||(state.portfolios[0]||{}).id||"",options:state.portfolios.map(p=>[p.id,pfName(p.id)])}],
     extra:`<div class="field" id="w_hsel"><label>Hedefe ait varlıklar</label><div class="hsel">${state.portfolios.flatMap(p=>p.holdings.filter(h=>+h.qty>0).map(h=>`<label class="hck"><input type="checkbox" name="hsel" value="${h.id}" ${g&&(g.hs||[]).includes(h.id)?"checked":""}><span><b>${esc(h.name)}</b><small>${esc(h.symbol||KINDS[h.kind]||"")} · ${esc(p.name)} · ${fmt(hVal(h),null,{dec:0})}</small></span></label>`)).join("")||`<div class="sub">Önce portföye varlık ekleyin.</div>`}</div></div>
     <div class="note">"Seçtiğim varlıklar": örneğin KLU fonu ve para piyasası fonunuzu işaretlerseniz, bu varlıkların güncel değeri hedefe ilerleme sayılır; alım yaptıkça hedef de kendiliğinden ilerler. "Ayırdığım tutarlar" seçilirse hedefe her para ayırdığınızda kaydedersiniz. "Bir portföyün değeri" seçilirse, örneğin hedef için açtığınız ayrı bir portföyün güncel değeri ilerleme sayılır.</div>`,
-    onOpen:(form,sh)=>{const upd=()=>{const v=form.elements.src.value;sh.querySelector("#w_pf").hidden=v!=="pf";sh.querySelector("#w_hsel").hidden=v!=="hs"};form.addEventListener("click",()=>setTimeout(upd,0));upd()},
+    onOpen:(form,sh)=>{const upd=()=>{if(!sh.querySelector("#w_pf"))return;const v=form.elements.src.value;sh.querySelector("#w_pf").hidden=v!=="pf";sh.querySelector("#w_hsel").hidden=v!=="hs"};form.addEventListener("click",()=>setTimeout(upd,0));upd()},
     onSave:v=>{const t=parseNum(v.target);if(!v.name.trim())return"Hedef adını girin.";if(!(t>0))return"Hedef tutarı girin.";if(v.src==="pf"&&!v.pf)return"Önce bir portföy oluşturun.";
       const hs=[...document.querySelectorAll('#sf input[name="hsel"]:checked')].map(x=>x.value);if(v.src==="hs"&&!hs.length)return"Hedefe ait en az bir varlık seçin.";
       const d={name:v.name.trim(),target:t,unit:v.unit,due:v.due||"",src:v.src,pf:v.src==="pf"?v.pf:"",hs:v.src==="hs"?hs:[]};
@@ -1356,15 +1415,19 @@ function goalSheet(g){
 function goalDetail(g){
   const r=goalProg(g),sv=(g.saves||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
   openSheet(`<h3>${esc(g.name)}</h3>
-    <div class="kv" style="margin-bottom:12px"><div><span>Biriken</span><span>${fmtU(r.cur,g.unit)}</span></div><div><span>Hedef</span><span>${fmtU(r.tgt,g.unit)}</span></div><div class="total"><span>Kalan</span><span>${fmtU(r.left,g.unit)}</span></div>
-      ${g.due?`<div><span>Hedef tarih</span><span>${fmtDate(g.due)} · ${r.months} ay</span></div>${r.left>0&&r.months>0?`<div><span>Aylık ayırmanız gereken</span><span>${fmtU(r.monthly,g.unit)}</span></div>`:""}`:""}</div>
-    <div class="bar" style="margin-bottom:14px"><i style="width:${r.pct}%;background:var(${r.done?"--pos":"--accent"})"></i></div>
-    ${g.src==="manual"?`<form class="form" id="gsF" novalidate><div class="label">Para ayır</div><div class="frow"><div class="field"><label for="gsA">Tutar (${esc((GUNITS.find(u=>u[0]===g.unit)||[0,g.unit])[1])})</label><input id="gsA" inputmode="decimal" placeholder="0"></div><div class="field"><label for="gsD">Tarih</label><input id="gsD" type="date" value="${todayISO()}"></div></div><div class="err" id="gsErr"></div><div style="display:flex;gap:8px"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="gsW">Çek</button></div></form>
-    <div class="label" style="margin-top:16px">Hareketler</div>${sv.length?`<div class="list">${sv.map(x=>`<div class="row"><div class="main"><div class="t num ${x.amount<0?"neg-t":""}">${x.amount>0?"+":""}${fmtU(x.amount,g.unit)}</div><div class="s">${fmtDate(x.date)}</div></div><button class="btn ghost sm" data-del-gs="${x.id}">Kaldır</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz kayıt yok.</div>`}`
+    <div class="dsum"><div><span class="label">Biriken</span><div class="dv num">${fmtU(r.cur,g.unit)}</div></div><span class="chg ${r.done?"up":""}"><b class="num">%${fmtN(r.pct,0)}</b><span>${r.done?"tamamlandı":"tamam"}</span></span></div>
+    <div class="bar"><i style="width:${r.pct}%;background:var(${r.done?"--pos":"--accent"})"></i></div>
+    <div class="tiles">
+      <div><span class="label">Hedef</span><b class="num">${fmtU(r.tgt,g.unit)}</b></div>
+      <div><span class="label">Kalan</span><b class="num">${fmtU(r.left,g.unit)}</b></div>
+      ${g.due?`<div><span class="label">Hedef tarih</span><b>${fmtDate(g.due)}</b></div>${r.left>0&&r.months>0?`<div><span class="label">Aylık ayırmanız gereken · ${r.months} ay</span><b class="num">${fmtU(r.monthly,g.unit)}</b></div>`:""}`:""}
+    </div>
+    ${g.src==="manual"?`<form class="form" id="gsF" novalidate><div class="label sh-sec">Para ayır</div><div class="frow"><div class="field"><label for="gsA">Tutar (${esc((GUNITS.find(u=>u[0]===g.unit)||[0,g.unit])[1])})</label><input id="gsA" inputmode="decimal" placeholder="0"></div><div class="field"><label for="gsD">Tarih</label><input id="gsD" type="date" value="${todayISO()}"></div></div><div class="err" id="gsErr"></div><div style="display:flex;gap:8px"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="gsW">Çek</button></div></form>
+    <div class="label sh-sec">Hareketler</div>${sv.length?`<div class="list">${sv.map(x=>`<div class="row"><div class="main"><div class="t num ${x.amount<0?"neg-t":""}">${x.amount>0?"+":""}${fmtU(x.amount,g.unit)}</div><div class="s">${fmtDate(x.date)}</div></div><button class="icon-btn sm" data-del-gs="${x.id}" aria-label="Kaydı kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz kayıt yok.</div>`}`
     :g.src==="hs"?`<div class="label">Hedefe ait varlıklar</div><div class="list">${goalHs(g).map(h=>`<div class="row"><div class="main"><div class="t">${esc(h.name)}</div><div class="s">${esc(h.symbol||KINDS[h.kind]||"")}</div></div><div class="end num">${fmtU(toUnit(hVal(h),g.unit),g.unit)}</div></div>`).join("")||`<div class="sub">Seçili varlık bulunamadı; hedefi düzenleyip yeniden seçin.</div>`}</div>`
     :`<div class="note">İlerleme, ${esc((state.portfolios.find(p=>p.id===g.pf)||{}).name||"seçili portföy")} portföyünün güncel değerinden hesaplanıyor.</div>`}
-    <div class="actions"><button class="btn" id="gEdit">Düzenle</button><div class="r"><button class="btn" id="gClose">Kapat</button></div></div>`,sh=>{
-      sh.querySelector("#gClose").onclick=closeSheet;sh.querySelector("#gEdit").onclick=()=>{closeSheet();goalSheet(g)};
+    <div class="actions eq"><button class="btn" id="gEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
+      sh.querySelector("#gEdit").onclick=()=>{closeSheet();goalSheet(g)};
       const f=sh.querySelector("#gsF");
       const add=sign=>{const a=parseNum(sh.querySelector("#gsA").value);if(!(a>0)){sh.querySelector("#gsErr").textContent="Geçerli bir tutar girin.";return}g.saves=g.saves||[];g.saves.push({id:uid(),amount:sign*a,date:sh.querySelector("#gsD").value||todayISO()});commit(sign>0?"Hedefe eklendi":"Hedeften çekildi");goalDetail(g)};
       if(f){f.onsubmit=e=>{e.preventDefault();add(1)};sh.querySelector("#gsW").onclick=()=>add(-1)}
@@ -1375,8 +1438,7 @@ function budgetSheet(){
   const b=state.budgets||{};
   openSheet(`<h3>Aylık bütçe</h3><form class="form" id="bf" novalidate><div class="sub">Her kategori için aylık üst sınır girin (${esc(S().base)}). Boş bırakılanlar bütçeye dahil edilmez.</div>
     ${CATS.out.map((c,i)=>`<div class="set-row" style="padding:6px 0"><label for="b_${i}" class="lbl">${esc(c)}</label><input class="inline-in" id="b_${i}" data-c="${esc(c)}" inputmode="decimal" placeholder="—" value="${+b[c]>0?String(b[c]).replace(".",","):""}"></div>`).join("")}
-    <div class="err" id="bErr"></div><div class="actions"><span></span><div class="r"><button type="button" class="btn" id="bC">Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form>`,sh=>{
-    sh.querySelector("#bC").onclick=closeSheet;
+    <div class="err" id="bErr"></div><div class="actions"><button class="btn primary grow" type="submit">Kaydet</button></div></form>`,sh=>{
     sh.querySelector("#bf").onsubmit=e=>{e.preventDefault();const nb={};for(const inp of sh.querySelectorAll("input[data-c]")){const raw=inp.value.trim();if(!raw)continue;const v=parseNum(raw);if(isNaN(v)||v<0){sh.querySelector("#bErr").textContent=inp.dataset.c+" için geçerli bir tutar girin.";return}if(v>0)nb[inp.dataset.c]=v}
       state.budgets=nb;closeSheet();commit("Bütçe kaydedildi")};
   });
@@ -1397,12 +1459,18 @@ function debtSheet(d){
 function debtDetail(d){
   const left=debtLeft(d);
   openSheet(`<h3>${esc(d.person)}</h3>
-    <div class="kv" style="margin-bottom:12px"><div><span>${d.dir==="lent"?"Verdiğim":"Aldığım"} tutar</span><span>${fmt(d.amount,d.cur)}</span></div><div><span>Ödenen</span><span>${fmt(debtPaid(d),d.cur)}</span></div><div class="total"><span>Kalan</span><span>${fmt(left,d.cur)}</span></div>${d.due?`<div><span>Vade</span><span>${fmtDate(d.due)}</span></div>`:""}${d.note?`<div><span>Not</span><span style="font-family:var(--f-body)">${esc(d.note)}</span></div>`:""}</div>
-    ${left>0?`<form class="form" id="payF" novalidate><div class="label">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">Tutar (${esc(d.cur)})</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div><div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
-    <div class="label" style="margin-top:16px">Ödeme geçmişi</div>
-    ${d.payments.length?`<div class="list">${d.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<div class="row"><div class="main"><div class="t num">${fmt(p.amount,d.cur)}</div><div class="s">${fmtDate(p.date)}</div></div><button class="btn ghost sm" data-del-pay="${p.id}">Kaldır</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz ödeme yok.</div>`}
-    <div class="actions"><button class="btn" id="dEdit">Düzenle</button><div class="r"><button class="btn" id="dClose">Kapat</button></div></div>`,sh=>{
-      sh.querySelector("#dClose").onclick=closeSheet;
+    <div class="dsum"><div><span class="label">${d.dir==="lent"?"Kalan alacak":"Kalan borç"}</span><div class="dv num">${fmt(left,d.cur)}</div></div>${left<=0?`<span class="chg up"><b>Kapandı</b></span>`:d.due?(n=>`<span class="chg ${n<0?"down":""}"><b>${n<0?-n+" gün gecikti":n+" gün kaldı"}</b></span>`)(daysBetween(todayISO(),d.due)):""}</div>
+    <div class="bar"><i style="width:${+d.amount?Math.min(100,debtPaid(d)/d.amount*100):0}%;background:var(${d.dir==="lent"?"--pos":"--neg"})"></i></div>
+    <div class="tiles">
+      <div><span class="label">${d.dir==="lent"?"Verdiğim":"Aldığım"} tutar</span><b class="num">${fmt(d.amount,d.cur)}</b></div>
+      <div><span class="label">${d.dir==="lent"?"Tahsil edilen":"Ödenen"}</span><b class="num">${fmt(debtPaid(d),d.cur)}</b></div>
+      ${d.due?`<div><span class="label">Vade</span><b>${fmtDate(d.due)}</b></div>`:""}
+      ${d.note?`<div class="w2"><span class="label">Not</span><b class="txt">${esc(d.note)}</b></div>`:""}
+    </div>
+    ${left>0?`<form class="form" id="payF" novalidate><div class="label sh-sec">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">Tutar (${esc(d.cur)})</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div><div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
+    <div class="label sh-sec">Ödeme geçmişi</div>
+    ${d.payments.length?`<div class="list">${d.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<div class="row"><div class="main"><div class="t num">${fmt(p.amount,d.cur)}</div><div class="s">${fmtDate(p.date)}</div></div><button class="icon-btn sm" data-del-pay="${p.id}" aria-label="Ödemeyi kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz ödeme yok.</div>`}
+    <div class="actions eq"><button class="btn" id="dEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
       sh.querySelector("#dEdit").onclick=()=>{closeSheet();debtSheet(d)};
       const f=sh.querySelector("#payF");
       const add=a=>{d.payments.push({id:uid(),amount:a,date:sh.querySelector("#payD").value||todayISO()});commit(debtLeft(d)<=0?"Kayıt kapandı":"Ödeme eklendi");debtDetail(d)};
