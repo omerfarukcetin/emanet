@@ -1,29 +1,29 @@
 {
- "updatedAt": "2026-11-11T18:04:23.058Z",
+ "updatedAt": "2026-11-11T18:20:04.363Z",
  "fx": {
-  "EUR": 55.7653,
-  "USD": 50.2355
+  "EUR": 55.7694,
+  "USD": 50.234
  },
  "gold": {
-  "ata": 43316,
+  "ata": 43299,
   "aziz": null,
-  "ceyrek": 10589,
-  "cumhuriyet": 43316,
-  "gram": 6449.28,
-  "gumus": 84.01,
-  "hamit": 43316,
-  "resat": 43316,
-  "resatAlis": 42150.08,
-  "resatSatis": 42828.09,
-  "tam": 42189,
-  "yarim": 21172,
+  "ceyrek": 10585,
+  "cumhuriyet": 43299,
+  "gram": 6447.27,
+  "gumus": 84.04,
+  "hamit": 43299,
+  "resat": 43299,
+  "resatAlis": 42160.03,
+  "resatSatis": 42839.03,
+  "tam": 42172,
+  "yarim": 21164,
   "resatKaynak": "altin.in"
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 7.52,
+   "p": 7.48,
    "cur": "USD",
-   "t": "2026-11-11T18:03:48.000Z"
+   "t": "2026-11-11T18:19:25.000Z"
   },
   "hisse:SOKE": {
    "p": 7.09,
@@ -51,8 +51,6 @@
    "t": "2026-11-11"
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
- "errors": [
-  "KLU: fon fiyatı alınamadı (fetch failed)"
- ]
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "errors": []
 }
