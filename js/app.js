@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.16";
+const APP_VERSION="2.17";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -782,10 +782,9 @@ function rOzet(){
     <div class="subrow">${eqvChips(t.v)}</div>
   </section>
   ${onMain?attnCard():""}
-  ${mp&&hs.length?histCard([mp.id],"Değer geçmişi"):""}
   ${mp?`<section class="card">
-    <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Portföye git${ic(I.right,14)}</button></div>
-    ${kinds.length?assetTable(hs,t.v,{ctx:"ozet",pf:mp.id})
+    <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Ayrıntı${ic(I.right,14)}</button></div>
+    ${kinds.length?kindList(hs,t.v,mp.id)
     :`<div class="empty"><b>Bu portföyde varlık yok</b>Portföy sekmesinden varlık ekleyebilirsiniz.</div>`}
     ${others>0?`<div class="sub" style="margin-top:8px">${others} portföy daha var; hepsini Portföy sekmesinde görebilirsiniz.</div>`:""}
   </section>`
@@ -1029,6 +1028,13 @@ function vcell(x,h,n){
   else if(m==="price"&&h){const ep=effPrice(h);a=`<b class="num">${fmtN(ep.p,ep.p<10?4:2)} <i>${esc(h.cur)}</i></b>`;b=x.day?`<small class="num ${x.day.pct>=0?"pos-t":"neg-t"}">${dayLabel()==="bugün"?"bugün ":""}${fmtPct(x.day.pct)}</small>`:`<small>${ep.auto?"otomatik":"elle girildi"}</small>`}
   else{a=`<b class="num">${fmt(x.v,x.cur,{dec:0})}</b>`;b=`<small class="num">%${fmtN(x.share,x.share<10?1:0)}</small>`}
   return `<button class="vcell" data-act="colnext" aria-label="${COLS.find(c=>c[0]===m)[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun">${a}${b}</button>`;
+}
+/* Özet için kısa liste: yalnızca kategoriler, değer ve günlük değişim. Ayrıntı Portföy sayfasındadır. */
+function kindList(hs,total,pfId){
+  const by={};hs.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
+  const cats=Object.entries(by).map(([k,list])=>({k,x:cellData(list,total),v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
+  return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
+  <div class="atbl compact">${cats.map(c=>`<div class="arow cat" role="button" tabindex="0" data-act="open-pf" data-id="${pfId}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[c.k]||"--c7"})"></i><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}</span><small class="kshare num">%${fmtN(c.x.share,0)}</small></span><span class="vcell static">${c.x.day?`<small class="num ${c.x.day.pct>=0?"pos-t":"neg-t"}">${fmtPct(c.x.day.pct)}</small>`:""}<b class="num">${fmt(c.x.v,c.x.cur,{dec:0})}</b></span></div>`).join("")}</div>`;
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();

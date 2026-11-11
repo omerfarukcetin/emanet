@@ -725,3 +725,8 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .scan{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
 .scan .btn{flex:none;background:var(--surface)}
 .scan .sub{font-size:.78rem;line-height:1.35}
+
+/* ================= 2.17: Özet'te kısa kategori listesi ================= */
+.kshare{font-size:.74rem;color:var(--muted)}
+.atbl.compact .vcell.static{flex-direction:row;align-items:baseline;gap:8px}
+.atbl.compact .arow.closed .vcell.static{flex-direction:row-reverse}
