@@ -62,10 +62,13 @@ create policy "push_sil"      on public.emanet_push for delete to authenticated 
 revoke all on public.emanet_push from anon;
 grant select, insert, update, delete on public.emanet_push to authenticated;
 
-create or replace function public.emanet_push_list(secret text)
-returns table (endpoint text, prefs jsonb, weights jsonb, last_poke date, last_big date)
+alter table public.emanet_push add column if not exists fired jsonb not null default '{}'::jsonb;
+
+drop function if exists public.emanet_push_list(text);
+create function public.emanet_push_list(secret text)
+returns table (endpoint text, prefs jsonb, weights jsonb, last_poke date, last_big date, fired jsonb)
 language sql security definer set search_path = public as $$
-  select p.endpoint, p.prefs, p.weights, p.last_poke, p.last_big from public.emanet_push p
+  select p.endpoint, p.prefs, p.weights, p.last_poke, p.last_big, p.fired from public.emanet_push p
   where encode(sha256(convert_to(secret, 'UTF8')), 'hex') = 'f1dc2fa04692b3944bba7d1b8416499e7e3a636c899ba9486f7e66d0f10a35a0';
 $$;
 create or replace function public.emanet_push_mark(secret text, ep text, kind text, d date)
@@ -74,6 +77,8 @@ begin
   if encode(sha256(convert_to(secret, 'UTF8')), 'hex') <> 'f1dc2fa04692b3944bba7d1b8416499e7e3a636c899ba9486f7e66d0f10a35a0' then return; end if;
   if kind = 'gone' then delete from public.emanet_push where endpoint = ep;
   elsif kind = 'big' then update public.emanet_push set last_big = d where endpoint = ep;
+  elsif kind like 'alert:%' then update public.emanet_push set fired = fired || jsonb_build_object(substr(kind, 7), d::text) where endpoint = ep;
+  elsif kind like 'rearm:%' then update public.emanet_push set fired = fired - substr(kind, 7) where endpoint = ep;
   else update public.emanet_push set last_poke = d where endpoint = ep;
   end if;
 end $$;
@@ -81,3 +86,21 @@ revoke all on function public.emanet_push_list(text) from public;
 revoke all on function public.emanet_push_mark(text, text, text, date) from public;
 grant execute on function public.emanet_push_list(text) to anon, authenticated;
 grant execute on function public.emanet_push_mark(text, text, text, date) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Otomatik yedek: her kullanıcı için günde bir kopya (uygulama 35 günden eskileri siler).
+-- Satırları yalnızca sahibi görür ve değiştirir.
+-- ---------------------------------------------------------------------------
+create table if not exists public.emanet_backup (
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  day        date not null,
+  data       jsonb not null,
+  meta       jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+alter table public.emanet_backup enable row level security;
+drop policy if exists "yedek_sahibi" on public.emanet_backup;
+create policy "yedek_sahibi" on public.emanet_backup for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+revoke all on public.emanet_backup from anon;
+grant select, insert, update, delete on public.emanet_backup to authenticated;

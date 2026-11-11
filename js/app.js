@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.11";
+const APP_VERSION="2.12";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -49,7 +49,7 @@ function fromH(y,m,d){
 }
 const fmtH=iso=>{if(!iso)return"";const h=toH(iso);return h.d+" "+HM[h.m-1]+" "+h.y};
 const defaultSettings=()=>({theme:"system",accent:"kobalt",fontSize:"m",compact:false,base:"TRY",rates:{USD:44,EUR:51},goldGram:0,coins:{cumhuriyet:0,hamit:0,aziz:0,resat:0},ratesUpdated:null,autoPrices:true,feeRate:0,tone:"gri",nisabGram:96,hawlH:null,hawlStart:"",hawlSet:true,zakatRecv:true,zakatDebt:true,zakatKinds:{hisse:true,abd:true,fon:true,ppf:true,altin:true,gumus:true,doviz:true,kripto:true,nakit:true,bes:false,emlak:false,diger:true},hide:false,start:"ozet"});
-const emptyState=()=>({v:1,updatedAt:0,settings:defaultSettings(),portfolios:[],tx:[],debts:[],zakatPaid:[],cards:[],recurring:[],goals:[],budgets:{}});
+const emptyState=()=>({v:1,updatedAt:0,settings:defaultSettings(),portfolios:[],tx:[],debts:[],zakatPaid:[],cards:[],recurring:[],goals:[],alerts:[],budgets:{}});
 
 let ufe=null;
 let fxhist={}, market=null, lastWatch="[]", fxBusy=false;
@@ -71,7 +71,7 @@ function normalize(s){
   if(s.settings.hawlH&&!s.settings.hawlH.y)s.settings.hawlH=null;
   if(!s.settings.hawlBy){s.settings.hawlBy={};if(s.settings.hawlH)s.settings.hawlBy[s.settings.mainOwner||"Ben"]=s.settings.hawlH}
   s.settings.hawlH=null;
-  ["portfolios","tx","debts","zakatPaid","cards","recurring","goals"].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[]});
+  ["portfolios","tx","debts","zakatPaid","cards","recurring","goals","alerts"].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[]});
   if(!s.hist||typeof s.hist!=="object"||Array.isArray(s.hist))s.hist={};
   if(!s.budgets||typeof s.budgets!=="object")s.budgets={};
   s.tx.forEach(t=>{if(t.cat in CAT_MAP)t.cat=CAT_MAP[t.cat]||(t.type==="in"?"Diğer gelir":"Diğer gider")});
@@ -497,8 +497,41 @@ async function flush(){
   let err=null;
   try{const r=await sb.from("emanet_state").upsert({user_id:sbUser.id,data:state,updated_at:state.updatedAt});err=r.error}catch(e){err=e}
   saving=false;
-  if(err)setSync("local","Kaydedilemedi · cihazda duruyor");else setSync("cloud","Eşitlendi");
+  if(err)setSync("local","Kaydedilemedi · cihazda duruyor");else{setSync("cloud","Eşitlendi");backupNow()}
   if(pendingSave){pendingSave=false;flush()}
+}
+/* Otomatik yedek: her günün son hâli ayrı bir kayıt olarak saklanır (35 gün). Boş veri yedeklenmez.
+   Aynı gün içinde en çok yarım saatte bir yazılır; böylece hatalı bir kayıt dünkü yedeği ezemez. */
+const BK="emanet-bak";
+async function backupNow(){
+  if(!cloudOn()||!state||!(state.portfolios.length||state.tx.length))return;
+  const day=todayISO(),now=Date.now();let last={};try{last=JSON.parse(localStorage.getItem(BK)||"{}")||{}}catch(e){}
+  if(last.u===sbUser.id&&last.d===day&&now-last.t<30*60e3)return;
+  try{
+    const meta={pf:state.portfolios.length,h:state.portfolios.reduce((a,p)=>a+p.holdings.filter(h=>+h.qty>0).length,0),tx:state.tx.length,v:Math.round(state.portfolios.reduce((a,p)=>a+pfTotals(p).v,0)*rate(S().base))};
+    const {error}=await sb.from("emanet_backup").upsert({user_id:sbUser.id,day,data:state,meta,updated_at:new Date().toISOString()},{onConflict:"user_id,day"});
+    if(error)return;
+    localStorage.setItem(BK,JSON.stringify({u:sbUser.id,d:day,t:now}));
+    if(last.d!==day)sb.from("emanet_backup").delete().eq("user_id",sbUser.id).lt("day",addDays(day,-35)).then(()=>{},()=>{});
+  }catch(e){}
+}
+async function backupSheet(){
+  openSheet(`<h3>Otomatik yedekler</h3><div class="sub" id="bkBody">Yedekler getiriliyor…</div>`);
+  let rows=null,msg="";
+  try{const r=await sb.from("emanet_backup").select("day,meta,updated_at").eq("user_id",sbUser.id).order("day",{ascending:false}).limit(40);if(r.error)msg=/emanet_backup|relation|schema cache|not find/i.test(r.error.message||"")?"Yedek tablosu henüz kurulmamış; Supabase'de kurulum SQL'inin son hâlini bir kez çalıştırmak gerekiyor.":"Yedekler okunamadı: "+(r.error.message||"");else rows=r.data||[]}catch(e){msg="Yedekler okunamadı; bağlantıyı kontrol edin."}
+  const body=document.getElementById("bkBody");if(!body)return;
+  if(!rows){body.textContent=msg;return}
+  if(!rows.length){body.textContent="Henüz yedek yok. İlk yedek, bir sonraki kayıtta kendiliğinden alınır.";return}
+  const t=todayISO();
+  body.className="";body.innerHTML=`<div class="note" style="margin-bottom:8px">Her günün son hâli saklanır (35 gün). Geri yüklemek, şu anki verinizin yerine o günkü hâli koyar; hemen ardından “Geri al” ile vazgeçebilirsiniz.</div><div class="list">${rows.map(r=>{const m=r.meta||{},n=daysBetween(r.day,t);
+    return `<div class="row"><div class="main"><div class="t">${fmtDate(r.day)}${n===0?" · bugün":n===1?" · dün":" · "+n+" gün önce"}</div><div class="s">${m.pf||0} portföy · ${m.h||0} varlık · ${m.tx||0} işlem${m.v?" · "+fmt(m.v/rate(S().base),null,{dec:0}):""}</div></div><button class="btn sm" data-bk="${r.day}">Geri yükle</button></div>`}).join("")}</div><div class="err" id="bkErr"></div>`;
+  body.querySelectorAll("[data-bk]").forEach(b=>b.onclick=async()=>{
+    if(!b.dataset.c){body.querySelectorAll("[data-bk]").forEach(x=>{delete x.dataset.c;x.textContent="Geri yükle";x.classList.remove("primary")});b.dataset.c="1";b.textContent="Evet, yükle";b.classList.add("primary");return}
+    b.disabled=true;b.textContent="Yükleniyor…";
+    try{const r=await sb.from("emanet_backup").select("data").eq("user_id",sbUser.id).eq("day",b.dataset.bk).single();if(r.error||!r.data||!r.data.data)throw new Error("yok");
+      const snap=JSON.stringify(state);state=normalize(r.data.data);closeSheet();commit();toast(fmtDate(b.dataset.bk)+" yedeği yüklendi",snap)}
+    catch(e){b.disabled=false;b.textContent="Geri yükle";delete b.dataset.c;const er=document.getElementById("bkErr");if(er)er.textContent="Yedek yüklenemedi; yeniden deneyin."}
+  });
 }
 async function pull(first){
   if(!cloudOn()||saving)return;
@@ -742,6 +775,7 @@ function rOzet(){
     ${mp?plChips(hs,t.v,t.c):""}
     <div class="subrow">${eqvChips(t.v)}</div>
   </section>
+  ${onMain?attnCard():""}
   ${mp&&hs.length?histCard([mp.id],"Değer geçmişi"):""}
   ${mp?`<section class="card">
     <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Portföye git${ic(I.right,14)}</button></div>
@@ -834,6 +868,28 @@ function rRapor(){
   ${zk?`<section class="card side"><div class="sec"><h2>Ödenen zekât</h2><b class="num">${fmt(zk,null,{dec:0})}</b></div></section>`:""}`;
 }
 
+/* Bugün dikkat: yalnızca yapılacak bir şey varken görünür. Sıra: gecikenler, bugünküler, yaklaşanlar. */
+function attnItems(){
+  const t=todayISO(),m=t.slice(0,7),out=[],dd=d=>daysBetween(t,d);
+  const when=n=>n<0?(-n)+" gün gecikti":n===0?"bugün":n===1?"yarın":n+" gün sonra";
+  state.recurring.forEach(r=>{if(recPaid(r,m))return;const n=dd(dayIn(m,r.day));if(n>2)return;
+    out.push({n,ic:r.type==="in"?I.brief:r.type==="save"?I.target:I.repeat,c:n<0&&r.type!=="in"?"--neg":r.type==="in"?"--pos":r.type==="save"?"--c5":"--accent",t:esc(r.name)+" · "+when(n),s:(r.type==="in"?"Beklenen gelir · ":r.type==="save"?"Düzenli tasarruf · ":"Sabit ödeme · ")+fmt(r.amount,r.cur),act:"goto",id:"akis"})});
+  state.cards.forEach(c=>{const b=cardBal(c).bal;if(!(b>0)||!c.dueDay)return;const n=dd(nextDue(c.dueDay));if(n>5)return;
+    out.push({n,ic:I.card,c:"--c2",t:esc(c.name)+" son ödeme · "+when(n),s:"Kart borcu · "+fmt(b),act:"goto",id:"akis"})});
+  state.debts.forEach(d=>{if(!d.due||!(debtLeft(d)>0))return;const n=dd(d.due);if(n>7)return;
+    out.push({n,ic:I.borc,c:n<0?"--neg":"--c2",t:esc(d.name||"")+" · "+when(n),s:(d.dir==="lent"?"Alacağınız · ":"Borcunuz · ")+fmt(debtLeft(d),d.cur),act:"open-debt",id:d.id})});
+  const mp=mainPf();
+  if(mp){try{const z=zakat(mp.id);if(z.hawl&&z.reached&&z.left>0){const n=dd(z.hawl.next);if(n>=0&&n<=14)out.push({n,ic:I.zekat,c:"--pos",t:"Zekât günü · "+when(n),s:"Hesaplanan · "+fmt(z.left),act:"goto",id:"zekat"})}}catch(e){}}
+  const ms=monthSum(m),tg=saveTarget(ms),[y,mo]=m.split("-").map(Number),left=dim(y,mo)-(+t.slice(8));
+  if(tg>0&&ms.s<tg&&left<=7)out.push({n:left,ic:I.target,c:"--c5",t:"Tasarruf hedefine "+fmt(tg-ms.s,null,{dec:0})+" kaldı",s:"Ayın bitmesine "+(left===0?"son gün":left+" gün var"),act:"save-add",id:""});
+  return out.sort((a,b)=>a.n-b.n);
+}
+function attnCard(){
+  const it=attnItems();if(!it.length)return"";const N=4;
+  return `<section class="card attn"><div class="sec" style="margin-bottom:4px"><h2>Bugün dikkat</h2><span class="pill ${it.some(x=>x.n<0)?"neg":"warn"}">${it.length}</span></div>
+    <div class="list">${it.slice(0,N).map(x=>li({act:x.act,id:x.id,mark:mkIcon(x.ic,x.c),title:x.t,sub:x.s,trail:`<span class="chev">${ic(I.right,14)}</span>`})).join("")}</div>
+    ${it.length>N?`<div class="sub" style="margin-top:6px">ve ${it.length-N} madde daha</div>`:""}</section>`;
+}
 function flowChart(compact){
   const months=[];const [y,mo]=todayISO().slice(0,7).split("-").map(Number);
   for(let k=5;k>=0;k--){const d=new Date(y,mo-1-k,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
@@ -1088,7 +1144,7 @@ async function notifSnap(){
     const ref=D?(D.d===t?D.ref:(D.cur&&Object.keys(D.cur).length?{d:D.d,h:D.cur}:D.ref)):null;
     const per=n=>{try{const b=mp&&benchCalc([mp.id],n);return b&&b.days>=Math.min(n,3)?{from:b.from,pct:+b.items[0].v.toFixed(2)}:null}catch(e){return null}};
     const ma=monthAgg(t.slice(0,7));
-    const snap={prefs:notifPrefs(),per:{w:per(7),m:per(31)},mon:{ym:t.slice(0,7),n:MONTHS[+t.slice(5,7)-1],i:Math.round(ma.i*rate(S().base)),o:Math.round(ma.o*rate(S().base))},at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
+    const snap={alerts:alertsOut(),prefs:notifPrefs(),per:{w:per(7),m:per(31)},mon:{ym:t.slice(0,7),n:MONTHS[+t.slice(5,7)-1],i:Math.round(ma.i*rate(S().base)),o:Math.round(ma.o*rate(S().base))},at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
       ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
       pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0).map(h=>{
         const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
@@ -1119,7 +1175,7 @@ function notifSync(now){
   if(!notifOnLocal()||!cloudOn())return;
   clearTimeout(nsT);nsT=setTimeout(async()=>{try{
     const reg=await swReady(),sub=await reg.pushManager.getSubscription();if(!sub)return;
-    const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,off:-new Date().getTimezoneOffset()},weights:pr.bm?notifWeights():{}};
+    const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,off:-new Date().getTimezoneOffset(),al:alertsOut().map(a=>({id:a.id,k:a.k,op:a.op,v:a.v}))},weights:pr.bm?notifWeights():{}};
     const sig=JSON.stringify(row);if(sig===localStorage.getItem("emanet-notif-sent"))return;
     const {error}=await sb.from("emanet_push").upsert(row,{onConflict:"endpoint"});
     if(!error)localStorage.setItem("emanet-notif-sent",sig);
@@ -1151,6 +1207,39 @@ async function notifTest(kind){
   try{await notifSnap();const reg=await swReady();if(!reg.active)throw new Error("Uygulama dosyaları henüz hazır değil.");reg.active.postMessage({type:"gun-sonu",test:true,kind:kind||"daily"});toast("Deneme bildirimi gönderildi")}
   catch(e){toast(e.message||"Deneme bildirimi gönderilemedi")}
 }
+/* Fiyat alarmı: bir fiyat belirlenen sınırın üstüne çıkınca ya da altına inince bildirim. Sınır yeniden aşılınca yeniden haber verir. */
+function alertInstruments(){
+  const out=[],seen={},add=(k,n,cur,p)=>{if(!seen[k]&&p>0){seen[k]=1;out.push({k,n,cur,p})}};
+  if(market){const g=market.gold||{};[["gram","Gram altın"],["ceyrek","Çeyrek altın"],["yarim","Yarım altın"],["tam","Tam altın"],["cumhuriyet","Cumhuriyet altını"],["ata","Ata altın"],["resat","Reşat altın"],["gumus","Gümüş (gram)"]].forEach(([k,n])=>add("gold:"+k,n,"TRY",+g[k]));
+    const f=market.fx||{};add("fx:USD","Dolar","TRY",+f.USD);add("fx:EUR","Euro","TRY",+f.EUR);
+    state.portfolios.forEach(p=>p.holdings.forEach(h=>{const sy=(h.symbol||"").toUpperCase().trim();if(!sy||!market.quotes)return;const k=[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]).find(x=>market.quotes[x]&&+market.quotes[x].p>0);if(k)add("q:"+k,h.name+" ("+sy+")",market.quotes[k].cur||h.cur,+market.quotes[k].p)}))}
+  return out;
+}
+const alertPrice=k=>{if(!market)return 0;const[a,...r]=k.split(":"),x=r.join(":");return a==="gold"?+(market.gold||{})[x]||0:a==="fx"?+(market.fx||{})[x]||0:+((market.quotes||{})[x]||{}).p||0};
+const pnum=v=>fmtN(v,v<10?4:2);
+function alertSheet(a){
+  const ins=alertInstruments();if(a&&!ins.some(i=>i.k===a.k))ins.unshift({k:a.k,n:a.n,cur:a.cur,p:alertPrice(a.k)});
+  if(!ins.length){toast("Fiyatlar henüz gelmedi; biraz sonra yeniden deneyin");return}
+  formSheet({title:a?"Alarmı düzenle":"Fiyat alarmı ekle",fields:[
+    {id:"k",label:"Hangi fiyat",type:"select",value:a?a.k:ins[0].k,options:ins.map(i=>[i.k,i.n])},
+    {id:"op",label:"Ne zaman haber verilsin",type:"seg",value:a?a.op:"gte",options:[["gte","Üstüne çıkınca"],["lte","Altına inince"]]},
+    {id:"v",label:"Sınır fiyat",type:"number",big:true,value:a?String(a.v).replace(".",","):"",ph:"0"}],
+    extra:`<div class="note" id="alHint"></div>`,
+    onOpen:(form,sh)=>{const u=()=>{const i=ins.find(x=>x.k===form.elements.k.value),h=sh.querySelector("#alHint");if(i&&h)h.textContent="Şu anki fiyat: "+pnum(i.p)+" "+i.cur+". Fiyatlar yarım saatte bir denetlenir; bildirim 08:00–23:00 arasında gelir."};form.addEventListener("change",u);u()},
+    onSave:v=>{const x=parseNum(v.v),i=ins.find(q=>q.k===v.k);if(!i)return"Bir fiyat seçin.";if(!(x>0))return"Sınır fiyatı girin.";
+      if(v.op==="gte"&&i.p>=x)return"Fiyat zaten bu sınırın üstünde ("+pnum(i.p)+"). Daha yüksek bir sınır girin.";
+      if(v.op==="lte"&&i.p<=x)return"Fiyat zaten bu sınırın altında ("+pnum(i.p)+"). Daha düşük bir sınır girin.";
+      const d={k:i.k,n:i.n,cur:i.cur,op:v.op,v:x,on:true};if(a)Object.assign(a,d);else state.alerts.push({id:uid(),...d});commit(a?"Alarm güncellendi":"Alarm kuruldu");notifSync(true)},
+    onDelete:a?()=>{state.alerts=state.alerts.filter(x=>x!==a);commit("Alarm silindi");notifSync(true)}:null});
+}
+const alertsOut=()=>(state.alerts||[]).filter(a=>a.on!==false).map(a=>({id:a.id,k:a.k,n:a.n,cur:a.cur,op:a.op,v:a.v}));
+function alertsCard(on){
+  const al=state.alerts||[];
+  return `<section class="card"><div class="sec" style="margin-bottom:4px"><h2>Fiyat alarmları</h2><button class="btn ghost sm" data-act="alert-new">Alarm ekle</button></div>
+    ${al.length?`<div class="list">${al.map(a=>{const p=alertPrice(a.k);return li({act:"alert-edit",id:a.id,mark:mkIcon(a.op==="gte"?I.trend:I.sell,a.op==="gte"?"--pos":"--neg"),title:esc(a.n),sub:(a.op==="gte"?"Üstüne çıkınca: ":"Altına inince: ")+pnum(a.v)+" "+esc(a.cur)+(p?" · şimdi "+pnum(p):""),trail:`<span class="chev">${ic(I.right,14)}</span>`})}).join("")}</div>`
+      :`<div class="sub">Örneğin “gram altın 7.000’in üstüne çıkınca” ya da “bir fon şu fiyatın altına inince” haber verir.</div>`}
+    ${al.length&&!on?`<div class="note warn" style="margin-top:8px">Alarmların gelmesi için bu cihazda bildirimleri açın.</div>`:""}</section>`;
+}
 function notifCard(){
   const on=notifOnLocal();
   const why=!notifSupport()?"Bu tarayıcı bildirimi desteklemiyor. iPhone ve iPad'de önce Safari'de Paylaş → Ana Ekrana Ekle ile uygulamayı kurun, sonra uygulamanın içinden burayı açın."
@@ -1176,10 +1265,11 @@ function notifCard(){
     <div class="set-row"><div class="lbl"><b>Büyük hareket uyarısı</b><small>Ana portföy gün içinde bu oranda yükselir ya da düşerse akşamı beklemeden haber verir (günde en çok bir kez, 08:00–23:00 arası)</small></div>${sel("bm",[[0,"Kapalı"],[1,"%1"],[1.5,"%1,5"],[2,"%2"],[3,"%3"],[5,"%5"]],p.bm)}</div>
     ${p.bm?`<div class="note">Bu uyarı için portföyünüzün yalnızca yüzde dağılımı (örneğin “%57 gram altın”) hesabınızda saklanır; tutarlar saklanmaz.</div>`:""}
   </div></section>
+  ${alertsCard(true)}
   <section class="card"><h2 style="margin-bottom:4px">Deneme</h2><div class="set-group">
-    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
+    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
     <div class="note">Tutarlarınız sunucuya gönderilmez; bildirimin metni bu cihazda hesaplanır. “Tutarları gizle” açıksa yalnızca yüzdeler yazar. Telefon pil tasarrufundaysa bildirim gecikebilir.</div>
-  </div></section>`:""}`;
+  </div></section>`:alertsCard(false)}`;
 }
 
 /* ---------- getiri karşılaştırması ----------
@@ -1239,7 +1329,7 @@ function benchCard(ids){
 /* ---------- gelir-gider: arama ve süzme ---------- */
 function txRow(t){const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card",sv=t.type==="save",g=sv&&t.goal&&(state.goals||[]).find(x=>x.id===t.goal);
   return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:sv&&!SAVE_CATS.includes(t.cat)?I.target:catIcon(t.cat),inc?"--pos":cp?"--c2":sv?"--c5":"--accent"),title:cp?"Kart ödemesi":esc(t.cat),
-    sub:[sv?"Tasarruf"+(g?" · "+esc(g.name):""):"",cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
+    sub:[sv?"Tasarruf"+(g?" · "+esc(g.name):"")+(t.buy?" · portföye alındı":""):"",cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
     amount:(inc?"+":cp||sv?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})}
 function txMatch(){
   const q=trLow((view.txQ||"").trim()),cat=view.txCat||"",ty=view.txType||"all";
@@ -1408,6 +1498,7 @@ function rAyarlar(){
   G.veri=`<section class="card"><div class="set-group">
     ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Hesap</b><small>${esc(sbUser.email||"")} · veriler hesabınızda saklanır, diğer cihazlarınızda da açılır</small></div><button class="btn sm" data-act="signout">Çıkış yap</button></div>`
       :`<div class="set-row"><div class="lbl"><b>Kayıt yeri</b><small>Yalnızca bu cihazda. ${sb?"Giriş yaparsanız verileriniz hesabınıza taşınır ve diğer cihazlarınızda da açılır.":"Bulut eşitleme henüz kurulmadı; yedek almayı unutmayın."}</small></div>${sb?`<button class="btn sm primary" data-act="signin">Giriş yap</button>`:""}</div>`}
+    ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Otomatik yedek</b><small>Her günün son hâli hesabınızda saklanır (35 gün). Yanlışlıkla silinen bir şeyi buradan geri getirebilirsiniz.</small></div><button class="btn sm" data-act="backups">Yedekleri göster</button></div>`:""}
     <div class="set-row"><div class="lbl"><b>Yedek</b><small>Tüm veriler JSON dosyası olarak</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="export">Yedeği indir</button><label class="btn sm" for="importIn" style="cursor:pointer">Yedek yükle</label><input type="file" id="importIn" accept="application/json,.json" hidden></div></div>
     <div class="set-row"><div class="lbl"><b>Excel'e aktar</b><small>Excel ve Google E-Tablolar'da açılan CSV dosyaları</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="csv-h">Varlıklar</button><button class="btn sm" data-act="csv-t">Gelir-gider</button></div></div>
     <div class="set-row"><div class="lbl"><b>Tüm verileri sil</b><small>Portföyler, işlemler, borçlar ve zekât kayıtları silinir; ayarlar kalır</small></div><button class="btn sm danger" data-act="wipe">Sil</button></div>
@@ -1651,17 +1742,28 @@ function txSheet(t,preset){
     [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:catOpts(type)},{id:"date",label:"Tarih",type:"date",value:t?t.date:todayISO()}],
     ...(hasCards?[[{id:"method",label:"Ödeme şekli",type:"select",value:t?(t.method||"cash"):"cash",options:methodOpts()},{id:"inst",label:"Taksit sayısı",type:"select",value:"1",options:[["1","Tek çekim"],...[2,3,4,5,6,9,12].map(n=>[String(n),n+" taksit"])]}],
       {id:"card",label:"Ödenen kart",type:"select",value:t&&t.card||(preset&&preset.card)||state.cards[0].id,options:state.cards.map(c=>[c.id,c.name])}]:[]),
+    ...(!t&&mainPf()&&mainPf().holdings.some(h=>h.kind!=="bes")?[{id:"buyH",label:"Bununla ne aldınız?",type:"select",value:"",options:[["","Portföye alım yazma"],...mainPf().holdings.filter(h=>h.kind!=="bes").map(h=>[h.id,h.name]),["new","Yeni bir varlık…"]]},
+      [{id:"buyQty",label:"Alınan miktar",type:"number",value:"",ph:"0"},{id:"buyPrice",label:"Alış fiyatı (birim)",type:"number",value:"",ph:"0"}]]:[]),
     ...(mg.length?[{id:"goal",label:"Birikim hedefi",type:"select",value:t&&t.goal||"",options:[["","Hedefe bağlama"],...mg.map(g=>[g.id,g.name])]}]:[]),
     {id:"note",label:"Not",value:t?t.note:"",ph:"İsteğe bağlı"}],
     extra:`<div class="note" id="txHint"></div>`,
     onChange:(form)=>sync(form),
+    onOpen:form=>form.addEventListener("input",e=>{if(e.target.name==="buyQty")e.target.dataset.auto="0";else if(e.target.name==="amount"||e.target.name==="buyPrice")sync(form)}),
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";if(!v.date)return"Tarih seçin.";
       if(v.type==="card"){const d={type:"card",card:v.card,amount:a,cur:v.cur,date:v.date,note:v.note.trim(),cat:"Kart ödemesi"};
         if(t){Object.assign(t,d);delete t.method}else state.tx.push({id:uid(),...d});view.month=v.date.slice(0,7);commit("Kart ödemesi kaydedildi");return}
       const method=v.type==="out"&&v.method&&v.method!=="cash"?v.method:"";
       const n=t?1:Math.max(1,+v.inst||1),goal=v.type==="save"&&v.goal?v.goal:undefined;
       if(v.type==="save"){const d={type:"save",amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method:"",goal};
-        if(t){Object.assign(t,d);delete t.card}else state.tx.push({id:uid(),...d,...(preset&&preset.rid?{rid:preset.rid}:{})});view.month=v.date.slice(0,7);commit(t?"İşlem güncellendi":"Tasarruf eklendi");return}
+        let bought="";
+        if(!t&&v.buyH&&v.buyH!=="new"){const hh=mainPf().holdings.find(h=>h.id===v.buyH);
+          if(hh){const q=parseNum(v.buyQty),p=parseNum(v.buyPrice);if(!(q>0))return"Alınan miktarı girin.";if(!(p>0))return"Alış fiyatını girin.";if(v.date>todayISO())return"Alım tarihi ileri olamaz.";
+            const snap=JSON.stringify(hh);ensureTrades(hh);const tr={id:uid(),type:"buy",date:v.date,qty:q,price:p,fee:0,note:"Tasarruftan"};const f=fxLookup(v.date);if(f)tr.fx=f;hh.trades.push(tr);
+            const err=rebuild(hh);if(err){Object.keys(hh).forEach(k=>delete hh[k]);Object.assign(hh,JSON.parse(snap));return err}
+            d.buy={h:hh.id,tr:tr.id};bought=hh.name}}
+        if(t){Object.assign(t,d);delete t.card}else state.tx.push({id:uid(),...d,...(preset&&preset.rid?{rid:preset.rid}:{})});view.month=v.date.slice(0,7);
+        commit(t?"İşlem güncellendi":bought?"Tasarruf eklendi · "+bought+" alımı portföye yazıldı":"Tasarruf eklendi");
+        if(!t&&v.buyH==="new")setTimeout(()=>holdingSheet(mainPf().id),350);return}
       if(t){Object.assign(t,{type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method});delete t.card;delete t.goal}
       else if(n>1&&method){const g=uid(),per=Math.round(a/n*100)/100;
         for(let k=0;k<n;k++){const[y,m]=v.date.slice(0,7).split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
@@ -1673,8 +1775,13 @@ function txSheet(t,preset){
     const ty=form.elements.type.value,el=form.elements;
     const show=(name,on)=>{const f=el[name];if(f){const box=f.closest(".field");box.hidden=!on;const row=box.parentElement;if(row.classList.contains("frow"))row.hidden=[...row.children].every(c=>c.hidden)}};
     const cat=el.cat;if(ty!=="card"&&cat.dataset.ty!==ty){const cur=cat.value;cat.innerHTML=catOpts(ty).map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");cat.dataset.ty=ty}
-    show("cat",ty!=="card");show("goal",ty==="save");show("method",ty==="out");show("inst",ty==="out"&&el.method&&el.method.value!=="cash"&&!t);show("card",ty==="card");
-    const h=document.getElementById("txHint");if(h){h.hidden=!(ty==="card"||ty==="save"||(ty==="out"&&el.method&&el.method.value!=="cash"));h.textContent=ty==="save"?"Tasarruf gider sayılmaz; ayın kalanından ve nakit bakiyesinden düşer, tasarruf hedefinize eklenir. Parayı altın ya da fona çevirdiyseniz ayrıca Portföy’e alım olarak girin.":ty==="card"?"Kart ödemesi gider sayılmaz; kart borcunu düşürür.":"Kartla harcama bu ayın giderine yazılır ve kart borcuna eklenir. Taksitli alım aylara bölünür."}
+    show("cat",ty!=="card");show("goal",ty==="save");show("method",ty==="out");
+    if(el.buyH){show("buyH",ty==="save");const bh=el.buyH.value,hh=ty==="save"&&bh&&bh!=="new"?mainPf().holdings.find(h=>h.id===bh):null;show("buyQty",!!hh);show("buyPrice",!!hh);
+      if(hh){const num=x=>String(+x.toFixed(x<10?4:2)).replace(".",",");
+        if(el.buyPrice.dataset.h!==bh){el.buyPrice.dataset.h=bh;el.buyPrice.value=effPrice(hh).p>0?num(effPrice(hh).p):"";el.buyQty.dataset.auto="1"}
+        el.buyPrice.closest(".field").querySelector("label").textContent="Alış fiyatı (birim, "+hh.cur+")";
+        if(el.buyQty.dataset.auto!=="0"){const a=parseNum(el.amount.value),p=parseNum(el.buyPrice.value),inCur=a>0&&rate(hh.cur)?toBase(a,el.cur.value)*rate(S().base)/rate(hh.cur):0;el.buyQty.value=p>0&&inCur>0?num(inCur/p):""}}}show("inst",ty==="out"&&el.method&&el.method.value!=="cash"&&!t);show("card",ty==="card");
+    const h=document.getElementById("txHint");if(h){h.hidden=!(ty==="card"||ty==="save"||(ty==="out"&&el.method&&el.method.value!=="cash"));h.textContent=ty==="save"&&el.buyH&&el.buyH.value==="new"?"Kaydettikten sonra yeni varlık penceresi açılır; orada ne aldığınızı girersiniz.":ty==="save"&&el.buyH&&el.buyH.value?"Tasarruf kaydıyla birlikte seçtiğiniz varlığa bu tarihle alım da yazılır; ayrıca Portföy’e girmeniz gerekmez. Miktar, tutar ÷ fiyat olarak hesaplanır; isterseniz düzeltin.":ty==="save"?"Tasarruf gider sayılmaz; ayın kalanından ve nakit bakiyesinden düşer, tasarruf hedefinize eklenir. Parayı altın ya da fona çevirdiyseniz ayrıca Portföy’e alım olarak girin.":ty==="card"?"Kart ödemesi gider sayılmaz; kart borcunu düşürür.":"Kartla harcama bu ayın giderine yazılır ve kart borcuna eklenir. Taksitli alım aylara bölünür."}
   }
   setTimeout(()=>{const f=document.getElementById("sf");if(f){f.elements.cat.dataset.ty=type;sync(f)}},0);
 }
@@ -1909,6 +2016,10 @@ document.addEventListener("click",e=>{
   if(a==="rpnav"){const d=+t.dataset.d;if(view.rpMode==="ay"){const[y,m]=view.rpMonth.split("-").map(Number),x=new Date(y,m-1+d,1);view.rpMonth=x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")}else view.rpYear+=d;render();return}
   if(a==="print"){window.print();return}
   if(a==="theme"){const st=S();st.tone=t.dataset.v;st.theme=t.dataset.th==="dark"?"dark":(st.theme==="system"?"system":"light");commit();return}
+  if(a==="goto"){view.tab=id;render();window.scrollTo(0,0);return}
+  if(a==="backups"){backupSheet();return}
+  if(a==="alert-new"){alertSheet(null);return}
+  if(a==="alert-edit"){const x=state.alerts.find(q=>q.id===id);if(x)alertSheet(x);return}
   if(a==="setg"){view.setG=t.dataset.k;render();return}
   if(a==="txclear"){view.txQ="";view.txCat="";render();return}
   if(a==="notif-test"){notifTest(t.dataset.k);return}

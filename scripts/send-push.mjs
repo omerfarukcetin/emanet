@@ -51,21 +51,29 @@ export function decide(row, nowMs) {
   const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay));
   let big = false, mv = null;
   if (+p.bm > 0 && row.last_big !== D && hm >= "08:00" && hm <= "23:00" && !(daily && row.last_poke === D)) { mv = dayMove(row.weights); big = mv != null && Math.abs(mv) >= +p.bm; }
-  return { D, sched: !!sched, big, mv };
+  // fiyat alarmları: yalnızca veritabanı işlevi "fired" alanını döndürüyorsa (yeni kurulum) değerlendirilir
+  const fire = [], rearm = [];
+  if (Array.isArray(p.al) && row.fired && close.cur) for (const a of p.al) {
+    const c = +close.cur[a.k]; if (!(c > 0) || !(+a.v > 0)) continue;
+    const on = a.op === "gte" ? c >= +a.v : c <= +a.v, was = a.id in row.fired;
+    if (on && !was && hm >= "08:00" && hm <= "23:00") fire.push(a.id); else if (!on && was) rearm.push(a.id);
+  }
+  return { D, sched: !!sched, big, mv, fire, rearm };
 }
 
 let ok = 0, gone = 0, fail = 0, skip = 0;
 for (const row of rows) {
-  const d = FORCE ? { D: "", sched: true, big: false } : decide(row, Date.now());
-  if (!d.sched && !d.big) { skip++; continue; }
+  const d = FORCE ? { D: "", sched: true, big: false, fire: [], rearm: [] } : decide(row, Date.now());
+  for (const id of d.rearm) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "rearm:" + id, d: d.D }).catch(() => {});
+  if (!d.sched && !d.big && !d.fire.length) { skip++; continue; }
   let host = "?";
   try {
     const u = new URL(row.endpoint); host = u.host;
     if (u.protocol !== "https:") throw new Error("https değil");
-    const r = await fetch(row.endpoint, { method: "POST", headers: { authorization: `vapid t=${vapidToken(u.origin)}, k=${pub}`, ttl: "10800", urgency: d.big && !d.sched ? "high" : "normal", "content-length": "0" } });
+    const r = await fetch(row.endpoint, { method: "POST", headers: { authorization: `vapid t=${vapidToken(u.origin)}, k=${pub}`, ttl: "10800", urgency: (d.big || d.fire.length) && !d.sched ? "high" : "normal", "content-length": "0" } });
     if (r.status >= 200 && r.status < 300) {
       ok++;
-      if (!FORCE) { if (d.sched) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "poke", d: d.D }); if (d.big) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "big", d: d.D }); }
+      if (!FORCE) { if (d.sched) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "poke", d: d.D }); if (d.big) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "big", d: d.D }); for (const id of d.fire) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "alert:" + id, d: d.D }); }
     } else if (r.status === 404 || r.status === 410) { gone++; await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "gone", d: d.D || "2000-01-01" }).catch(() => {}); }
     else { fail++; console.log(`- ${host}: HTTP ${r.status} ${(await r.text()).slice(0, 160)}`); }
   } catch (e) { fail++; console.log(`- ${host}: ${e.message}`); }

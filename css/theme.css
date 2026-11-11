@@ -700,3 +700,8 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .stack + .atbl.compact{margin-top:10px}
 .atbl.compact .arow.cat .t small{display:none}
 .atbl.compact .arow.closed .t small{display:inline}.atbl.compact .vcell.static{flex-direction:row-reverse}
+
+/* ================= 2.12: dikkat şeridi ================= */
+.card.attn{border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line))}
+.card.attn .row.li{min-height:50px}
+.row.li .chev{color:var(--faint)}

@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v26";
+const V = "emanet-v27";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "manifest.webmanifest", "data/ufe.json", "data/market.json"];
@@ -78,13 +78,32 @@ async function notify(kindForced, test) {
     // en yakın uygun geçmiş kayıt: hedef gün sayısı kadar eski olana en yakın
     const back = (target, min, max) => closes.filter(c => { const g = dayGap(c.d, today); return g >= min && g <= max; }).sort((a, b) => Math.abs(dayGap(a.d, today) - target) - Math.abs(dayGap(b.d, today) - target))[0] || null;
 
+    // fiyat alarmları: sınır yeni aşıldıysa haber ver; fiyat geri dönünce alarm yeniden kurulur
+    const price = k => { if (!mk) return 0; const i = k.indexOf(":"), a = k.slice(0, i), x = k.slice(i + 1); return a === "gold" ? +(mk.gold || {})[x] || 0 : a === "fx" ? +(mk.fx || {})[x] || 0 : +((mk.quotes || {})[x] || {}).p || 0; };
+    const pn = v => new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: v < 10 ? 4 : 2 }).format(v);
+    const fired = st.al || (st.al = {}), hit = [], alerts = snap.alerts || [];
+    for (const a of alerts) { const p = price(a.k); if (!(p > 0)) continue; const on = a.op === "gte" ? p >= a.v : p <= a.v; if (on && !fired[a.id]) hit.push([a, p]); else if (!on && fired[a.id]) delete fired[a.id]; }
+    for (const id of Object.keys(fired)) if (!alerts.some(a => a.id === id)) delete fired[id];
+    const alertNote = (a, p) => show("alarm-" + a.id, a.n + " " + pn(a.v) + " " + a.cur + (a.op === "gte" ? " üstüne çıktı" : " altına indi"), "Şu an " + pn(p) + " " + a.cur, open);
     const due = t => T.hm >= P.t && st[t] !== today;
     let kinds = kindForced ? [kindForced] : [];
     if (!kindForced) {
       if (P.d && due("daily") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("daily");
       if (P.w && due("weekly") && T.dow === 5) kinds.push("weekly");
       if (P.m && due("monthly") && T.lastDay) kinds.push("monthly");
-      if (!kinds.length) kinds.push(+P.bm > 0 ? "big" : "daily");
+      if (hit.length) { hit.slice(0, 3).forEach(([a, p]) => { alertNote(a, p); fired[a.id] = today; }); }
+      else if (!kinds.length && alerts.length && !(+P.bm > 0)) {
+        // sunucu bir alarm için uyandırdı ama burada fiyat henüz sınırı göstermiyor: sınıra en yakın alarmı bildir
+        const near = alerts.filter(a => !fired[a.id] && price(a.k) > 0).sort((x, y) => Math.abs(price(x.k) / x.v - 1) - Math.abs(price(y.k) / y.v - 1))[0];
+        if (near && Math.abs(price(near.k) / near.v - 1) <= 0.005) { show("alarm-" + near.id, near.n + " " + pn(near.v) + " " + near.cur + " sınırında", "Şu an " + pn(price(near.k)) + " " + near.cur, open); fired[near.id] = today; }
+      }
+      if (!kinds.length && !notes.length) kinds.push(+P.bm > 0 ? "big" : "daily");
+    }
+    if (kindForced === "alert") {
+      kinds = [];
+      const a = alerts[0];
+      if (a) show("alarm-" + a.id, a.n + " " + pn(a.v) + " " + a.cur + (a.op === "gte" ? " üstüne çıktı" : " altına indi"), "Şu an " + pn(price(a.k) || a.v) + " " + a.cur, open);
+      else show("alarm", "Gram altın 7.000,00 TRY üstüne çıktı", "Örnek bildirim. Alarm kurduğunuzda gerçek fiyat yazar.", open);
     }
     // günlük karşılaştırma günü: bu cihazın dünkü kaydı ya da uygulamanın son açıldığı gün; hangisi yeniyse
     const prevClose = closes.filter(c => c.d < today).sort((a, b) => b.d.localeCompare(a.d))[0] || null;
