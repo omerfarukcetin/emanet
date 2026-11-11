@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.10";
+const APP_VERSION="2.11";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -974,11 +974,11 @@ function assetTable(hs,total,o){
   const hrow=(h,sub)=>`<div class="arow ${sub?"sub":""}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}${h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?`<small>${esc(h.symbol)}</small>`:""}</span>${priceFlag(h)}</span>${vcell(cellData([h],total),h)}</div>`;
   const head=`<div class="ahead"><div class="seg colseg" role="group" aria-label="Tabloda gösterilen bilgi">${COLS.map(([k,l])=>`<button data-act="col" data-k="${k}" aria-pressed="${m===k}">${l}</button>`).join("")}</div></div>`;
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
-  if(o.group===false)return `<div class="atbl">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
+  if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
   const by={};sorted.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
   const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
   return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
-  <div class="atbl ${ctx==="ozet"?"compact":""}">${head}${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
+  <div class="atbl compact">${head}${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
     return `<div class="arow cat" role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[c.k]||"--c7"})"></i><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true)).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
