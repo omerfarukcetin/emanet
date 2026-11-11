@@ -1,22 +1,22 @@
 {
- "updatedAt": "2026-11-11T21:30:20.394Z",
+ "updatedAt": "2026-11-11T21:40:24.284Z",
  "fx": {
-  "EUR": 55.747,
-  "USD": 50.2343
+  "EUR": 55.7478,
+  "USD": 50.2297
  },
  "gold": {
-  "ata": 43218,
+  "ata": 43223,
   "aziz": null,
-  "ceyrek": 10565,
-  "cumhuriyet": 43218,
-  "gram": 6434.98,
-  "gumus": 83.51,
-  "hamit": 43218,
-  "resat": 43218,
-  "resatAlis": 42077.87,
-  "resatSatis": 42754.87,
-  "tam": 42094,
-  "yarim": 21124,
+  "ceyrek": 10567,
+  "cumhuriyet": 43223,
+  "gram": 6435.75,
+  "gumus": 83.5,
+  "hamit": 43223,
+  "resat": 43223,
+  "resatAlis": 42089.07,
+  "resatSatis": 42766.07,
+  "tam": 42098,
+  "yarim": 21127,
   "resatKaynak": "altin.in"
  },
  "quotes": {
