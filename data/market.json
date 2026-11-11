@@ -1,29 +1,29 @@
 {
- "updatedAt": "2026-11-11T19:40:39.550Z",
+ "updatedAt": "2026-11-11T19:50:29.955Z",
  "fx": {
-  "EUR": 55.7683,
-  "USD": 50.2338
+  "EUR": 55.7648,
+  "USD": 50.2337
  },
  "gold": {
-  "ata": 43270,
+  "ata": 43246,
   "aziz": null,
-  "ceyrek": 10578,
-  "cumhuriyet": 43270,
-  "gram": 6442.78,
-  "gumus": 83.83,
-  "hamit": 43270,
-  "resat": 43270,
-  "resatAlis": 42135.82,
-  "resatSatis": 42813.93,
-  "tam": 42144,
-  "yarim": 21150,
+  "ceyrek": 10572,
+  "cumhuriyet": 43246,
+  "gram": 6439.28,
+  "gumus": 83.75,
+  "hamit": 43246,
+  "resat": 43246,
+  "resatAlis": 42101.09,
+  "resatSatis": 42778.09,
+  "tam": 42121,
+  "yarim": 21138,
   "resatKaynak": "altin.in"
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 7.7,
+   "p": 7.735,
    "cur": "USD",
-   "t": "2026-11-11T19:40:30.000Z"
+   "t": "2026-11-11T19:50:07.000Z"
   },
   "hisse:SOKE": {
    "p": 7.09,
@@ -51,6 +51,6 @@
    "t": "2026-11-11"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": []
 }
