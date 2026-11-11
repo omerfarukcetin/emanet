@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.10";
+const APP_VERSION="2.0";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -210,7 +210,7 @@ function hawl(o){
   return{start,next,left:daysBetween(t,next),total:Math.max(1,daysBetween(start,next)),started:start<=t};
 }
 function goldInfo(){
-  if(AUTO()&&market.gold&&+market.gold.resatAlis>0)return{gram:+market.gold.resatAlis/7.2,coin:{k:"resatAlis",n:"Reşat altın alışı",v:+market.gold.resatAlis}};
+  if(AUTO()&&market.gold&&+market.gold.resatAlis>0)return{gram:+market.gold.resatAlis/7.2,coin:{k:"resatAlis",n:"Reşat altın alışı"+(market.gold.resatKaynak?", "+market.gold.resatKaynak:""),v:+market.gold.resatAlis}};
   const c=Object.assign({},S().coins||{});
   if(AUTO()&&market.gold)COINS.forEach(([k])=>{if(+market.gold[k]>0)c[k]=+market.gold[k]});
   let best=null;
@@ -613,6 +613,14 @@ const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["bor
 
 /* ---------- render ---------- */
 const wide=()=>window.matchMedia("(min-width:900px)").matches;
+/* ---------- ortak liste satırı ----------
+   [işaret] başlık + alt yazı | tutar + durum ya da tek bir eylem düğmesi.
+   Satırın tamamı dokunulabilir (düzenleme/ayrıntı açar); sondaki düğme yalnızca kendi işini yapar. */
+const mk=(inner,color)=>`<span class="mk" style="color:var(${color||"--muted"})">${inner}</span>`;
+const mkIcon=(svg,color)=>mk(svg.replace('aria-hidden="true"','width="16" height="16" aria-hidden="true"'),color);
+function li(o){
+  return `<div class="row li" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
+}
 const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Gelir-Gider"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
   /* telefonda 5 öğe: Özet, Portföy, +, Gelir-Gider, Zekât. Borç, Gelir-Gider ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
@@ -744,7 +752,7 @@ function rPortfoy(){
     ${vis.map(p=>`<button class="chip" data-act="pf" data-id="${p.id}" aria-pressed="${view.pf===p.id}">${esc(p.name)}</button>`).join("")}
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
-  <section class="hero net">
+  <section class="hero flat">
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div style="display:flex;gap:6px">${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
     <div class="bigrow"><div class="big">${money(v)}</div>${spark((cur?[cur]:vis).map(p=>p.id))}</div>
     <div class="subrow">${dayDelta(hs)}${eqvChips(v)}</div>
@@ -852,14 +860,16 @@ function rAkis(){
     ?`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num">${fmt(dayLimit,null,{dec:0})}</div></div><div class="dr-r"><b class="num ${todayLeft>=0?"pos-t":"neg-t"}">${S().hide?"••••":todayLeft>=0?"bugün "+fmt(todayLeft,null,{dec:0})+" kaldı":"bugün "+fmt(-todayLeft,null,{dec:0})+" aşıldı"}</b><small>${dLeft} gün kaldı · harcanabilir ${fmt(spendable,null,{dec:0})}</small></div>
       <div class="bar" aria-hidden="true"><i style="width:${Math.min(100,dayLimit?todayOut/dayLimit*100:0)}%;background:var(${todayLeft<0?"--neg":todayOut>dayLimit*.8?"--warn":"--pos"})"></i></div></div>`
     :`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num neg-t">${fmt(0)}</div></div><div class="dr-r"><b class="neg-t">Bu ay harcanabilir tutar kalmadı</b><small>${dLeft} gün kaldı · açık ${fmt(-spendable,null,{dec:0})}</small></div></div>`;
-  const recRow=r=>{const pd=recPaid(r,m);const due=dayIn(m,r.day);const late=!pd&&curM&&due<todayISO();
-    return `<div class="row"><div class="av" style="color:var(${r.type==="in"?"--pos":"--neg"})">${String(r.day||1).padStart(2,"0")}</div><div class="main"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.cat)}${r.method&&cardById(r.method)?" · "+esc(cardById(r.method).name):""}</div></div><div class="end"><div class="num">${fmt(r.amount,r.cur)}</div>${pd?`<span class="pill pos">${r.type==="in"?"Alındı":"Ödendi"}</span>`:`<span style="display:inline-flex;gap:4px"><button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":"Öde"}</button><button class="btn ghost sm" data-act="rec-edit" data-id="${r.id}" aria-label="Düzenle">${I.edit.replace('aria-hidden="true"','width="16" height="16" aria-hidden="true"')}</button></span>`}</div></div>`};
-  const txRow=t=>{const card=t.type==="card"?cardById(t.card):null;const mc=t.method&&cardById(t.method);
-    const sign=t.type==="in"?"+":t.type==="card"?"⇄":"−";
-    return `<button class="row" data-act="edit-tx" data-id="${t.id}"><div class="av" style="color:var(${t.type==="in"?"--pos":t.type==="card"?"--c2":"--neg"})">${sign}</div><div class="main"><div class="t">${t.type==="card"?"Kart ödemesi · "+esc(card?card.name:"kart"):esc(t.cat)}</div><div class="s">${[mc?"💳 "+esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · ")}</div></div><div class="end num ${t.type==="in"?"pos-t":""}">${t.type==="card"?"":sign}${fmt(t.amount,t.cur)}</div></button>`};
+  const recRow=r=>{const pd=recPaid(r,m),late=!pd&&curM&&dayIn(m,r.day)<todayISO(),c=r.method&&cardById(r.method);
+    return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
+      trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":"Öde"}</button>`})};
+  const txRow=t=>{const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card";
+    return li({act:"edit-tx",id:t.id,mark:mk(inc?"+":cp?"⇄":"−",inc?"--pos":cp?"--c2":"--neg"),title:cp?"Kart ödemesi":esc(t.cat),
+      sub:[cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
+      amount:(inc?"+":cp?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})};
   return `
   <div class="sec"><div class="month-sw"><button class="icon-btn" data-act="month" data-d="-1" aria-label="Önceki ay">${I.left}</button><b>${MONTHS[mo-1]} ${y}</b><button class="icon-btn" data-act="month" data-d="1" aria-label="Sonraki ay">${I.right}</button></div></div>
-  <section class="hero net">
+  <section class="hero flat">
     <div class="hero-top"><div><span class="label">Aylık net</span><div class="big ${ms.i-ms.o>=0?"":"neg-t"}">${money(ms.i-ms.o)}</div>${ms.i?`<div class="sub">Gelirin %${fmtN(savings,1)}'i kaldı${pendOut?` · bekleyen sabit ödemeler ${fmt(pendOut)}`:""}</div>`:pendOut?`<div class="sub">Bekleyen sabit ödemeler ${fmt(pendOut)}</div>`:""}</div>${eyeBtn()}</div>
     <div class="trio"><div><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div><div><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div><div><span class="label">${budTot?"Bütçeden kalan":"İşlem"}</span><div class="v ${budTot&&budTot-ms.o<0?"neg-t":""}">${budTot?fmt(budTot-ms.o):monthTx(m).length}</div></div></div>
     ${budTot?`<div class="bar" aria-label="Bütçe kullanımı"><i style="width:${Math.min(100,ms.o/budTot*100)}%;background:var(${ms.o>budTot?"--neg":ms.o>budTot*.9?"--warn":"--accent"})"></i></div>`:""}
@@ -874,7 +884,9 @@ function rAkis(){
   <section class="card">
     <div class="sec" style="margin-bottom:6px"><h2>Kredi kartları</h2><button class="btn ghost sm" data-act="card-new">Kart ekle</button></div>
     ${state.cards.length?`<div class="list">${state.cards.map(c=>{const b=cardBal(c),nd=nextDue(c.dueDay),n=daysBetween(todayISO(),nd);
-      return `<div class="row"><div class="av">💳</div><div class="main"><div class="t">${esc(c.name)}</div><div class="s">Son ödeme ${fmtDate(nd)} · ${n} gün${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}</div>${c.limit?`<div class="share"><i style="width:${Math.min(100,b.bal/c.limit*100)}%;background:var(${b.bal>c.limit*.9?"--neg":"--c2"})"></i></div>`:""}</div><div class="end"><div class="num ${b.bal>0?"neg-t":""}">${fmt(b.bal)}</div><span style="display:inline-flex;gap:4px">${b.bal>0?`<button class="btn sm ${n<=3?"primary":""}" data-act="card-pay" data-id="${c.id}">Öde</button>`:`<span class="pill pos">Borç yok</span>`}<button class="btn ghost sm" data-act="card-edit" data-id="${c.id}" aria-label="Kartı düzenle">${I.edit.replace('aria-hidden="true"','width="16" height="16" aria-hidden="true"')}</button></span></div></div>`}).join("")}</div>
+      return li({act:"card-edit",id:c.id,mark:mkIcon(I.borc,"--c2"),title:esc(c.name),sub:`Son ödeme ${fmtDate(nd)} · ${n} gün${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}`,
+        extra:c.limit?`<div class="share"><i style="width:${Math.min(100,b.bal/c.limit*100)}%;background:var(${b.bal>c.limit*.9?"--neg":"--c2"})"></i></div>`:"",amount:fmt(b.bal),cls:b.bal>0?"neg-t":"",
+        trail:b.bal>0?`<button class="btn sm ${n<=3?"primary":""}" data-act="card-pay" data-id="${c.id}">Öde</button>`:`<span class="pill pos">Borç yok</span>`})}).join("")}</div>
       <div class="sub" style="margin-top:8px">Kartla yapılan harcamalar gider olarak o aya yazılır; kart ödemesi tekrar gider sayılmaz, yalnızca kart borcunu düşürür.</div>`
       :`<div class="empty"><b>Kart eklenmedi</b>Kart ekleyince harcamaları karta bağlayabilir, taksitleri aylara bölebilir ve kart borcunu izleyebilirsiniz.</div>`}
   </section>
@@ -892,11 +904,14 @@ function rAkis(){
 }
 
 function debtRow(d){
-  const left=debtLeft(d),tot=+d.amount||0,pct=tot?(tot-left)/tot*100:0;
+  const left=debtLeft(d),tot=+d.amount||0,pct=tot?(tot-left)/tot*100:0,lent=d.dir==="lent";
   let st="";
   if(left<=0)st=`<span class="pill pos">Kapandı</span>`;
   else if(d.due){const n=daysBetween(todayISO(),d.due);st=n<0?`<span class="pill neg">${-n} gün gecikti</span>`:n<=14?`<span class="pill warn">${n} gün kaldı</span>`:`<span class="pill">${fmtDate(d.due)}</span>`}
-  return `<button class="row" data-act="open-debt" data-id="${d.id}"><div class="av">${esc((d.person||"?").trim().slice(0,1).toUpperCase())}</div><div class="main"><div class="t">${esc(d.person)} <span class="sub">· ${d.dir==="lent"?"alacak":"borç"}${state.portfolios.length>1&&d.pf?" · "+esc((state.portfolios.find(p=>p.id===d.pf)||{}).name||""):""}</span></div><div class="bar" style="margin:6px 0 4px;max-width:220px"><i style="width:${pct}%;background:var(${d.dir==="lent"?"--pos":"--neg"})"></i></div><div class="s">${fmt(tot-left,d.cur)} / ${fmt(tot,d.cur)} ödendi</div></div><div class="end"><div class="num">${fmt(left,d.cur)}</div>${st}</div></button>`;
+  const pf=state.portfolios.length>1&&d.pf?(state.portfolios.find(p=>p.id===d.pf)||{}).name:"";
+  return li({act:"open-debt",id:d.id,mark:mk(esc((d.person||"?").trim().slice(0,1).toUpperCase()),lent?"--pos":"--neg"),title:esc(d.person),
+    sub:(lent?"Alacak":"Borç")+(pf?" · "+esc(pf):"")+" · "+fmt(tot-left,d.cur)+" / "+fmt(tot,d.cur)+" ödendi",
+    extra:`<div class="share"><i style="width:${pct}%;background:var(${lent?"--pos":"--neg"})"></i></div>`,amount:fmt(left,d.cur),trail:st});
 }
 function rBorc(){
   const bp=view.debtPf&&view.debtPf!=="all"&&state.portfolios.some(p=>p.id===view.debtPf)?view.debtPf:null;
@@ -905,7 +920,7 @@ function rBorc(){
   const recv=debtSum("lent",bp),pay=debtSum("borrowed",bp);
   return `
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Portföy filtresi"><button class="chip" data-act="dpf" data-k="all" aria-pressed="${!bp}">Tümü</button>${state.portfolios.map(p=>`<button class="chip" data-act="dpf" data-k="${p.id}" aria-pressed="${bp===p.id}">${esc(p.name)}</button>`).join("")}</div>`:""}
-  <section class="hero net"><div class="trio" style="border:0;padding:0;grid-template-columns:1fr 1fr 1fr">
+  <section class="hero flat"><div class="trio" style="border:0;padding:0;grid-template-columns:1fr 1fr 1fr">
     <div><span class="label">Alacaklarım</span><div class="v pos-t">${fmt(recv)}</div></div>
     <div><span class="label">Borçlarım</span><div class="v neg-t">${fmt(pay)}</div></div>
     <div><span class="label">Fark</span><div class="v">${fmt(recv-pay)}</div></div>
@@ -924,7 +939,7 @@ function rZekat(){
   <div class="sub" style="margin-top:-6px">Her portföyün zekâtı, nisabı ve zekât günü ayrı hesaplanır.${s.zakatRecv||s.zakatDebt?" Borç ve alacaklar, kaydederken seçtiğiniz portföyün hesabına girer.":""}</div>`:""}
   ${!g.gram?`<div class="note warn">Nisabı hesaplamak için altın lira fiyatlarını girin. <button class="btn ghost sm" data-act="rates" style="padding:0;color:inherit;text-decoration:underline">Fiyatları gir</button></div>`
     :stale?`<div class="note warn">Altın ve kur fiyatları ${s.ratesUpdated?fmtDate(s.ratesUpdated)+" tarihinden beri":"bir süredir"} güncellenmedi. <button class="btn ghost sm" data-act="rates" style="padding:0;color:inherit;text-decoration:underline">Güncelle</button></div>`:""}
-  <section class="hero net">
+  <section class="hero flat">
     <div><span class="label">${z.reached?(z.hawl?"Bu dönem ödenecek zekât":"Nisaba ulaşıldı · tahmini zekât"):"Zekât durumu"}</span>
       <div class="big">${!g.gram?"Fiyat bekleniyor":z.reached?money(z.left):"Nisap altında"}</div>
       <div class="sub">${!g.gram?"":z.reached?`Toplam ${fmt(z.due)} · ödenen ${fmt(z.paid)}`:`Nisaba ${gTxt(Math.max(0,s.nisabGram-z.netGram))} altın karşılığı kaldı`}</div></div>
@@ -954,7 +969,7 @@ function rZekat(){
   </section>
   </div>
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Ödenen zekâtlar</h2></div>
-    ${state.zakatPaid.some(p=>p.pf===z.owner)?`<div class="list">${state.zakatPaid.filter(p=>p.pf===z.owner).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<button class="row" data-act="edit-zp" data-id="${p.id}"><div class="av">${I.zekat.replace('aria-hidden="true"','width="18" height="18" aria-hidden="true"')}</div><div class="main"><div class="t">${esc(p.note||"Zekât ödemesi")}</div><div class="s">${fmtH(p.date)} · ${fmtDate(p.date)}</div></div><div class="end num">${fmt(p.amount,p.cur)}</div></button>`).join("")}</div>`:`<div class="empty"><b>Henüz ödeme kaydı yok</b>Verdiğiniz zekâtı kaydederek kalan tutarı izleyin.</div>`}
+    ${state.zakatPaid.some(p=>p.pf===z.owner)?`<div class="list">${state.zakatPaid.filter(p=>p.pf===z.owner).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>li({act:"edit-zp",id:p.id,mark:mkIcon(I.zekat,"--accent"),title:esc(p.note||"Zekât ödemesi"),sub:fmtH(p.date)+" · "+fmtDate(p.date),amount:fmt(p.amount,p.cur)})).join("")}</div>`:`<div class="empty"><b>Henüz ödeme kaydı yok</b>Verdiğiniz zekâtı kaydederek kalan tutarı izleyin.</div>`}
   </section>
   <p class="sub" style="margin:0">Gram fiyatı, Reşat altının alış fiyatı 7,2'ye bölünerek bulunur. Hesap bilgilendirme amaçlıdır; fıkhi ayrıntılar için bir hocaya danışın.</p>`;
 }
@@ -1233,6 +1248,7 @@ function tradeRow(h,t,showName,pfId){
   const tot=(+t.qty||0)*(+t.price||0),buy=t.type==="buy";
   return `<button class="row" type="button" data-act="edit-tr" data-pf="${pfId}" data-h="${h.id}" data-id="${t.id}"><div class="av" style="color:var(${buy?"--pos":"--neg"})">${buy?"AL":"SAT"}</div><div class="main"><div class="t">${showName?esc(h.name):`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)} ${esc(h.cur)}</span>`}</div><div class="s">${showName?`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)}</span> · `:""}${t.date?fmtDate(t.date):"tarih yok"}${+t.fee?" · komisyon "+(S().hide?"••":fmtN(t.fee,2)):""}${buy&&t.fx&&h.cur!=="USD"?" · USD "+fmtN(t.fx.USD,2):""}${buy&&t.fx&&h.cur==="USD"?" · kur "+fmtN(t.fx.USD,2):""}${!buy&&+t.tax?" · stopaj "+(S().hide?"••":fmtN(t.tax,2)):""}${t.legacy?" · açılış kaydı":""}${t.note?" · "+esc(t.note):""}</div></div><div class="end"><div class="num">${buy?"":"+"}${fmt(tot,h.cur)}</div>${!buy&&t.pl!=null?`<span class="pill ${t.pl>=0?"pos":"neg"}">K/Z ${fmt(t.pl,h.cur)}</span>`:""}</div></button>`;
 }
+function methodOpts(){return [["cash","Nakit / banka kartı"],...state.cards.map(c=>[c.id,"Kart · "+c.name])]}
 function txSheet(t,preset){
   const type=t?t.type:(preset&&preset.type)||"out";
   const catOpts=ty=>ty==="in"?CATS.in:CATS.out;
@@ -1497,6 +1513,7 @@ document.addEventListener("click",e=>{
   if(a==="refresh")return refreshNow(t);
   if(a==="wipe"){if(t.dataset.c){withUndo(()=>{state.portfolios=[];state.tx=[];state.debts=[];state.zakatPaid=[];state.cards=[];state.recurring=[];state.goals=[];state.budgets={};state.hist={};commit("Tüm kayıtlar silindi")})}else{t.dataset.c="1";t.textContent="Evet, hepsini sil";t.classList.add("solid")}return}
 });
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches('.row.li[role="button"]')){e.preventDefault();e.target.click()}});
 document.addEventListener("change",e=>{
   const t=e.target;
   if(t.dataset.act==="tog"){if(t.dataset.p)S()[t.dataset.p][t.dataset.k]=t.checked;else S()[t.dataset.k]=t.checked;commit();return}

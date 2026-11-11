@@ -84,6 +84,25 @@ async function altinIn() {
   if (entries.length < 4) throw new Error("sayfa okunamadı");
   return entries;
 }
+/** Zekât nisabının dayandığı fiyat: altin.in/fiyat/resat-altin sayfasındaki Reşat altın ALIŞ fiyatı. */
+function flexNum(t) {
+  t = String(t || "").trim();
+  if (t.includes(",")) return num(t);                       // 42.734,554
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) return +t.replace(/\./g, ""); // 42.734
+  return parseFloat(t);                                     // 42734.5540
+}
+async function resatAltinIn(ref) {
+  const html = await (await get("https://altin.in/fiyat/resat-altin", { headers: { accept: "text/html,*/*", "accept-language": "tr-TR,tr;q=0.9" } })).text();
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+  const N = "(\\d[\\d.,]{3,14}\\d)";
+  const ok = (b, s) => b > 5000 && s >= b && s <= b * 1.15 && (!(ref > 0) || Math.abs(s - ref) / ref < 0.15);
+  const tries = [];
+  const mb = text.match(new RegExp("Al[ıi]ş[^\\d]{0,60}" + N, "i")), ms = text.match(new RegExp("Sat[ıi]ş[^\\d]{0,60}" + N, "i"));
+  if (mb && ms) tries.push([flexNum(mb[1]), flexNum(ms[1])]);
+  for (const m of text.matchAll(new RegExp(N + "[^\\d]{1,40}" + N, "g"))) tries.push([flexNum(m[1]), flexNum(m[2])]);
+  for (const [b, s] of tries) if (ok(b, s)) return { buy: b, sell: s };
+  throw new Error("sayfada Reşat alış fiyatı bulunamadı");
+}
 async function goldAndFx(prev) {
   const fx = { ...(prev.fx || {}) }, gold = { ...(prev.gold || {}) };
   const sources = [["finans.truncgil.com", () => truncgil("https://finans.truncgil.com/v4/today.json")], ["finans.truncgil.com (v3)", () => truncgil("https://finans.truncgil.com/today.json")], ["altin.in", altinIn]];
@@ -102,7 +121,16 @@ async function goldAndFx(prev) {
       if (sane(v, gold[k])) { gold[k] = +v.toFixed(2); n++; } else if (o) notes.push(`${k} fiyatı beklenmedik: ${v}`);
       if (k === "resat" && o) { const b = buy(o); if (sane(b, gold.resatAlis)) gold.resatAlis = +b.toFixed(2); if (sane(v, gold.resatSatis)) gold.resatSatis = +v.toFixed(2); }
     }
-    if (n >= 3) { errors.push(...notes); if (fails.length) console.log("Altın yedek kaynağa düştü → " + fails.join(" | ")); return { fx, gold, source: name }; }
+    if (n >= 3) {
+      errors.push(...notes); if (fails.length) console.log("Altın yedek kaynağa düştü → " + fails.join(" | "));
+      let src = name;
+      try {
+        const r = await resatAltinIn(gold.resat);
+        gold.resatAlis = +r.buy.toFixed(2); gold.resatSatis = +r.sell.toFixed(2); gold.resatKaynak = "altin.in";
+        if (name !== "altin.in") src = name + ", altin.in (Reşat alış)";
+      } catch (e) { gold.resatKaynak = name; errors.push("Reşat alış fiyatı altin.in'den okunamadı (" + e.message + "); nisap için " + name + " fiyatı kullanıldı"); }
+      return { fx, gold, source: src };
+    }
     fails.push(`${name}: altın fiyatları yanıtta yok`);
   }
   errors.push("Altın fiyatları alınamadı, önceki değerler korundu (" + fails.join("; ") + ")");

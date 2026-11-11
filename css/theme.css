@@ -402,3 +402,54 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .dayrow .dr-r b{font-size:.86rem;font-weight:700}
 .dayrow .dr-r small{font-size:.74rem;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dayrow .bar{grid-column:1/-1;height:6px}
+
+/* ================= 2.0: ortak bileşenler ================= */
+/* --- liste satırı (Gelir-Gider, Borç, Zekât, kartlar, sabit ödemeler) --- */
+.row.li{display:flex;align-items:center;gap:12px;padding:11px 10px;min-height:56px;cursor:pointer;text-align:left}
+.row.li:not([role="button"]){cursor:default}
+.list .row.li[role="button"]:hover{background:var(--surface-2)}
+.row.li:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mk{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:color-mix(in srgb,currentColor 10%,var(--surface));font-size:.78rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.row.li .main{min-width:0;flex:1}
+.row.li .t{font-size:.94rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.li .s{font-size:.78rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.li .share{margin-top:6px;max-width:200px}
+.row.li .end{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
+.row.li .am{font-size:.94rem;font-weight:700;white-space:nowrap}
+.row.li .pill{font-size:.68rem;padding:2px 8px}
+
+/* --- düğme hiyerarşisi: dolu (ana) > çerçeveli (ikincil) > yazı (üçüncül) --- */
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);box-shadow:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);box-shadow:none}
+.btn.ghost{background:none;border-color:transparent;color:var(--accent)}
+.btn.sm{padding:5px 13px;font-size:.78rem;border-radius:99px}
+.row.li .btn.sm{min-width:58px}
+
+/* --- sade üst bilgi: Özet dışındaki ekranlar (mavi kart yalnızca Özet'te) --- */
+.hero.flat{--hn-fg:var(--fg);background:var(--surface);color:var(--fg);border:1px solid color-mix(in srgb,var(--line) 75%,transparent);border-radius:var(--r);box-shadow:0 1px 0 rgba(19,26,44,.03);padding:16px 18px;gap:12px}
+.hero.flat .big{font-size:clamp(1.7rem,6.6vw,2.2rem)}
+.hero.flat .label{color:var(--muted)}
+.hero.flat .trio{border-top:1px solid var(--line);padding-top:12px;gap:0}
+.hero.flat .trio>div{padding-right:10px}
+.hero.flat .trio>div+div{border-left:1px solid var(--line);padding-left:14px}
+.hero.flat .trio[style]{border-top:0;padding-top:0}
+.hero.flat .trio.plrow>div+div,.hero.flat .trio.plrow>button+button{border-left:0}
+.hero.flat .trio.stat .pct{color:var(--muted)}
+.hero.flat .trio.stat .pct.pos-t{color:var(--pos)} .hero.flat .trio.stat .pct.neg-t{color:var(--neg)}
+.hero.flat .plc[aria-pressed="true"]{background:var(--surface-2)}
+.hero.flat .curseg{background:var(--surface-2)}
+.hero.flat .curseg button{color:var(--muted)}
+.hero.flat .curseg button[aria-pressed="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 2px rgba(19,26,44,.14)}
+.hero.flat .delta{background:var(--surface-2)}
+.hero.flat .delta.up b,.hero.flat .delta.up span{color:var(--pos)}
+.hero.flat .delta.down b,.hero.flat .delta.down span{color:var(--neg)}
+.hero.flat .delta small{color:var(--muted)}
+.hero.flat .subrow .eqv{margin-top:0;gap:0 12px}
+.hero.flat .subrow .eqv span{background:none;border:0;padding:0;font-size:.8rem;font-weight:600;color:var(--muted)}
+.hero.flat .hero-spark .ln{stroke:var(--accent)}
+.hero.flat .hero-spark path:first-of-type{fill:color-mix(in srgb,var(--accent) 9%,transparent)}
+.hero.flat .icon-btn{width:36px;height:36px;box-shadow:none;border:1px solid var(--line)}
+.hero.flat .dayrow{border-top:1px solid var(--line)}
+.hero.flat .dayrow .dr-r small{color:var(--muted)}
+.hero.flat .sub{color:var(--muted)}
+.hero.flat .bar{background:var(--surface-2)}
