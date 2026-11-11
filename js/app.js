@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.15";
+const APP_VERSION="2.16";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -690,6 +690,7 @@ const I={
   user:sv('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
   search:sv('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
   brush:sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 7.5h4.5M12 12h6M12 16.5h4.5"/>'),
+  camera:sv('<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.5-2.5h5L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.5"/>'),
   building:sv('<path d="M5 20.500v-15A1.5 1.5 0 0 1 6.5 4h7A1.5 1.5 0 0 1 15 5.500v15M15 10h3a1.5 1.5 0 0 1 1.5 1.500v9M3.5 20.500h17M8.5 8h3M8.5 11.500h3M8.5 15h3"/>')
 };
 const ic=(svg,n=16)=>svg.replace('aria-hidden="true"',`width="${n}" height="${n}" aria-hidden="true"`);
@@ -1741,6 +1742,51 @@ function tradeRow(h,t,showName,pfId){
   const tot=(+t.qty||0)*(+t.price||0),buy=t.type==="buy";
   return `<button class="row" type="button" data-act="edit-tr" data-pf="${pfId}" data-h="${h.id}" data-id="${t.id}">${mkIcon(buy?I.buy:I.sell,buy?"--pos":"--neg")}<span class="sr">${buy?"Alım":"Satış"}</span><div class="main"><div class="t">${showName?esc(h.name):`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)} ${esc(h.cur)}</span>`}</div><div class="s">${showName?`<span class="num">${fmtN(t.qty,4)} × ${S().hide?"••":fmtN(t.price,4)}</span> · `:""}${t.date?fmtDate(t.date):"tarih yok"}${+t.fee?" · komisyon "+(S().hide?"••":fmtN(t.fee,2)):""}${buy&&t.fx&&h.cur!=="USD"?" · USD "+fmtN(t.fx.USD,2):""}${buy&&t.fx&&h.cur==="USD"?" · kur "+fmtN(t.fx.USD,2):""}${!buy&&+t.tax?" · stopaj "+(S().hide?"••":fmtN(t.tax,2)):""}${t.legacy?" · açılış kaydı":""}${t.note?" · "+esc(t.note):""}</div></div><div class="end"><div class="num">${buy?"":"+"}${fmt(tot,h.cur)}</div>${!buy&&t.pl!=null?`<span class="pill ${t.pl>=0?"pos":"neg"}">K/Z ${fmt(t.pl,h.cur)}</span>`:""}</div></button>`;
 }
+/* ---------- fişten okuma ----------
+   Fotoğraf cihazdan çıkmaz: yazı, uygulamayla birlikte gelen Tesseract (Apache 2.0) ile telefonda okunur.
+   Okuma ilk kullanımda yaklaşık 6 MB dosya indirir. Sonuç doğrudan kaydedilmez; pencereyi doldurur, kullanıcı onaylar. */
+/*<fis>*/
+function parseReceipt(text,cats){
+  const up=x=>x.toLocaleUpperCase("tr");
+  const lines=text.split(/\r?\n/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean),U=lines.map(up);
+  const nums=l=>{const out=[],re=/(\d{1,3}(?:[. ]\d{3})+|\d+)\s?[.,]\s?(\d{2})(?!\d)/g;let m;while((m=re.exec(l)))out.push(parseFloat(m[1].replace(/[. ]/g,"")+"."+m[2]));return out};
+  // tutar: önce "TOPLAM / TUTAR / ÖDENECEK" satırı (KDV ve ara toplam hariç), yoksa en büyük tutar
+  let amount=null,how="";
+  const key=/(GENEL\s*T[O0]PLAM|[ÖO]DENECEK|T[O0]PLAM|T[O0]P\b|TUTAR|TOTAL)/,skip=/(KDV|ARA\s*T[O0]PLAM|T[O0]PKDV|PARA\s*[ÜU]ST[ÜU]|N[AK]K[İI]T|[İI]ND[İI]R[İI]M|PUAN)/;
+  const cand=[];U.forEach((l,i)=>{if(key.test(l)&&!skip.test(l)){let n=nums(lines[i]);if(!n.length&&U[i+1]&&!key.test(U[i+1]))n=nums(lines[i+1]);if(n.length)cand.push({v:Math.max(...n),g:/GENEL|[ÖO]DENECEK/.test(l)?2:/T[O0]PLAM/.test(l)?1:0,i})}});
+  if(cand.length){cand.sort((a,b)=>b.g-a.g||b.i-a.i);amount=cand[0].v;how="toplam satırı"}
+  else{const all=[];U.forEach((l,i)=>{if(!skip.test(l))all.push(...nums(lines[i]))});const ok=all.filter(v=>v>0&&v<1e6);if(ok.length){amount=Math.max(...ok);how="en büyük tutar"}}
+  // tarih: gg.aa.yyyy, gg/aa/yyyy, gg-aa-yy
+  let date=null;const today=new Date();
+  for(const l of lines){const m=l.match(/(?<!\d)(\d{1,2})\s?[./-]\s?(\d{1,2})\s?[./-]\s?(\d{4}|\d{2})(?!\d)/);if(!m)continue;
+    let d=+m[1],mo=+m[2],y=+m[3];if(y<100)y+=2000;if(d<1||d>31||mo<1||mo>12||y<2015)continue;
+    const dt=new Date(y,mo-1,d);if(dt.getMonth()!==mo-1||dt>new Date(today.getTime()+864e5))continue;
+    date=y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0");break}
+  // satıcı: baştaki ilk anlamlı satır
+  let shop="";for(const l of lines.slice(0,6)){const letters=(l.match(/[A-Za-zÇĞİÖŞÜçğıöşü]/g)||[]).length;if(letters>=4&&letters>=l.length*.6&&!/(F[İI]Ş|TAR[İI]H|SAAT|VKN|VERG[İI]|TEL|MERS[İI]S|TEŞEKK)/.test(up(l))){shop=l.replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü&.\- ]/g,"").trim().slice(0,32);break}}
+  // kategori: fişteki anahtar kelimelerden, kullanıcının kendi kategori adlarıyla eşleşen ilki
+  const T=U.join(" "),rules=[[/(M[İI]GROS|B[İI]M\b|A101|A-101|ŞOK\b|CARREFOUR|MARKET|GIDA|MANAV|KASAP|FIRIN|EKMEK)/,/market|mutfak|gıda/i],[/(PETROL|OPET|SHELL|\bBP\b|AYGAZ|AKARYAKIT|BENZ[İI]N|MOTOR[İI]N|OTOPARK|HGS|OGS)/,/ulaşım|araç|yakıt/i],[/(ECZANE|HASTANE|KL[İI]N[İI]K|OPT[İI]K|SA[ĞG]LIK)/,/sağlık/i],[/(RESTORAN|RESTAURANT|LOKANTA|CAFE|KAFE|KAHVE|BURGER|P[İI]ZZA|D[ÖO]NER|KEBAP|PASTANE)/,/yemek|eğlence|restoran/i],[/(G[İI]Y[İI]M|TEKST[İI]L|AYAKKABI|LC ?WA[İI]K[İI]K[İI]|DEFACTO|KOTON)/,/giyim/i],[/(KIRTAS[İI]YE|K[İI]TAP|OKUL|KURS)/,/eğitim/i],[/(ELEKTR[İI]K|DO[ĞG]ALGAZ|SU FATURA|TELEKOM|TURKCELL|VODAFONE|[İI]NTERNET)/,/fatura/i],[/(MOB[İI]LYA|YAPI MARKET|KOÇTAŞ|BAUHAUS|[İI]KEA|HIRDAVAT|Z[ÜU]CC[İI]YE)/,/ev|eşya/i]];
+  let cat="";for(const[re,cr]of rules){if(re.test(T)){const c=(cats||[]).find(x=>cr.test(x));if(c){cat=c;break}}}
+  return{amount,how,date,shop,cat};
+}
+/*</fis>*/
+const loadScript=src=>new Promise((res,rej)=>{const e=document.createElement("script");e.src=src;e.onload=res;e.onerror=()=>rej(new Error("Okuma dosyaları indirilemedi; internet bağlantınızı kontrol edin."));document.head.appendChild(e)});
+async function receiptCanvas(file){
+  let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:"from-image"})}catch(e){bmp=await createImageBitmap(file)}
+  const sc=Math.min(1,2000/Math.max(bmp.width,bmp.height)),c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+  const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);
+  // gri ton + kontrast: ısıl kâğıttaki soluk yazıyı belirginleştirir
+  const im=x.getImageData(0,0,c.width,c.height),d=im.data;let lo=255,hi=0;const g=new Uint8Array(d.length/4);
+  for(let i=0,j=0;i<d.length;i+=4,j++){const v=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000|0;g[j]=v;if(v<lo)lo=v;if(v>hi)hi=v}
+  const k=255/Math.max(1,hi-lo);for(let i=0,j=0;i<d.length;i+=4,j++){const v=Math.max(0,Math.min(255,(g[j]-lo)*k));d[i]=d[i+1]=d[i+2]=v}
+  x.putImageData(im,0,0);return c;
+}
+async function readReceipt(file,onProg,psm){
+  if(!window.Tesseract)await loadScript("js/vendor/tesseract/tesseract.min.js");
+  const base=new URL("js/vendor/tesseract/",location.href).href,canvas=await receiptCanvas(file);
+  const w=await window.Tesseract.createWorker("tur",1,{workerPath:base+"worker.min.js",corePath:base,langPath:base,gzip:true,logger:m=>{if(onProg&&m.status==="recognizing text")onProg(m.progress)}});
+  try{await w.setParameters({tessedit_pageseg_mode:psm||"4",preserve_interword_spaces:"1"});const r=await w.recognize(canvas);return r.data.text||""}finally{w.terminate()}
+}
 function methodOpts(){return [["cash","Nakit / banka kartı"],...state.cards.map(c=>[c.id,"Kart · "+c.name])]}
 function txSheet(t,preset){
   const type=t?t.type:(preset&&preset.type)||"out";
@@ -1759,7 +1805,29 @@ function txSheet(t,preset){
     {id:"note",label:"Not",value:t?t.note:"",ph:"İsteğe bağlı"}],
     extra:`<div class="note" id="txHint"></div>`,
     onChange:(form)=>sync(form),
-    onOpen:form=>form.addEventListener("input",e=>{if(e.target.name==="buyQty")e.target.dataset.auto="0";else if(e.target.name==="amount"||e.target.name==="buyPrice")sync(form)}),
+    onOpen:(form,sh)=>{form.addEventListener("input",e=>{if(e.target.name==="buyQty")e.target.dataset.auto="0";else if(e.target.name==="amount"||e.target.name==="buyPrice")sync(form)});
+      if(t||!("createImageBitmap" in window)||typeof WebAssembly!=="object")return;
+      form.insertAdjacentHTML("afterbegin",`<div class="scan"><button type="button" class="btn sm" id="scanBtn">${ic(I.camera,16)}Fişten doldur</button><input type="file" id="scanFile" accept="image/*" capture="environment" hidden><span class="sub" id="scanMsg" role="status">Fişin fotoğrafını çekin; tutar, tarih ve kategori doldurulur.</span></div>`);
+      const btn=sh.querySelector("#scanBtn"),inp=sh.querySelector("#scanFile"),msg=sh.querySelector("#scanMsg");
+      btn.onclick=()=>inp.click();
+      inp.onchange=async()=>{const f=inp.files&&inp.files[0];inp.value="";if(!f)return;btn.disabled=true;msg.textContent="Okuma hazırlanıyor… (ilk seferde birkaç saniye sürer)";
+        try{const text=await readReceipt(f,pr=>{msg.textContent="Fiş okunuyor… %"+Math.round(pr*100)});
+          if(!document.body.contains(form))return;
+          let r=parseReceipt(text,CATS.out);
+          // toplam satırı bulunamadıysa satırları bölmeyen ikinci bir okuma dene
+          if(r.how!=="toplam satırı"){try{const r2=parseReceipt(await readReceipt(f,pr=>{msg.textContent="Bir kez daha deneniyor… %"+Math.round(pr*100)},"6"),CATS.out);if(r2.how==="toplam satırı"||(!r.amount&&r2.amount))r={...r2,date:r2.date||r.date,shop:r.shop||r2.shop,cat:r2.cat||r.cat}}catch(e){}}
+          if(!document.body.contains(form))return;
+          const el=form.elements,got=[];
+          form.querySelector('[data-seg=type] [data-v=out]').click();
+          if(r.amount){el.amount.value=String(r.amount).replace(".",",");got.push("tutar "+fmt(r.amount,"TRY",{show:true}))}
+          if(r.date){el.date.value=r.date;got.push("tarih "+fmtDate(r.date))}
+          if(r.cat){sync(form);el.cat.value=r.cat;got.push(r.cat)}
+          if(r.shop&&!el.note.value)el.note.value=r.shop;
+          sync(form);
+          msg.textContent=got.length?"Okundu: "+got.join(" · ")+(r.amount&&r.how!=="toplam satırı"?". Toplam satırı bulunamadı, fişteki en büyük tutar alındı; mutlaka kontrol edin.":". Kontrol edip kaydedin."):"Fişten tutar ya da tarih okunamadı. Daha yakından, düz ve aydınlık bir fotoğrafla yeniden deneyin ya da elle girin.";
+        }catch(e){msg.textContent=e&&e.message&&/indirilemedi/.test(e.message)?e.message:"Fiş okunamadı; yeniden deneyin ya da elle girin."}
+        btn.disabled=false};
+    },
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";if(!v.date)return"Tarih seçin.";
       if(v.type!=="card"&&v.cat==="__new"){const n=(v.newCat||"").trim().replace(/\s+/g," ");if(!n)return"Yeni kategorinin adını yazın.";if(n.length>40)return"Ad en çok 40 karakter olabilir.";
         const ex=catOpts(v.type).find(c=>trLow(c)===trLow(n));if(ex)v.cat=ex;else{catsMut(v.type,l=>l.concat([n]));v.cat=n}}

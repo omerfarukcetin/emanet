@@ -80,3 +80,8 @@ o işin düzenli çalışmasına bağlıdır. "Bildirim denemesi" işi (Actions 
 
 Portföy sayfasındaki kart, portföyün getirisini aynı dönemde gram altın, dolar, BIST 100 ve enflasyonla (Yİ-ÜFE) karşılaştırır.
 BIST 100 günlük kapanışları fiyat görevi tarafından `data/bench.json` dosyasına yazılır.
+
+## Fişten okuma
+
+"İşlem ekle" penceresindeki "Fişten doldur" düğmesi fişin fotoğrafını telefonda okur; fotoğraf cihazdan çıkmaz.
+Okuma için [Tesseract.js](https://github.com/naptha/tesseract.js) (Apache 2.0) ve Türkçe dil verisi `js/vendor/tesseract/` klasöründe depoyla birlikte gelir.
