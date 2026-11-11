@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.7";
+const APP_VERSION="1.8";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -57,7 +57,7 @@ try{fxhist=JSON.parse(localStorage.getItem(FXK)||"{}")||{}}catch(e){}
 try{market=JSON.parse(localStorage.getItem(MK)||"null")}catch(e){}
 try{lastWatch=localStorage.getItem(WK)||"[]"}catch(e){}
 let state=null, ready=false, mode="pending", saving=false, pendingSave=false, saveTimer=null, lastLocalWrite=0;
-let view={tab:"ozet",pf:null,owner:"all",zOwner:null,month:todayISO().slice(0,7),txType:"all",debtDir:"lent"};
+let view={ozPf:(()=>{try{return localStorage.getItem("emanet-ozpf")}catch(e){return null}})(),tab:"ozet",pf:null,owner:"all",zOwner:null,month:todayISO().slice(0,7),txType:"all",debtDir:"lent"};
 
 function normalize(s){
   const e=emptyState(); s=Object.assign(e,s||{});
@@ -639,8 +639,11 @@ function onboarding(){
   </section>`;
 }
 
+/* Özet'te görüntülenen portföy: yalnızca bu cihazdaki görünümü değiştirir, ana portföyü değiştirmez.
+   Gelir-gider, nakit bakiyesi, hedefler ve vadeler her zaman ana portföye bağlıdır. */
+const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf();
 function rOzet(){
-  const mp=mainPf();
+  const mp=ozPf(),onMain=!mp||isMainPf(mp);
   const t=mp?pfTotals(mp):{v:0,c:0,pl:0,plp:0};
   const recv=debtSum("lent"),pay=debtSum("borrowed");
   const net=t.v+recv-pay;
@@ -653,7 +656,7 @@ function rOzet(){
   return `
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
-      ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Ana portföy</span><select data-act="mainpf" aria-label="Ana portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
+      ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Görüntülenen portföy</span><select data-act="ozpf" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${isMainPf(p)?" (ana)":""}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
     </div>${eyeBtn()}</div>
     <div class="bigrow"><div class="big amt">${money(t.v)}</div>${mp?spark([mp.id]):""}</div>
     <div class="subrow">${mp?dayDelta(hs):""}${eqvChips(t.v)}</div>
@@ -669,7 +672,8 @@ function rOzet(){
     ${others>0?`<div class="sub" style="margin-top:8px">${others} portföy daha var; hepsini Portföy sekmesinde görebilirsiniz.</div>`:""}
   </section>`
   :`<section class="card"><div class="empty"><b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
-  <section class="card">
+  ${onMain?"":`<div class="note">Gelir-gider, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}
+  ${!onMain?"":`<section class="card">
     <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü ›</button></div>
     <div class="flow">
       <dl class="flow-n">
@@ -679,9 +683,9 @@ function rOzet(){
       </dl>
       ${flowChart(true)}
     </div>
-  </section>
-  ${goalsCard()}
-  ${upcoming.length?`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
+  </section>`}
+  ${onMain?goalsCard():""}
+  ${onMain&&upcoming.length?`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
   `;
 }
 
@@ -1051,7 +1055,7 @@ function pfSheet(p){
   const colors=["--c1","--c2","--c3","--c4","--c5","--c6"];
   formSheet({title:p?"Portföyü düzenle":"Yeni portföy",fields:[{id:"name",label:"Portföy adı",value:p?p.name:"",ph:"Örn. Uzun vade, Çocuk için, BES"},
     {id:"owner",label:"Kimin portföyü",value:p?ownerOf(p):(view.owner!=="all"?view.owner:MAIN()),list:[...new Set([...owners(),"Eşim","Oğlum","Kızım"])],ph:"Örn. Ben, Eşim"},
-    {id:"isMain",label:"Ana portföy (Özet ekranında gösterilir)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
+    {id:"isMain",label:"Ana portföy (gelir-gider ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
     {id:"color",label:"Renk",type:"select",value:p?p.color:colors[state.portfolios.length%6],options:[["--c1","Altın sarısı"],["--c2","Mavi"],["--c3","Yeşil"],["--c4","Gül"],["--c5","Mor"],["--c6","Kiremit"]]}],
     onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1";if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
     onDelete:p?()=>{state.portfolios=state.portfolios.filter(x=>x!==p);view.pf="all";commit("Portföy silindi")}:null});
@@ -1491,7 +1495,7 @@ document.addEventListener("change",e=>{
   if(t.dataset.act==="wht"){const raw=t.value.trim();S().whtRates=S().whtRates||{};if(!raw){delete S().whtRates[t.dataset.k];commit();return}const v=parseNum(raw);if(isNaN(v)||v<0||v>100){toast("Stopaj oranı 0 ile 100 arasında olmalı");return}S().whtRates[t.dataset.k]=v;commit("Stopaj oranı kaydedildi");return}
   if(t.dataset.act==="feerate"){const v=parseNum(t.value);if(isNaN(v)||v<0||v>10){toast("Oran 0 ile 10 arasında olmalı");return}S().feeRate=v;commit("Komisyon oranı kaydedildi");return}
   if(t.dataset.act==="zosel"){view.zOwner=t.value;render();return}
-  if(t.dataset.act==="mainpf"){S().mainPf=t.value;commit("Ana portföy değişti");return}
+  if(t.dataset.act==="ozpf"){view.ozPf=t.value;try{localStorage.setItem("emanet-ozpf",t.value)}catch(e){}render();return}
   if(t.dataset.act==="startsel"){S().start=t.value;commit();return}
   if(t.id==="importIn"&&t.files&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||!Array.isArray(d.portfolios))throw 0;state=normalize(d);commit("Yedek yüklendi")}catch(err){toast("Dosya okunamadı. Emanet yedeği olan bir .json seçin.")}};r.readAsText(t.files[0])}
 });
