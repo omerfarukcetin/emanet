@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-11T18:48:47.952Z",
+ "updatedAt": "2026-11-11T18:50:26.952Z",
  "fx": {
   "EUR": 55.76,
   "USD": 50.2364
@@ -13,17 +13,17 @@
   "gumus": 83.9,
   "hamit": 43287,
   "resat": 43287,
-  "resatAlis": 42129.07,
-  "resatSatis": 42807.07,
+  "resatAlis": 42124.1,
+  "resatSatis": 42802.18,
   "tam": 42161,
   "yarim": 21158,
   "resatKaynak": "altin.in"
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 7.465,
+   "p": 7.475,
    "cur": "USD",
-   "t": "2026-11-11T18:48:14.000Z"
+   "t": "2026-11-11T18:50:04.000Z"
   },
   "hisse:SOKE": {
    "p": 7.09,
