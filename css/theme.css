@@ -684,3 +684,18 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .vcell small.pos-t{color:var(--pos)}.vcell small.neg-t{color:var(--neg)}
 .vcell.static{cursor:inherit}
 @media (prefers-reduced-motion:reduce){.chev{transition:none}}
+
+/* ================= 2.10: açılır kartlar (Portföy) ve sıkı tablo (Özet) ================= */
+.foldh .sub{white-space:nowrap}
+.foldh:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:8px}
+.atbl.compact{margin-top:10px}
+.atbl.compact .seg.colseg button{min-height:30px;font-size:.76rem}
+.atbl.compact .arow{min-height:42px;padding-block:3px}
+.atbl.compact .arow.sub{min-height:38px}
+.atbl.compact .arow .t{flex-direction:row;align-items:baseline;gap:7px;font-size:.92rem}
+.atbl.compact .arow .t small{flex:none}
+.atbl.compact .arow.sub .t small{display:none}
+.atbl.compact .vcell{flex-direction:row-reverse;align-items:baseline;gap:7px;min-width:0;min-height:34px;padding:3px 6px}
+.atbl.compact .vcell b{font-size:.92rem}
+.stack + .atbl.compact{margin-top:10px}
+.atbl.compact .arow.cat .t small{display:none}
