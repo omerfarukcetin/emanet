@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.3";
+const APP_VERSION="2.4";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -1181,16 +1181,21 @@ function rZekat(){
   <p class="sub" style="margin:0">Gram fiyatı, Reşat altının alış fiyatı 7,2'ye bölünerek bulunur. Hesap bilgilendirme amaçlıdır; fıkhi ayrıntılar için bir hocaya danışın.</p>`;
 }
 
+/* vurgu renkleri: [anahtar, ad, açık tema rengi, koyu tema rengi]; tonlar: [anahtar, ad, açık (zemin, kart, dolgu, çizgi), koyu (…)] — theme.css ile aynı değerler */
+const ACCENTS=[["kobalt","Kobalt","#2443b6","#93a9ff"],["lacivert","Lacivert","#1f3a68","#9fbbe8"],["turkuaz","Turkuaz","#0c8a93","#63d6dc"],["zumrut","Zümrüt","#15775a","#62d3ab"],["kehribar","Kehribar","#a45a06","#f3bd6a"],["mercan","Mercan","#c7452c","#ff9c87"],["gul","Gül","#bf2f6b","#ff9ec2"],["mor","Mor","#6a3fc0","#b7a3ff"]];
+const TONES=[["gri","Porselen",["#f2f4f9","#ffffff","#e9edf5","#dce2ed"],["#0b1020","#131a2e","#1b2440","#263050"]],["krem","Krem",["#f6f1e8","#fffdf9","#eee6d8","#e2d9c8"],["#15120d","#1e1a14","#28231b","#393226"]],["mavi","Buz mavisi",["#e6edf8","#ffffff","#d9e3f3","#c9d5e9"],["#081326","#0f1d36","#172949","#22365c"]],["adacayi","Adaçayı",["#ecf2ee","#fbfdfb","#dfe9e2","#cfdcd3"],["#0d1511","#141e19","#1c2922","#29382f"]],["lavanta","Lavanta",["#eeebf7","#fefdff","#e2ddf1","#d3cce6"],["#100d1c","#181429","#221d38","#30294c"]],["gul","Gül kurusu",["#f7ecee","#fffdfd","#f0dde1","#e5cdd2"],["#190e11","#22151a","#2e1d23","#402a32"]]];
 function rAyarlar(){
   const s=S(), zo=zOwner(), hh=getHawl(zo);
   const seg=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="set" data-k="${key}" data-v="${v}" aria-pressed="${s[key]===v}">${l}</button>`).join("")}</div>`;
   const tog=(key,label,small,path)=>{const val=path?s[path][key]:s[key];return `<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><label class="toggle"><input type="checkbox" id="t-${path||"s"}-${key}" data-act="tog" data-k="${key}" ${path?`data-p="${path}"`:""} ${val?"checked":""}><span></span></label></div>`};
   const num=(id,label,val,small)=>`<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><input class="inline-in" id="${id}" inputmode="decimal" data-act="num" data-k="${id}" value="${esc(String(val).replace(".",","))}"></div>`;
+  const dark=s.theme==="dark"||(s.theme!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);
+  const acc=ACCENTS.some(x=>x[0]===s.accent)?s.accent:"kobalt",tone=TONES.some(x=>x[0]===s.tone)?s.tone:"gri";
   const G={};
   G.gorunum=`<section class="card"><div class="set-group">
     <div class="set-row"><div class="lbl"><b>Tema</b></div>${seg("theme",[["system","Sistem"],["light","Açık"],["dark","Koyu"]])}</div>
-    <div class="set-row"><div class="lbl"><b>Vurgu rengi</b></div><div class="swatches">${[["kobalt","Kobalt","#2443b6"],["turkuaz","Turkuaz","#0c8a93"],["mercan","Mercan","#c7452c"],["zumrut","Zümrüt","#15775a"]].map(([k,l,c])=>`<button class="sw" data-act="set" data-k="accent" data-v="${k}" aria-pressed="${(["kobalt","turkuaz","mercan","zumrut"].includes(s.accent)?s.accent:"kobalt")===k}" aria-label="${l}"><i style="background:${c}"></i></button>`).join("")}</div></div>
-    <div class="set-row"><div class="lbl"><b>Arka plan tonu</b></div><div class="swatches">${[["gri","Porselen","#eef1f6","#141b2e"],["krem","Krem","#f3ece0","#29241c"],["mavi","Buz mavisi","#dfe8f6","#12203a"],["adacayi","Adaçayı","#e1eae3","#1e2923"]].map(([k,l,c1,c2])=>`<button class="tone-sw" data-act="set" data-k="tone" data-v="${k}" aria-pressed="${(s.tone||"gri")===k}" aria-label="${l}" title="${l}"><i style="background:linear-gradient(135deg,${c1} 50%,${c2} 50%)"></i></button>`).join("")}</div></div>
+    <div class="set-row col"><div class="lbl"><b>Vurgu rengi</b><small>${(ACCENTS.find(x=>x[0]===acc)||ACCENTS[0])[1]}</small></div><div class="swatches">${ACCENTS.map(([k,l,c,d])=>`<button class="sw" data-act="set" data-k="accent" data-v="${k}" aria-pressed="${acc===k}" aria-label="${l}" title="${l}" style="--sw:${dark?d:c};color:${dark?"#0b1020":"#fff"}">${acc===k?ic(I.check,18):""}</button>`).join("")}</div></div>
+    <div class="set-row col"><div class="lbl"><b>Arka plan tonu</b><small>Sayfanın ve kartların zemin rengi</small></div><div class="tones">${TONES.map(([k,l,lt,dk])=>{const c=dark?dk:lt;return `<button class="tone" data-act="set" data-k="tone" data-v="${k}" aria-pressed="${tone===k}" aria-label="${l}"><span class="tone-p" style="background:${c[0]};border-color:${c[3]}" aria-hidden="true"><span style="background:${c[1]};border-color:${c[3]}"><i style="background:var(--accent)"></i><i style="background:${c[2]}"></i><i style="background:${c[2]}"></i></span></span><span class="tone-n">${tone===k?ic(I.check,14):""}${l}</span></button>`}).join("")}</div></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}
     ${tog("hide","Tutarları gizle","Başkalarının yanında açarken")}

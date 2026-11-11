@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "7,37 * * * *"   # yarım saatte bir (GitHub yoğunken birkaç dakika gecikebilir)
   workflow_dispatch:          # Actions sekmesinden elle de çalıştırılabilir
+  push:                       # uygulama güncellenince de bir kez çalışır (GitHub zamanlanmış işleri sık sık geciktirir)
+    branches: [main]
+    paths-ignore: ["data/**"]
 
 permissions:
   contents: write
