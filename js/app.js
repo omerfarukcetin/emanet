@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.12";
+const APP_VERSION="2.13";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -962,7 +962,6 @@ function rPortfoy(){
   ${parts.length?foldCard("dagilim",`<section class="card side"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
   ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi").replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
   ${hs.length?foldCard("bench",benchCard((cur?[cur]:vis).map(p=>p.id)),(b=>b?`<span class="num ${b.items[0].v>=0?"pos-t":"neg-t"}">${fmtPct(b.items[0].v)}</span>`:"")(benchCalc((cur?[cur]:vis).map(p=>p.id),view.hRange||90))):""}
-  ${hs.length?foldCard("eqv",eqvCard(v,hs).replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "),`<span class="num">${fmt(eqv(v).USD,"USD",{dec:0})}</span>`):""}
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
     if(!all.length)return"";all.sort((a,b)=>(b.t.date||"").localeCompare(a.t.date||""));const N=view.trN||15;
     return foldCard("islemler",`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>İşlemler</h2><span class="sub">${all.length} kayıt</span></div><div class="list">${all.slice(0,N).map(x=>tradeRow(x.h,x.t,true,x.pf)).join("")}</div>${all.length>N?`<div style="text-align:center;margin-top:8px"><button class="btn sm" data-act="more-tr">Daha fazla göster</button></div>`:""}</section>`,`<span class="sub">${all.length} kayıt</span>`)})()}
