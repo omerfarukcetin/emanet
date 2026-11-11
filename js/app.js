@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.8";
+const APP_VERSION="1.9";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -612,8 +612,12 @@ const I={
 const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["borc","Borç"],["zekat","Zekât"]];
 
 /* ---------- render ---------- */
+const wide=()=>window.matchMedia("(min-width:900px)").matches;
+const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Gelir-Gider"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
-  const tabBtn=([k,l])=>`<button data-tab="${k}" ${view.tab===k?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
+  /* telefonda 5 öğe: Özet, Portföy, +, Gelir-Gider, Zekât. Borç, Gelir-Gider ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
+  const cur=k=>view.tab===k||(k==="akis"&&view.tab==="borc"&&!wide());
+  const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
   $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}</button>`+TABS.slice(2).map(tabBtn).join("");
   $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
@@ -623,7 +627,7 @@ function render(){
     if(view.tab!=="ayarlar"){m.innerHTML=onboarding();fab.hidden=true;return}
   }
   const R={ozet:rOzet,portfoy:rPortfoy,akis:rAkis,borc:rBorc,zekat:rZekat,ayarlar:rAyarlar}[view.tab]||rOzet;
-  m.innerHTML=R();
+  m.innerHTML=(view.tab==="akis"||view.tab==="borc"?subTabs():"")+R();
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   if(F){fab.hidden=false;fab.innerHTML=I.plus+"<span>"+F[0]+"</span>";fab.onclick=F[1]}else fab.hidden=true;
   const na=$("#navAdd");if(na){na.disabled=!F;na.setAttribute("aria-label",F?F[0]:"Ekle");na.title=F?F[0]:"";na.onclick=F?F[1]:null}

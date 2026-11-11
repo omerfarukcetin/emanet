@@ -378,3 +378,19 @@ body{background:radial-gradient(900px 380px at 50% -140px,color-mix(in srgb,var(
 .curseg{display:flex;flex-direction:column;gap:3px;align-self:center;padding:3px;border-radius:12px;background:rgba(255,255,255,.12)}
 .curseg button{width:30px;height:24px;border:0;border-radius:8px;background:none;color:rgba(255,255,255,.8);font:inherit;font-size:.82rem;font-weight:800;cursor:pointer}
 .curseg button[aria-pressed="true"]{background:#fff;color:var(--acc-l)}
+
+/* ================= 1.9: beşli alt menü, + tam ortada ================= */
+.subtabs{display:none}
+@media (max-width:899px){
+  .nav .only-wide{display:none}
+  .nav-in{grid-template-columns:1fr 1fr 72px 1fr 1fr;align-items:center}
+  .nav .nav-add{width:58px;height:58px;margin-block:-8px;box-shadow:0 12px 24px -8px var(--accent),0 0 0 5px var(--bg)}
+  .nav .nav-add svg{width:26px;height:26px}
+  .nav button{font-size:.66rem}
+  .nav button svg{padding:5px 15px}
+  .subtabs{display:flex}
+}
+@media (min-width:900px){
+  .nav button.nav-add{display:none}
+  .seg.subtabs{display:none}
+}
