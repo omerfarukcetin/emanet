@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="1.6";
+const APP_VERSION="1.7";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -154,21 +154,18 @@ function dayPL(h){
 function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);if(d){pl+=d.pl;b+=d.base;plU+=d.plU;bU+=d.baseU;n++}});return n?{pl,pct:b?pl/b*100:0,plU,pctU:bU?plU/bU*100:0}:null}
 const dayLabel=()=>{const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
 const plMode=()=>S().plMode==="day"?"day":"total";
-/* Toplam kartının tek istatistik satırı: Maliyet | K/Z TL | K/Z Dolar.
-   "Toplam K/Z" başlığı aynı zamanda seçicidir: dokununca Günlük K/Z'ye, tekrar dokununca Toplam'a döner. */
+/* Toplam kartının istatistik satırı: Toplam K/Z ve Günlük K/Z yan yana, ₺/$ seçicisi ikisine birden uygulanır.
+   Dokunulan sütun (Toplam ya da Günlük) varlık tablosundaki K/Z sütununu da belirler. */
+const plCur=()=>S().plCur==="USD"?"USD":"TRY";
 function plLine(hs,v,c){
-  const day=plMode()==="day";
-  const val=(amt,pct,cur)=>`<div class="v num ${amt>=0?"pos-t":"neg-t"}">${S().hide?"••••":(amt>0?"+":"")+fmt(amt,cur,{dec:0})}</div><small class="pct ${amt>=0?"pos-t":"neg-t"}">${fmtPct(pct)}</small>`;
-  const none=`<div class="v">—</div><small class="pct">yarın</small>`;
-  let tl,us;
-  if(day){const d=daySum(hs);tl=d?val(d.pl,d.pct,S().base):none;us=d?val(d.plU,d.pctU,"USD"):none}
-  else{
-    const pl=v-c,plp=c?pl/c*100:0;
-    const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0),plU=vU-cU,plpU=cU?plU/cU*100:0;
-    tl=val(pl,plp,S().base);us=val(plU,plpU,"USD");
-  }
-  const tgl=`<button class="plt" data-act="plmode" data-k="${day?"total":"day"}" aria-label="${day?"Günlük kâr/zarar gösteriliyor. Toplam kâr/zarara geç":"Toplam kâr/zarar gösteriliyor. Günlük kâr/zarara geç"}">${day?"Günlük":"Toplam"} K/Z<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 4 4 7M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/></svg></button>`;
-  return `<div class="trio stat"><div><span class="label">Maliyet</span><div class="v num">${fmt(c)}</div><small class="pct">${hs.length} varlık</small></div><div>${tgl}${tl}</div><div><span class="label">Dolar${day&&dayRef()?" · "+dayLabel():""}</span>${us}</div></div>`;
+  const usd=plCur()==="USD",day=plMode()==="day";
+  const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0);
+  const tot=usd?{pl:vU-cU,pct:cU?(vU-cU)/cU*100:0}:{pl:v-c,pct:c?(v-c)/c*100:0};
+  const d=daySum(hs),dd=d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null;
+  const cur=usd?"USD":S().base;
+  const val=x=>x?`<div class="v num ${x.pl>=0?"pos-t":"neg-t"}">${S().hide?"••••":(x.pl>0?"+":"")+fmt(x.pl,cur,{dec:0})}</div><small class="pct ${x.pl>=0?"pos-t":"neg-t"}">${fmtPct(x.pct)}</small>`:`<div class="v">—</div><small class="pct">yarın başlar</small>`;
+  const col=(k,l,x)=>`<button class="plc" data-act="plmode" data-k="${k}" aria-pressed="${(k==="day")===day}" aria-label="${l}; varlık tablosunda göster"><span class="label">${l}</span>${val(x)}</button>`;
+  return `<div class="trio stat plrow">${col("total","Toplam K/Z",tot)}${col("day","Günlük K/Z"+(d&&dayLabel()!=="bugün"?" · "+dayLabel():""),dd)}<div class="curseg" role="group" aria-label="Para birimi">${[["TRY","₺"],["USD","$"]].map(([k,l])=>`<button data-act="plcur" data-k="${k}" aria-pressed="${plCur()===k}" aria-label="${k==="TRY"?"Türk lirası":"Dolar"}">${l}</button>`).join("")}</div></div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
 const eyeBtn=()=>`<button class="icon-btn" data-act="hide" aria-label="${S().hide?"Tutarları göster":"Tutarları gizle"}" aria-pressed="${S().hide}">${S().hide?I.eyeOff:I.eye}</button>`;
@@ -785,7 +782,8 @@ function priceFlag(h){
 }
 /* Varlık tablosu: tek satır = ad | değer | K/Z. K/Z sütunu başlığına dokununca %, ₺ ve $ arasında döner;
    toplam kartındaki Toplam/Günlük seçimi bu sütuna da uygulanır. Ayrıntılar satıra dokununca açılır. */
-const plCol=()=>["pct","tl","usd"].includes(S().plCol)?S().plCol:"pct";
+/* tablo sütunu: yüzde ya da tutar; tutarın para birimi karttaki ₺/$ seçimini izler */
+const plCol=()=>S().plCol&&S().plCol!=="pct"?(S().plCur==="USD"?"usd":"tl"):"pct";
 function hHead(n,label){
   const c=plCol(),day=plMode()==="day";
   return `<div class="row th"><span>${label||"Varlık"} · ${n}</span><span>Değer</span><button class="thb" data-act="plcol" aria-label="Kâr/zarar sütunu: ${c==="pct"?"yüzde":c==="tl"?"TL tutarı":"dolar tutarı"}. Değiştirmek için dokunun">${day?"Günlük":"K/Z"} ${c==="pct"?"%":c==="tl"?"₺":"$"}<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 4 4 7M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/></svg></button></div>`;
@@ -1464,9 +1462,10 @@ document.addEventListener("click",e=>{
     if(!Object.values(c).some(v=>v>0)&&!goldInfo().gram){toast("En az bir altın lira fiyatı girin");return}
     S().rates.USD=u;S().rates.EUR=eu;S().coins=c;S().ratesUpdated=todayISO();commit("Fiyatlar kaydedildi");return}
   if(a==="export")return exportData();
+  if(a==="plcur"){S().plCur=t.dataset.k==="USD"?"USD":"TRY";commit();return}
   if(a==="plmode"){S().plMode=t.dataset.k==="day"?"day":"total";commit();return}
   if(a==="histtoggle"){view.histOpen=!view.histOpen;render();return}
-  if(a==="plcol"){const o=["pct","tl","usd"];S().plCol=o[(o.indexOf(plCol())+1)%3];commit();return}
+  if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");
