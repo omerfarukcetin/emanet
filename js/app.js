@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.39";
+const APP_VERSION="2.40";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -884,8 +884,8 @@ function rOzet(){
   </section>
   ${onMain?attnCard():""}
   ${mp?`<section class="card">
-    <div class="sec" style="margin-bottom:8px"><h2>Varlıklar</h2><button class="btn ghost sm" data-act="open-pf" data-id="${mp.id}">Ayrıntı${ic(I.right,14)}</button></div>
-    ${kinds.length?kindList(hs,t.v,mp.id)
+    ${vHead(hs,"ozet")}
+    ${kinds.length||mp.holdings.length?assetTable(hs,t.v,{ctx:"ozet",pf:mp.id,closed:mp.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:mp}))})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
   </section>${others>0?familyCard(mp):""}`
   :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
@@ -1132,13 +1132,8 @@ function rPortfoy(){
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
       ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:pc}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
-  :`<section class="card">
-    ${(()=>{const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen("pf",k));
-      const cm=COLS.find(c=>c[0]===colMode());
-      return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${AUTO()?"Fiyatlar "+marketWhen():"Fiyatlar elle girilir"}</small></div>
-        <div class="vh-a"><button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`})()}
-    ${hs.length||closed.length?assetTable(hs,v,{ctx:"pf",closed})
-    :`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
+  :hs.length||closed.length?"":`<section class="card">
+    ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
   ${cur&&hs.length?foldCard("hedef",targetCard(cur,hs),cur.target&&Object.keys(cur.target).length?(x=>`<span class="sub">sapma ${fmtN(x,1)} puan</span>`)(targetPlan(cur,hs,0).rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2):""):""}
   ${parts.length?foldCard("dagilim",`<section class="card side"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
@@ -1256,6 +1251,12 @@ function kindList(hs,total,pfId){
   const cats=Object.entries(by).map(([k,list])=>({k,x:cellData(list,total),v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
   return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
   <div class="atbl compact">${cats.map(c=>`<div class="arow cat kl" role="button" tabindex="0" data-act="open-pf" data-id="${pfId}"><span class="an">${kindBadge(c.k)}<span class="kmain"><span class="kt"><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}</span><small class="kshare num">%${fmtN(c.x.share,0)}</small></span><span class="kbar"><i style="width:${Math.max(2,c.x.share).toFixed(1)}%;background:var(${KIND_COLOR[c.k]||"--c7"})"></i></span></span></span><span class="vcell static">${c.x.day?`<small class="num ${c.x.day.pct>=0?"pos-t":"neg-t"}">${fmtPct(c.x.day.pct)}</small>`:""}<b class="num">${fmt(c.x.v,c.x.cur,{dec:0})}</b></span></div>`).join("")}</div>`;
+}
+/* Varlıklar kartının başlığı: fiyat saati, tabloda gösterilen bilgiyi değiştiren düğme, tümünü aç/kapat */
+function vHead(hs,ctx){
+  const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen(ctx,k)),cm=COLS.find(c=>c[0]===colMode());
+  return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${AUTO()?"Fiyatlar "+marketWhen():"Fiyatlar elle girilir"}</small></div>
+    <div class="vh-a">${hs.length?`<button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ctx="${ctx}" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`;
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
@@ -2482,7 +2483,7 @@ document.addEventListener("click",e=>{
   if(a==="col"){S().col=t.dataset.k;commit();return}
   if(a==="colnext"){const i=COLS.findIndex(c=>c[0]===colMode());S().col=COLS[(i+1)%COLS.length][0];commit();return}
   if(a==="fold"){const k=t.dataset.k,f=foldMap();f[k]=!foldOpen(k);view.fJust=f[k]?k:null;try{localStorage.setItem("emanet-fold",JSON.stringify(f))}catch(e){}render();return}
-  if(a==="kall"){const o=kOpenSet(),open=t.dataset.o==="1";t.dataset.ks.split(",").forEach(k=>{const key="pf:"+k;open?o.delete(key):o.add(key)});view.kJust=null;try{localStorage.setItem("emanet-kopen",JSON.stringify([...o]))}catch(e){}render();return}
+  if(a==="kall"){const o=kOpenSet(),open=t.dataset.o==="1",cx=t.dataset.ctx||"pf",inv=cx==="ozet";t.dataset.ks.split(",").forEach(k=>{const key=cx+":"+k;(open!==inv)?o.delete(key):o.add(key)});view.kJust=null;try{localStorage.setItem("emanet-kopen",JSON.stringify([...o]))}catch(e){}render();return}
   if(a==="kopen"){const k=t.dataset.k,o=kOpenSet();view.kJust=kIsOpen(k.split(":")[0],k.slice(k.indexOf(":")+1))?null:k;o.has(k)?o.delete(k):o.add(k);try{localStorage.setItem("emanet-kopen",JSON.stringify([...o]))}catch(e){}render();return}
   if(a==="histtoggle"){view.histOpen=!view.histOpen;render();return}
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
