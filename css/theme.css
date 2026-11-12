@@ -735,3 +735,24 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 /* ================= 2.20: tek kâr/zarar rozeti (dokununca günlük ↔ toplam) ================= */
 .plchips .delta.one{border-color:transparent!important}
 .plchips .delta .swap{display:inline-flex;opacity:.65;margin-left:1px}
+
+/* ================= 2.22: tutarlılık ve okunabilirlik ================= */
+/* yardımcı yazılar: her tonda ve temada yeterli kontrast — metin renginden türetilir */
+:root,:root[data-tone],:root[data-app-theme]{--muted:color-mix(in srgb,var(--fg) 70%,var(--surface))!important;--faint:color-mix(in srgb,var(--fg) 48%,var(--surface))!important}
+/* kart başlıkları: tek boşluk ölçüsü, sağda en çok bir eylem */
+.card>h2:first-child,.card>.sec:first-child{margin-bottom:12px!important}
+.card>.sec:first-child{flex-wrap:nowrap;gap:12px}
+.card>.sec:first-child>h2{min-width:0}
+.sec .btn.ghost.sm{flex:none;gap:4px;padding-inline:0;color:var(--accent);font-weight:600}
+.sec .btn.ghost.sm svg{flex:none}
+.card-foot{display:flex;justify-content:flex-end;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+/* küçük yazılar okunur boyutta */
+.arow .t small,.kshare,.vcell small,.kn small,.kc small,.rp-tiles small,.tiles .label,.fc small,.tone-n,.h3-t small{font-size:.76rem}
+.row.li .pill{font-size:.72rem}
+.row .s{font-size:.8rem}
+/* uzun adlar kesilmesin: iki satıra kadar */
+.row.li .t,.arow .t{white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;line-height:1.25}
+.arow .an{align-items:center}
+.chips .chip{max-width:70vw;overflow:hidden;text-overflow:ellipsis}
+.chips .chip{flex:none;max-width:none;overflow:visible}
+.sec .btn.ghost.sm{gap:5px}
