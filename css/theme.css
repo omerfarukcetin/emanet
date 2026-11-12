@@ -886,3 +886,43 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .trio.tint .t-out{background:color-mix(in srgb,var(--neg) 10%,var(--surface))}
 .trio.tint .t-save{background:color-mix(in srgb,var(--c5) 11%,var(--surface))}
 .trio.tint{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:8px!important}
+
+/* ================= 2.32: aile özeti ================= */
+.fam-tot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0 10px;border-bottom:1px solid var(--line)}
+.fam-tot>div{display:flex;flex-direction:column;gap:2px}
+.fam-tot b.num{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+.fam-tot .delta{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;font-size:.8rem;white-space:nowrap}
+.fam-tot .delta.up b{color:var(--pos)}.fam-tot .delta.down b{color:var(--neg)}
+.fam-tot .delta small{color:var(--muted)}
+.fam-list{display:flex;flex-direction:column}
+.fam-r{display:flex;align-items:center;gap:10px;width:100%;padding:9px 6px;margin:0 -6px;width:calc(100% + 12px);background:none;border:0;border-bottom:1px solid var(--line);border-radius:12px;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.fam-r:last-child{border-bottom:0}
+.fam-r.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.fam-av{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-weight:800;background:color-mix(in srgb,currentColor 16%,var(--surface))}
+.fam-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.fam-n{display:flex;align-items:baseline;gap:6px;min-width:0}
+.fam-n b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fam-n small{color:var(--muted);font-size:.78rem}
+.fam .kbar{display:block;height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden;max-width:160px}
+.fam .kbar i{display:block;height:100%;border-radius:99px}
+.fam-v{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.fam-v small{font-size:.78rem}
+/* vergi raporu */
+.tx-tbl{display:flex;flex-direction:column}
+.tx-r{padding:10px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.tx-r:first-child{border-top:0;padding-top:0}
+.tx-h{display:grid;grid-template-columns:1fr auto;column-gap:10px;align-items:baseline}
+.tx-h .sub{grid-column:1;grid-row:2;font-size:.78rem}
+.tx-h>b.num{grid-column:2;grid-row:1/3;align-self:center}
+.tx-k{display:flex;justify-content:space-between;gap:10px;font-size:.84rem;color:var(--muted)}
+.tx-k .num{color:var(--fg);white-space:nowrap}
+.tx-k.tot{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;color:var(--fg);font-weight:700}
+.tx-p{font-size:.76rem;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:7px 10px;line-height:1.5}
+/* hızlı ekleme */
+.quick{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.quick-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-inline:-2px;padding-inline:2px}
+.quick-row::-webkit-scrollbar{display:none}
+.qchip{flex:none;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:99px;border:1px solid color-mix(in srgb,var(--qc) 28%,var(--line));background:color-mix(in srgb,var(--qc) 9%,var(--surface));color:var(--fg);font:inherit;font-size:.84rem;cursor:pointer;white-space:nowrap}
+.qchip svg{color:var(--qc)}
+.qchip b{font-weight:700}
+.qchip[aria-pressed="true"]{border-color:var(--qc);box-shadow:0 0 0 2px color-mix(in srgb,var(--qc) 30%,transparent)}

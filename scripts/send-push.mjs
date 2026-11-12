@@ -48,7 +48,8 @@ export function decide(row, nowMs) {
   const L = new Date(nowMs + off * 6e4), D = L.toISOString().slice(0, 10), hm = pad(L.getUTCHours()) + ":" + pad(L.getUTCMinutes()), dow = L.getUTCDay();
   const lastDay = new Date(L.getTime() + 864e5).getUTCMonth() !== L.getUTCMonth();
   const t = /^\d\d:\d\d$/.test(p.t) ? p.t : "18:30", daily = p.d !== false;
-  const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay));
+  const zkGap = p.zk !== false && /^\d{4}-\d\d-\d\d$/.test(p.zd || "") ? Math.round((Date.parse(p.zd + "T00:00:00Z") - Date.parse(D + "T00:00:00Z")) / 864e5) : null;
+  const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap));
   let big = false, mv = null;
   if (+p.bm > 0 && row.last_big !== D && hm >= "08:00" && hm <= "23:00" && !(daily && row.last_poke === D)) { mv = dayMove(row.weights); big = mv != null && Math.abs(mv) >= +p.bm; }
   // fiyat alarmları: yalnızca veritabanı işlevi "fired" alanını döndürüyorsa (yeni kurulum) değerlendirilir

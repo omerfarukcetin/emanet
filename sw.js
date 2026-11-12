@@ -91,6 +91,7 @@ async function notify(kindForced, test) {
       if (P.d && due("daily") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("daily");
       if (P.w && due("weekly") && T.dow === 5) kinds.push("weekly");
       if (P.m && due("monthly") && T.lastDay) kinds.push("monthly");
+      if (P.zk !== false && snap.zk && snap.zk.d && due("zakat") && [7, 1, 0].includes(dayGap(today, snap.zk.d))) kinds.push("zakat");
       if (hit.length) { hit.slice(0, 3).forEach(([a, p]) => { alertNote(a, p); fired[a.id] = today; }); }
       else if (!kinds.length && alerts.length && !(+P.bm > 0)) {
         // sunucu bir alarm için uyandırdı ama burada fiyat henüz sınırı göstermiyor: sınıra en yakın alarmı bildir
@@ -137,6 +138,12 @@ async function notify(kindForced, test) {
         else if (w) lines.push("Portföy bu ay " + arrow(w.pct) + pct(w.pct));
         show("aylik", title, lines.join("\n"), open);
       }
+      if (kind === "zakat") {
+        const z = snap.zk, g = z && z.d ? dayGap(today, z.d) : 7;
+        const title = g <= 0 ? "Bugün zekât günü" : g === 1 ? "Yarın zekât günü" : "Zekât gününe " + g + " gün kaldı";
+        const body = !z ? "Örnek bildirim. Zekât tarihiniz ayarlıysa gerçek tutar yazar." : z.reached ? (snap.hide ? "Hesaplanan zekâtı görmek için dokunun." : "Hesaplanan zekât: " + tl(z.left)) + "\nÖdediğinizde Zekât sekmesinden kaydedin." : "Varlıklarınız şu an nisabın altında; zekât düşmüyor.";
+        show("zekat", title, body, open.replace(/#.*$/, "") + "#zekat");
+      }
       if (!test && kind !== "big") st[kind] = today;
     }
     if (!test) {
@@ -152,5 +159,5 @@ self.addEventListener("message", e => { if (e.data && e.data.type === "gun-sonu"
 self.addEventListener("notificationclick", e => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.open) || self.registration.scope;
-  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => { const c = cs.find(x => x.url.startsWith(self.registration.scope)); return c ? c.focus() : self.clients.openWindow(url); }));
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => { const c = cs.find(x => x.url.startsWith(self.registration.scope)); if (!c) return self.clients.openWindow(url); return (url.includes("#") && c.navigate ? c.navigate(url).catch(() => c) : Promise.resolve(c)).then(w => (w || c).focus()); }));
 });
