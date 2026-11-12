@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.27";
+const APP_VERSION="2.28";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -36,6 +36,11 @@ const CATS={get in(){return catList("in")},get out(){return catList("out")},get 
 const CAT_MAP={"Kira":"Kira & aidat","Market":"Market & mutfak","Ulaşım":"Ulaşım & araç","Ev":"Ev & eşya","Eğlence":"Dışarıda yemek & eğlence","Sadaka / Bağış":"Yardım & sadaka","Abonelik":"Abonelikler","Satış":"Yan gelir","Temettü / Faiz dışı getiri":"Yatırım getirisi","Diğer":null};
 
 const CURS=["TRY","USD","EUR"];
+/* Borç/alacak için ek birimler: altın ve gümüş adet/gram olarak tutulur, TL karşılığı güncel fiyattan hesaplanır */
+const DUNITS={gram:["Gram altın","gr altın"],ceyrek:["Çeyrek altın","çeyrek"],yarim:["Yarım altın","yarım"],tam:["Tam altın","tam"],cumhuriyet:["Cumhuriyet altını","cumhuriyet"],ata:["Ata altın","ata"],resat:["Reşat altın","reşat"],hamit:["Hamit altın","hamit"],gumus:["Gram gümüş","gr gümüş"]};
+const DEBT_UNITS=[["TRY","TL"],["USD","Dolar"],["EUR","Euro"],...Object.entries(DUNITS).map(([k,v])=>["G:"+k,v[0]])];
+const isG=c=>typeof c==="string"&&c.slice(0,2)==="G:";
+const unitName=c=>isG(c)?(DUNITS[c.slice(2)]||[c])[0]:c;
 const HM=["Muharrem","Safer","Rebiülevvel","Rebiülahir","Cemaziyelevvel","Cemaziyelahir","Recep","Şaban","Ramazan","Şevval","Zilkade","Zilhicce"];
 const COINS=[["cumhuriyet","Cumhuriyet altını"],["hamit","Hamit lira"],["aziz","Aziz lira"],["resat","Reşat lira"]];
 const MONTHS=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
@@ -98,7 +103,7 @@ try{const c=localStorage.getItem(LS);if(c){state=normalize(JSON.parse(c));view.t
 /* ---------- money ---------- */
 const S=()=>state.settings;
 const AUTO=()=>S().autoPrices!==false&&!!market;
-const rate=c=>{if(c==="TRY")return 1;if(AUTO()&&market.fx&&+market.fx[c]>0)return +market.fx[c];return +S().rates[c]||0};
+const rate=c=>{if(c==="TRY")return 1;if(isG(c)){const v=market&&market.gold&&+market.gold[c.slice(2)];return v>0?v:+S().rates[c]||0}if(AUTO()&&market.fx&&+market.fx[c]>0)return +market.fx[c];return +S().rates[c]||0};
 const GOLDMAP=[["GAU","gram"],["GRAM","gram"],["CUM","cumhuriyet"],["CUMHURIYET","cumhuriyet"],["RESAT","resat"],["REŞAT","resat"],["HAMIT","hamit"],["AZIZ","aziz"],["ATA","ata"],["CEYREK","ceyrek"],["ÇEYREK","ceyrek"],["YARIM","yarim"],["TAM","tam"]];
 function goldKey(h){const sy=(h.symbol||"").toUpperCase().trim();const f=GOLDMAP.find(([k])=>k===sy);if(f)return f[1];
   const n=(h.name||"").toLocaleLowerCase("tr");if(n.includes("gram"))return"gram";if(n.includes("çeyrek"))return"ceyrek";if(n.includes("yarım"))return"yarim";if(n.includes("cumhuriyet"))return"cumhuriyet";if(n.includes("reşat"))return"resat";if(n.includes("hamit"))return"hamit";if(n.includes("aziz"))return"aziz";if(n.includes("ata"))return"ata";if(n.includes("tam"))return"tam";return null}
@@ -116,6 +121,7 @@ const toBase=(a,c)=>{const r=rate(c||"TRY"),b=rate(S().base);return b?(+a||0)*r/
 function fmt(v,cur,opts={}){
   cur=cur||S().base;
   if(S().hide&&!opts.show) return "••••";
+  if(isG(cur))return(v<0?"−":"")+fmtN(Math.abs(v||0),3)+" "+(DUNITS[cur.slice(2)]||[0,cur])[1];
   const a=Math.abs(v), d=opts.dec!=null?opts.dec:(a>=1000||Math.abs(a-Math.round(a))<1e-9?0:2);
   try{return new Intl.NumberFormat("tr-TR",{style:"currency",currency:cur,minimumFractionDigits:d,maximumFractionDigits:d}).format(v||0).replace(/^-/,"−")}catch(e){return (v||0).toFixed(d)+" "+cur}
 }
@@ -1541,7 +1547,7 @@ function debtRow(d){
   else if(d.due){const n=daysBetween(todayISO(),d.due);st=n<0?`<span class="pill neg">${-n} gün gecikti</span>`:n<=14?`<span class="pill warn">${n} gün kaldı</span>`:`<span class="pill">${fmtDate(d.due)}</span>`}
   const pf=state.portfolios.length>1&&d.pf?(state.portfolios.find(p=>p.id===d.pf)||{}).name:"";
   return li({act:"open-debt",id:d.id,mark:mk(esc((d.person||"?").trim().slice(0,1).toUpperCase()),lent?"--pos":"--neg"),title:esc(d.person),
-    sub:(lent?"Alacak":"Borç")+(pf?" · "+esc(pf):"")+" · "+fmt(tot-left,d.cur)+" / "+fmt(tot,d.cur)+" ödendi",
+    sub:(lent?"Alacak":"Borç")+(pf?" · "+esc(pf):"")+" · "+fmt(tot-left,d.cur)+" / "+fmt(tot,d.cur)+" ödendi"+(isG(d.cur)&&left>0&&rate(d.cur)?" · ≈ "+fmt(toBase(left,d.cur),null,{dec:0}):""),
     extra:`<div class="share"><i style="width:${pct}%;background:var(${lent?"--pos":"--neg"})"></i></div>`,amount:fmt(left,d.cur),trail:st});
 }
 function rBorc(){
@@ -2224,7 +2230,7 @@ function debtSheet(d){
     {id:"dir",label:"Yön",type:"seg",value:d?d.dir:view.debtDir,options:[["lent","Borç verdim"],["borrowed","Borç aldım"]]},
     {id:"person",label:"Kişi / kurum",value:d?d.person:"",ph:"Örn. Ahmet, Banka kredisi"},
     ...(state.portfolios.length?[{id:"pf",label:"Hangi portföye ait (zekât hesabı için)",type:"select",value:d?(d.pf||(mainPf()||{}).id):(view.debtPf&&view.debtPf!=="all"?view.debtPf:(mainPf()||{}).id),options:state.portfolios.map(p=>[p.id,pfName(p.id)])}]:[]),
-    [{id:"amount",label:"Toplam tutar",type:"number",value:d?d.amount:"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:d?d.cur:"TRY",options:CURS}],
+    [{id:"amount",label:"Tutar / miktar",type:"number",value:d?d.amount:"",ph:"0"},{id:"cur",label:"Birim",type:"select",value:d?d.cur:"TRY",options:DEBT_UNITS}],
     [{id:"date",label:"Tarih",type:"date",value:d?d.date:todayISO()},{id:"due",label:"Vade (isteğe bağlı)",type:"date",value:d?d.due:""}],
     {id:"note",label:"Not",value:d?d.note:"",ph:"İsteğe bağlı"}],
     onSave:v=>{const a=parseNum(v.amount);if(!v.person.trim())return"Kişi veya kurum adını girin.";if(!(a>0))return"Tutar sıfırdan büyük olmalı.";
@@ -2235,7 +2241,7 @@ function debtSheet(d){
 function debtDetail(d){
   const left=debtLeft(d);
   openSheet(`<h3>${esc(d.person)}</h3>
-    <div class="dsum"><div><span class="label">${d.dir==="lent"?"Kalan alacak":"Kalan borç"}</span><div class="dv num">${fmt(left,d.cur)}</div></div>${left<=0?`<span class="chg up"><b>Kapandı</b></span>`:d.due?(n=>`<span class="chg ${n<0?"down":""}"><b>${n<0?-n+" gün gecikti":n+" gün kaldı"}</b></span>`)(daysBetween(todayISO(),d.due)):""}</div>
+    <div class="dsum"><div><span class="label">${d.dir==="lent"?"Kalan alacak":"Kalan borç"}</span><div class="dv num">${fmt(left,d.cur)}</div>${isG(d.cur)&&rate(d.cur)?`<small class="sub">≈ ${fmt(toBase(left,d.cur),null,{dec:0})} · güncel fiyatla</small>`:""}</div>${left<=0?`<span class="chg up"><b>Kapandı</b></span>`:d.due?(n=>`<span class="chg ${n<0?"down":""}"><b>${n<0?-n+" gün gecikti":n+" gün kaldı"}</b></span>`)(daysBetween(todayISO(),d.due)):""}</div>
     <div class="bar"><i style="width:${+d.amount?Math.min(100,debtPaid(d)/d.amount*100):0}%;background:var(${d.dir==="lent"?"--pos":"--neg"})"></i></div>
     <div class="tiles">
       <div><span class="label">${d.dir==="lent"?"Verdiğim":"Aldığım"} tutar</span><b class="num">${fmt(d.amount,d.cur)}</b></div>
@@ -2243,7 +2249,7 @@ function debtDetail(d){
       ${d.due?`<div><span class="label">Vade</span><b>${fmtDate(d.due)}</b></div>`:""}
       ${d.note?`<div class="w2"><span class="label">Not</span><b class="txt">${esc(d.note)}</b></div>`:""}
     </div>
-    ${left>0?`<form class="form" id="payF" novalidate><div class="label sh-sec">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">Tutar (${esc(d.cur)})</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div><div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
+    ${left>0?`<form class="form" id="payF" novalidate><div class="label sh-sec">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">${isG(d.cur)?"Miktar ("+esc(unitName(d.cur))+")":"Tutar ("+esc(d.cur)+")"}</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div><div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
     <div class="label sh-sec">Ödeme geçmişi</div>
     ${d.payments.length?`<div class="list">${d.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<div class="row"><div class="main"><div class="t num">${fmt(p.amount,d.cur)}</div><div class="s">${fmtDate(p.date)}</div></div><button class="icon-btn sm" data-del-pay="${p.id}" aria-label="Ödemeyi kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz ödeme yok.</div>`}
     <div class="actions eq"><button class="btn" id="dEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
