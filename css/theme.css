@@ -792,3 +792,35 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .skel .sk{display:block;height:12px!important;min-height:0!important;padding:0!important;margin:0!important;flex:none}
 .skel .sk.big{height:34px!important}
 .hcur .ht{top:2px;transform:none}
+
+/* ================= 2.24: hedef dağılım, temettü, ölçülü hareket ================= */
+.tg{display:flex;flex-direction:column;gap:12px}
+.tg-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.9rem}
+.tg-n{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0}
+.tg-n .dot{flex:none;width:9px;height:9px;border-radius:50%}
+.tg-p{font-weight:700;white-space:nowrap}
+.tg-p small{font-weight:500;color:var(--muted)}
+.tg-bar{position:relative;height:8px;margin:6px 0 4px;border-radius:99px;background:var(--surface-2)}
+.tg-bar i{display:block;height:100%;border-radius:99px}
+.tg-bar b{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:2px;background:var(--fg)}
+.tg-a{font-size:.78rem}
+.tg-add{display:flex;flex-direction:column;gap:6px}
+.tg-add input{width:100%;text-align:left;font-family:var(--f-body)}
+.tg-in{display:flex;flex-direction:column}
+.tg-ir{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tg-ir:first-child{border-top:0}
+.tg-ir .tg-n{flex-direction:row;flex-wrap:wrap}
+.tg-ir .tg-n small{flex-basis:100%;margin-left:17px;font-weight:500;font-size:.76rem;color:var(--muted)}
+.tg-pc{display:flex;align-items:center;gap:4px;flex:none}
+.tg-pc span{color:var(--muted);font-weight:600}
+.tg-pc input{width:72px;text-align:right}
+.tg-sum{font-weight:700;font-size:.9rem}
+.sh-sec2{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px}
+/* hareket */
+@keyframes flashRow{0%{background:color-mix(in srgb,var(--accent) 16%,transparent)}100%{background:transparent}}
+.flash{animation:flashRow 1.6s ease-out}
+@keyframes rowIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.arow.sub.enter{animation:rowIn .22s ease-out both}
+.arow.sub.enter:nth-child(n+2){animation-delay:calc(var(--i,0) * 30ms)}
+.fold-in>*:not(.foldh){animation:rowIn .25s ease-out both}
+@media (prefers-reduced-motion:reduce){.flash,.arow.sub.enter,.fold-in>*{animation:none}}
