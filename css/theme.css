@@ -948,3 +948,28 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .vh-a{display:flex;align-items:center;gap:6px;flex:none}
 .colchip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;border:0;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);font:inherit;font-size:.82rem;font-weight:700;cursor:pointer}
 .colchip svg{opacity:.8}
+
+/* ================= 2.41: tek tip yazı ölçüsü =================
+   Liste satırlarının tamamı aynı ölçüyü kullanır:
+   başlık / tutar .94rem · alt satır .78rem · kart başlığındaki bağlantı ve düğme .8rem */
+:root{--fs-row:.94rem;--fs-sub:.78rem;--fs-act:.8rem}
+.arow .t,.arow.cat .t,.arow.sub .t{font-size:var(--fs-row)}
+.arow.sub .t{font-weight:500}
+.vcell b,.vcell .num,.arow .vcell b{font-size:var(--fs-row)}
+.vcell small,.arow small,.arow .kshare,.atbl.compact .arow small{font-size:var(--fs-sub)}
+.fam-n b{font-size:var(--fs-row);font-weight:600}
+.fam-v b{font-size:var(--fs-row);font-weight:700}
+.fam-v small,.fam-n small{font-size:var(--fs-sub)}
+.fam-tot b.num{font-size:1.15rem}
+.fam-tot .label{font-size:var(--fs-sub)}
+.flow-n dt,.flow-n dd{font-size:var(--fs-row)}
+.row .t,.row .end .num,.row>.num,.list .row .num{font-size:var(--fs-row)}
+.row .s{font-size:var(--fs-sub)}
+.vh-t small{font-size:var(--fs-sub)}
+.colchip,.sec .btn.sm,.sec .btn.ghost.sm{font-size:var(--fs-act)}
+.ufe-l span,.tx-h b{font-size:var(--fs-row)}
+.ufe-l small,.tx-k,.tx-h .sub{font-size:var(--fs-sub)}
+.atbl .arow .t,.atbl .arow .vcell b{font-size:var(--fs-row)!important}
+.atbl .arow .vcell small,.atbl .arow small{font-size:var(--fs-sub)!important}
+.budrow .main>div:first-child{font-size:var(--fs-row)!important}
+.budrow small{font-size:var(--fs-sub)}
