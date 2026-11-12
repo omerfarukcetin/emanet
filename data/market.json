@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-12T19:52:48.650Z",
+ "updatedAt": "2026-11-12T19:53:28.821Z",
  "fx": {
-  "EUR": 55.6906,
-  "USD": 50.258
+  "EUR": 55.6877,
+  "USD": 50.2627
  },
  "gold": {
   "ata": 42303,
@@ -13,17 +13,17 @@
   "gumus": 80.98,
   "hamit": 42303,
   "resat": 42303,
-  "resatAlis": 41258.21,
-  "resatSatis": 41921.25,
+  "resatAlis": 41261.03,
+  "resatSatis": 41925.03,
   "tam": 41202,
   "yarim": 20677,
   "resatKaynak": "altin.in"
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 7.27,
+   "p": 7.275,
    "cur": "USD",
-   "t": "2026-11-12T19:51:18.000Z"
+   "t": "2026-11-12T19:53:02.000Z"
   },
   "hisse:SOKE": {
    "p": 7.1,
@@ -56,14 +56,14 @@
    "t": "2026-11-12"
   },
   "abd:SPMO": {
-   "p": 134.72,
+   "p": 134.74,
    "cur": "USD",
-   "t": "2026-11-12T19:52:14.000Z"
+   "t": "2026-11-12T19:53:08.000Z"
   },
   "abd:SCHD": {
    "p": 36.01,
    "cur": "USD",
-   "t": "2026-11-12T19:52:32.000Z"
+   "t": "2026-11-12T19:53:18.000Z"
   },
   "hisse:OPT25": {
    "p": 49.43,
@@ -76,9 +76,8 @@
    "t": "2026-11-12"
   }
  },
- "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
-  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
