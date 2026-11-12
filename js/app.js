@@ -7,11 +7,11 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.17";
+const APP_VERSION="2.18";
 
-const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit / Mevduat",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
+const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
-const KIND_COLOR={hisse:"--c2",abd:"--c4",fon:"--c5",ppf:"--c3",altin:"--c1",gumus:"--c7",doviz:"--c3",kripto:"--c6",nakit:"--c3",bes:"--c4",emlak:"--c6",diger:"--c7"};
+const KIND_COLOR={hisse:"--c2",abd:"--c4",fon:"--c5",ppf:"--c3",altin:"--c1",gumus:"--c7",doviz:"--c3",kripto:"--c6",nakit:"--c3",mevduat:"--c5",bes:"--c4",emlak:"--c6",diger:"--c7"};
 const PRICED=["hisse","abd","fon","ppf","kripto","diger"];
 const FUNDS=["fon","ppf"];
 /* açılır listeden seçilen hazır ürünler: [kod, ad, market.gold anahtarı] */
@@ -51,7 +51,7 @@ function fromH(y,m,d){
   return d>29?fromH(y,m,29):null;
 }
 const fmtH=iso=>{if(!iso)return"";const h=toH(iso);return h.d+" "+HM[h.m-1]+" "+h.y};
-const defaultSettings=()=>({theme:"system",accent:"kobalt",fontSize:"m",compact:false,base:"TRY",rates:{USD:44,EUR:51},goldGram:0,coins:{cumhuriyet:0,hamit:0,aziz:0,resat:0},ratesUpdated:null,autoPrices:true,feeRate:0,tone:"gri",nisabGram:96,hawlH:null,hawlStart:"",hawlSet:true,zakatRecv:true,zakatDebt:true,zakatKinds:{hisse:true,abd:true,fon:true,ppf:true,altin:true,gumus:true,doviz:true,kripto:true,nakit:true,bes:false,emlak:false,diger:true},hide:false,start:"ozet"});
+const defaultSettings=()=>({theme:"system",accent:"kobalt",fontSize:"m",compact:false,base:"TRY",rates:{USD:44,EUR:51},goldGram:0,coins:{cumhuriyet:0,hamit:0,aziz:0,resat:0},ratesUpdated:null,autoPrices:true,feeRate:0,tone:"gri",nisabGram:96,hawlH:null,hawlStart:"",hawlSet:true,zakatRecv:true,zakatDebt:true,zakatKinds:{hisse:true,abd:true,fon:true,ppf:true,altin:true,gumus:true,doviz:true,kripto:true,nakit:true,mevduat:true,bes:false,emlak:false,diger:true},hide:false,start:"ozet"});
 const emptyState=()=>({v:1,updatedAt:0,settings:defaultSettings(),portfolios:[],tx:[],debts:[],zakatPaid:[],cards:[],recurring:[],goals:[],alerts:[],budgets:{}});
 
 let ufe=null;
@@ -694,7 +694,7 @@ const I={
   building:sv('<path d="M5 20.500v-15A1.5 1.5 0 0 1 6.5 4h7A1.5 1.5 0 0 1 15 5.500v15M15 10h3a1.5 1.5 0 0 1 1.5 1.500v9M3.5 20.500h17M8.5 8h3M8.5 11.500h3M8.5 15h3"/>')
 };
 const ic=(svg,n=16)=>svg.replace('aria-hidden="true"',`width="${n}" height="${n}" aria-hidden="true"`);
-const KIND_ICON={hisse:I.candle,abd:I.globe,fon:I.layers,ppf:I.note,altin:I.ingot,gumus:I.ingot,doviz:I.coin,kripto:I.hex,nakit:I.wallet,bes:I.umbrella,emlak:I.building,diger:I.dots};
+const KIND_ICON={hisse:I.candle,abd:I.globe,fon:I.layers,ppf:I.note,altin:I.ingot,gumus:I.ingot,doviz:I.coin,kripto:I.hex,nakit:I.wallet,mevduat:I.bank,bes:I.umbrella,emlak:I.building,diger:I.dots};
 /* kategori adından ikon: kullanıcı eski ya da kendi kategori adını da taşıyor olabilir, bu yüzden anahtar kelimeyle eşleşir */
 const CAT_ICONS=[[/birikim/i,"target"],[/acil durum/i,"umbrella"],[/^altın$/i,"ingot"],[/fon ve yatırım/i,"layers"],[/^döviz$/i,"coin"],[/^bes$/i,"umbrella"],[/maaş/i,"brief"],[/ek ödeme|ikramiye/i,"spark"],[/kira gelir/i,"key"],[/yatırım|temettü/i,"trend"],[/yan gelir|satış/i,"wallet"],[/kira|aidat/i,"home"],[/fatura/i,"bolt"],[/market|mutfak/i,"cart"],[/kart/i,"card"],[/kredi|taksit/i,"bank"],[/ulaşım|araç/i,"car"],[/eğitim/i,"book"],[/sağlık/i,"health"],[/çocuk/i,"child"],[/giyim/i,"shirt"],[/ev\b|eşya/i,"sofa"],[/yemek|eğlence/i,"food"],[/abone/i,"play"],[/hediye/i,"gift"],[/yardım|sadaka|bağış/i,"heart"]];
 const catIcon=c=>{const u=state&&state.settings&&state.settings.catIcons&&state.settings.catIcons[c];if(u&&I[u])return I[u];const m=CAT_ICONS.find(([re])=>re.test(c||""));return I[m?m[1]:"dots"]};
@@ -2102,7 +2102,7 @@ function sample(){
       {id:uid(),name:"BIST hisse sepeti",symbol:"BIST",kind:"hisse",cur:"TRY",qty:350,cost:118,price:132.5}]},
     {id:uid(),name:"Döviz & Nakit (örnek)",color:"--c2",holdings:[
       {id:uid(),name:"Dolar hesabı",symbol:"USD",kind:"doviz",cur:"USD",qty:2500,cost:1,price:1},
-      {id:uid(),name:"Katılım hesabı",symbol:"TL",kind:"nakit",cur:"TRY",qty:85000,cost:1,price:1}]},
+      {id:uid(),name:"Katılım hesabı",symbol:"TL",kind:"mevduat",cur:"TRY",qty:85000,cost:1,price:1}]},
     {id:uid(),name:"BES (örnek)",color:"--c4",holdings:[{id:uid(),name:"BES birikimi (örnek)",symbol:"",kind:"bes",cur:"TRY",qty:1,cost:96000,price:121500,trades:[],bes:{principal:96000,gain:14200,state:9600,stateGain:1700}}]}
   ];
   const m0=todayISO().slice(0,8);const tx=[];
