@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.38";
+const APP_VERSION="2.39";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -1134,8 +1134,9 @@ function rPortfoy(){
       ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:pc}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
   :`<section class="card">
     ${(()=>{const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen("pf",k));
-      return `<div class="sec" style="margin-bottom:2px"><h2>Varlıklar</h2>${ks.length>1?`<button class="btn ghost sm" data-act="kall" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}">${ic(allOpen?I.collapse:I.expand,15)}${allOpen?"Tümünü daralt":"Tümünü genişlet"}</button>`:""}</div>
-      <div class="sub" style="margin:-2px 0 6px;font-size:.78rem">${AUTO()?"Fiyatlar "+marketWhen()+" (otomatik)":"Dokunarak fiyat güncelleyin"}</div>`})()}
+      const cm=COLS.find(c=>c[0]===colMode());
+      return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${AUTO()?"Fiyatlar "+marketWhen():"Fiyatlar elle girilir"}</small></div>
+        <div class="vh-a"><button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`})()}
     ${hs.length||closed.length?assetTable(hs,v,{ctx:"pf",closed})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
@@ -1259,13 +1260,12 @@ function kindList(hs,total,pfId){
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
   const hrow=(h,sub)=>`<div class="arow ${sub?"sub":""}" title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}${h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?`<small>${esc(h.symbol)}</small>`:""}</span>${priceFlag(h)}</span>${vcell(cellData([h],total),h)}</div>`;
-  const head=`<div class="ahead"><div class="seg colseg" role="group" aria-label="Tabloda gösterilen bilgi">${COLS.map(([k,l])=>`<button data-act="col" data-k="${k}" aria-pressed="${m===k}">${l}</button>`).join("")}</div></div>`;
+  const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
   const by={};sorted.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
   const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
-  return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
-  <div class="atbl compact">${head}${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
+  return `<div class="atbl compact">${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
     return `<div class="arow cat" role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
