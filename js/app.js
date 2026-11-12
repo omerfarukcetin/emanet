@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.37";
+const APP_VERSION="2.38";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -744,6 +744,8 @@ const I={
   heart:sv('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>'),
   bank:sv('<path d="M4 9.5 12 4l8 5.500z"/><path d="M6.5 12.500v5M10.2 12.500v5M13.8 12.500v5M17.5 12.500v5M4 20h16"/>'),
   brief:sv('<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3.5 13h17"/>'),
+  expand:sv('<path d="M7 9l5-5 5 5M7 15l5 5 5-5"/>'),
+  collapse:sv('<path d="M7 4l5 5 5-5M7 20l5-5 5 5"/>'),
   spark:sv('<path d="M12 4l1.9 5.100L19 11l-5.1 1.900L12 18l-1.9-5.100L5 11l5.1-1.900z"/>'),
   trend:sv('<path d="M4 16.500l5-5 3.5 3.500L20 7.5"/><path d="M14.5 7.500H20V13"/>'),
   key:sv('<circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.500M16 7l2.5 2.500M13.5 9.500l2 2"/>'),
@@ -1131,7 +1133,9 @@ function rPortfoy(){
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
       ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:pc}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
   :`<section class="card">
-    <div class="sec" style="margin-bottom:6px"><h2>Varlıklar</h2><span class="sub">${AUTO()?"Fiyatlar "+marketWhen()+" (otomatik)":"Dokunarak fiyat güncelleyin"}</span></div>
+    ${(()=>{const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen("pf",k));
+      return `<div class="sec" style="margin-bottom:2px"><h2>Varlıklar</h2>${ks.length>1?`<button class="btn ghost sm" data-act="kall" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}">${ic(allOpen?I.collapse:I.expand,15)}${allOpen?"Tümünü daralt":"Tümünü genişlet"}</button>`:""}</div>
+      <div class="sub" style="margin:-2px 0 6px;font-size:.78rem">${AUTO()?"Fiyatlar "+marketWhen()+" (otomatik)":"Dokunarak fiyat güncelleyin"}</div>`})()}
     ${hs.length||closed.length?assetTable(hs,v,{ctx:"pf",closed})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
@@ -2478,6 +2482,7 @@ document.addEventListener("click",e=>{
   if(a==="col"){S().col=t.dataset.k;commit();return}
   if(a==="colnext"){const i=COLS.findIndex(c=>c[0]===colMode());S().col=COLS[(i+1)%COLS.length][0];commit();return}
   if(a==="fold"){const k=t.dataset.k,f=foldMap();f[k]=!foldOpen(k);view.fJust=f[k]?k:null;try{localStorage.setItem("emanet-fold",JSON.stringify(f))}catch(e){}render();return}
+  if(a==="kall"){const o=kOpenSet(),open=t.dataset.o==="1";t.dataset.ks.split(",").forEach(k=>{const key="pf:"+k;open?o.delete(key):o.add(key)});view.kJust=null;try{localStorage.setItem("emanet-kopen",JSON.stringify([...o]))}catch(e){}render();return}
   if(a==="kopen"){const k=t.dataset.k,o=kOpenSet();view.kJust=kIsOpen(k.split(":")[0],k.slice(k.indexOf(":")+1))?null:k;o.has(k)?o.delete(k):o.add(k);try{localStorage.setItem("emanet-kopen",JSON.stringify([...o]))}catch(e){}render();return}
   if(a==="histtoggle"){view.histOpen=!view.histOpen;render();return}
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
