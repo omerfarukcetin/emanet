@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.20";
+const APP_VERSION="2.21";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -74,6 +74,8 @@ function normalize(s){
   if(s.settings.hawlH&&!s.settings.hawlH.y)s.settings.hawlH=null;
   if(!s.settings.hawlBy){s.settings.hawlBy={};if(s.settings.hawlH)s.settings.hawlBy[s.settings.mainOwner||"Ben"]=s.settings.hawlH}
   s.settings.hawlH=null;
+  // BIST kodları en az 4 karakterdir; "hisse" olarak girilmiş 3 karakterli kodlar TEFAS fonudur
+  (s.portfolios||[]).forEach(p=>(p.holdings||[]).forEach(h=>{if(h&&h.kind==="hisse"&&/^[A-Za-z0-9]{3}$/.test((h.symbol||"").trim()))h.kind="fon"}));
   ["portfolios","tx","debts","zakatPaid","cards","recurring","goals","alerts"].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[]});
   if(!s.hist||typeof s.hist!=="object"||Array.isArray(s.hist))s.hist={};
   if(!s.budgets||typeof s.budgets!=="object")s.budgets={};
@@ -247,6 +249,22 @@ function zakat(o){
 /* ---------- persistence ---------- */
 function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}notifSnap()}
 /* ---------- değer geçmişi: her portföy için günde bir kayıt [tarih, değer TL, maliyet TL, dolar kuru, gram altın] ---------- */
+/* Değer geçmişi ve getiri hesapları yatırımları izler: nakit ve mevduat hariç tutulur (para eklemek "değer arttı" gibi görünmesin).
+   Yeni kayıtlar nakit tutarını ayrıca saklar; eski kayıtlarda, nakit varlığın alım tarihine bakılarak tahmin edilir.
+   Portföy yalnızca nakit/mevduattan oluşuyorsa olduğu gibi gösterilir. */
+const CASH_KINDS=["nakit","mevduat"];
+const cashOnly=p=>{const hs=p.holdings.filter(h=>+h.qty>0);return hs.length>0&&hs.every(h=>CASH_KINDS.includes(h.kind))};
+function cashAt(p,d){let v=0,c=0;const b=rate(S().base);
+  p.holdings.forEach(h=>{if(!CASH_KINDS.includes(h.kind))return;const tr=h.trades||[];let q;
+    if(tr.length){q=0;tr.forEach(t=>{if((t.date||"")<=d)q+=(t.type==="sell"?-1:1)*(+t.qty||0)})}else q=h.buyDate&&h.buyDate>d?0:(+h.qty||0);
+    if(q>0){const u=toBase(effPrice(h).p,h.cur)*b;v+=q*u;c+=+h.qty>0?q*hCost(h)*b/+h.qty:q*u}});
+  return{v,c}}
+function histOf(id){
+  const a=state.hist&&state.hist[id]||[],p=state.portfolios.find(x=>x.id===id);
+  if(!p||cashOnly(p)||!p.holdings.some(h=>CASH_KINDS.includes(h.kind))&&!a.some(r=>r[5]>0))return a;
+  return a.map(r=>{let xv=r[5],xc=r[6];if(xv==null){const e=cashAt(p,r[0]);xv=e.v;xc=e.c}return[r[0],Math.max(0,r[1]-xv),Math.max(0,r[2]-(xc||0)),r[3],r[4]]});
+}
+const histHasCash=ids=>ids.some(id=>{const p=state.portfolios.find(x=>x.id===id);return p&&!cashOnly(p)&&p.holdings.some(h=>CASH_KINDS.includes(h.kind)&&+h.qty>0)});
 function snapshot(){
   if(!state||!ready)return false;
   const d=todayISO(),usd=rate("USD"),g=gramPrice();let ch=dayRoll();
@@ -257,8 +275,9 @@ function snapshot(){
     if(/\(örnek\)/.test(p.name||"")&&!p.holdings.length)return;
     const t=pfTotals(p),b=rate(S().base),v=Math.round(t.v*b),c=Math.round(t.c*b);
     if(!(v>0)&&!(state.hist[p.id]||[]).length)return;
-    const a=state.hist[p.id]=state.hist[p.id]||[],last=a[a.length-1],row=[d,v,c,+usd.toFixed(4),Math.round(g)];
-    if(last&&last[0]===d){if(last[1]!==v||last[2]!==c){a[a.length-1]=row;ch=true}}
+    const ch_=p.holdings.filter(h=>CASH_KINDS.includes(h.kind)),xv=Math.round(ch_.reduce((s,h)=>s+hVal(h),0)*b),xc=Math.round(ch_.reduce((s,h)=>s+hCost(h),0)*b);
+    const a=state.hist[p.id]=state.hist[p.id]||[],last=a[a.length-1],row=[d,v,c,+usd.toFixed(4),Math.round(g),xv,xc];
+    if(last&&last[0]===d){if(last[1]!==v||last[2]!==c||last[5]!==xv||last[6]!==xc){a[a.length-1]=row;ch=true}}
     else{a.push(row);if(a.length>1500)a.splice(0,a.length-1500);ch=true}
   });
   return ch;
@@ -267,7 +286,7 @@ function snapshot(){
 function snapshotSave(){if(snapshot()){state.updatedAt=Date.now();cacheLocal();scheduleSave();return true}return false}
 function histSeries(ids,unit,range){
   const by={};
-  ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
+  ids.forEach(id=>histOf(id).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
   let rows=Object.keys(by).sort().map(d=>({d,...by[d]}));
   if(range&&range!=="all"){const from=addDays(todayISO(),-range);rows=rows.filter(r=>r.d>=from)}
   const conv=r=>unit==="USD"?(r.usd?r.v/r.usd:0):unit==="GAU"?(r.g?r.v/r.g:0):r.v;
@@ -275,7 +294,7 @@ function histSeries(ids,unit,range){
 }
 /* büyük tutar: para birimi simgesi küçük ve soluk */
 const money=(v,cur,o)=>fmt(v,cur,o).replace(/([₺$€])/,'<span class="cur">$1</span>');
-function histSum(ids){const by={};ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{by[r[0]]=(by[r[0]]||0)+r[1]}));return Object.keys(by).sort().map(d=>({d,y:by[d]}))}
+function histSum(ids){const by={};ids.forEach(id=>histOf(id).forEach(r=>{by[r[0]]=(by[r[0]]||0)+r[1]}));return Object.keys(by).sort().map(d=>({d,y:by[d]}))}
 /* bir önceki kayıt gününe göre değişim rozeti */
 /* toplam kartının içindeki ince eğilim çizgisi (son 60 kayıt) */
 let sparkDrawn=false;
@@ -316,7 +335,7 @@ function histCard(ids,title){
   let sum=`<span class="sub">kayıt birikiyor</span>`;
   if(pts.length>=2){const f=pts[0],l=pts[pts.length-1],c=l.y-f.y,pc=f.y?c/f.y*100:0;sum=`<span class="num ${c>=0?"pos-t":"neg-t"}">${S().hide?"••••":(c>=0?"+":"")+fu(c)} <small>${fmtPct(pc)}</small></span>`}
   if(!view.histOpen)return `<section class="card fold"><button class="foldh" data-act="histtoggle" aria-expanded="false"><h2>${esc(title)}</h2>${sum}${CH}</button></section>`;
-  return `<section class="card fold open"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><button class="foldh" data-act="histtoggle" aria-expanded="true" style="width:auto"><h2>${esc(title)}</h2>${CH}</button>${segU}</div>${body}${all.length>=2?`<div style="margin-top:12px">${segR}</div>`:""}</section>`;
+  return `<section class="card fold open"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><button class="foldh" data-act="histtoggle" aria-expanded="true" style="width:auto"><h2>${esc(title)}</h2>${CH}</button>${segU}</div>${body}${all.length>=2?`<div style="margin-top:12px">${segR}</div>`:""}${histHasCash(ids)?`<div class="sub" style="margin-top:8px">Nakit ve mevduat bu grafiğe dahil değildir; yalnızca yatırımların değeri izlenir.</div>`:""}</section>`;
 }
 function commit(msg){snapshot();state.updatedAt=Date.now();lastLocalWrite=state.updatedAt;cacheLocal();applyPrefs();render();if(msg)toast(msg);scheduleSave();syncWatch()}
 function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if(+h.qty>0&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));return out}
@@ -1298,7 +1317,7 @@ function notifCard(){
    Altın ve dolar, her günün kaydındaki gram fiyatı ve kurdan; BIST 100, fiyat görevinin tuttuğu günlük kapanışlardan gelir. */
 function histRows(ids,range){
   const by={};
-  ids.forEach(id=>(state.hist&&state.hist[id]||[]).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
+  ids.forEach(id=>histOf(id).forEach(r=>{const o=by[r[0]]=by[r[0]]||{v:0,c:0,usd:r[3],g:r[4]};o.v+=r[1];o.c+=r[2]}));
   let rows=Object.keys(by).sort().map(d=>({d,...by[d]}));
   if(range&&typeof range==="object")rows=rows.filter(r=>r.d>=range.from&&r.d<=range.to);
   else if(range&&range!=="all"){const from=addDays(todayISO(),-range);rows=rows.filter(r=>r.d>=from)}
@@ -1660,7 +1679,8 @@ function holdingSheet(pfId,h){
       const pick=(c,n)=>{E.symbol.value=c;E.name.value=n};
       [E.name,E.symbol].forEach(inp=>attachSugg(inp,()=>SUGG[E.kind.value]||[],pick));
     },
-    onSave:v=>{const qty=multiT?+h.qty:parseNum(v.qty);if(multiT)v.buyDate=h.buyDate||"";
+    onSave:v=>{if(v.kind==="hisse"&&/^[A-Za-z0-9]{3}$/.test((v.symbol||"").trim()))v.kind="fon";   // 3 karakterli kod TEFAS fonudur
+      const qty=multiT?+h.qty:parseNum(v.qty);if(multiT)v.buyDate=h.buyDate||"";
       let cost,fee=0,bp=NaN;
       if(h)cost=multiT?+h.cost:parseNum(v.cost);else{bp=parseNum(v.bp);fee=v.fee.trim()?parseNum(v.fee):(qty*bp*(+S().feeRate||0)/100);if(isNaN(fee)||fee<0)return"Komisyonu kontrol edin.";cost=qty>0?(qty*bp+fee)/qty:NaN}
       const price=isNaN(parseNum(v.price))?(h?cost:bp):parseNum(v.price);
