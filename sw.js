@@ -133,7 +133,7 @@ async function notify(kindForced, test) {
           const rate = mo.i ? (mo.i - mo.o) / mo.i * 100 : null;
           if (rate != null) title += " · birikim %" + new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(rate);
           if (!snap.hide) lines.push("Gelir " + tl(mo.i) + " · Gider " + tl(mo.o) + " · Kalan " + tl(mo.i - mo.o));
-        } else lines.push("Bu ay gelir-gider kaydı yok.");
+        } else lines.push("Bu ay bütçe kaydı yok.");
         if (ref) { const { m } = pick(since(ref)); if (m.has) lines.push("Portföy bu ay " + m.chg); lines.push(val(m)); }
         else if (w) lines.push("Portföy bu ay " + arrow(w.pct) + pct(w.pct));
         show("aylik", title, lines.join("\n"), open);

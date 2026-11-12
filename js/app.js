@@ -7,10 +7,10 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.42";
+const APP_VERSION="2.43";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
-const CASH_LBL="Nakit (gelir-gider)";
+const CASH_LBL="Nakit (bütçe)";
 const KIND_COLOR={hisse:"--c2",abd:"--c8",fon:"--c5",ppf:"--c3",altin:"--c1",gumus:"--c7",doviz:"--c9",kripto:"--c6",nakit:"--c3",mevduat:"--c10",bes:"--c4",emlak:"--c6",diger:"--c7"};
 const PRICED=["hisse","abd","fon","ppf","kripto","diger"];
 const FUNDS=["fon","ppf"];
@@ -239,7 +239,10 @@ function dayIn(month,day){const[y,m]=month.split("-").map(Number);return month+"
 const cardById=id=>state.cards.find(c=>c.id===id);
 function cardBal(c){const t=todayISO();let sp=0,pd=0;state.tx.forEach(x=>{if(x.type==="out"&&x.method===c.id&&x.date<=t)sp+=toBase(x.amount,x.cur);if(x.type==="card"&&x.card===c.id)pd+=toBase(x.amount,x.cur)});return{sp,pd,bal:sp-pd}}
 function nextDue(day){const t=todayISO();let d=dayIn(t.slice(0,7),day);if(d<t){const[y,m]=t.slice(0,7).split("-").map(Number);const n=new Date(y,m,1);d=dayIn(n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0"),day)}return d}
-const recPaid=(r,month)=>state.tx.find(x=>x.rid===r.id&&(x.date||"").slice(0,7)===month);
+/* Sabit kalem bu ay ödendi mi: "Öde" ile girilen kayıt ya da elle girilmiş aynı türde, aynı kategoride, tutarı %3'ten az farklı bir kayıt.
+   Elle girilen kira gibi kalemler böylece hem "bekleyen" hem "harcanan" diye iki kez sayılmaz. */
+const recPaid=(r,month)=>state.tx.find(x=>x.rid===r.id&&(x.date||"").slice(0,7)===month)
+  ||state.tx.find(x=>!x.rid&&x.type===r.type&&x.cat===r.cat&&(x.date||"").slice(0,7)===month&&Math.abs(toBase(x.amount,x.cur)-toBase(r.amount,r.cur))<=Math.max(1,toBase(r.amount,r.cur)*.03));
 function hawl(o){
   const h=getHawl(o||zOwner()), t=todayISO();
   if(!h)return null;
@@ -776,7 +779,7 @@ const ICON_COLOR={cart:"--c3",home:"--c9",bolt:"--c1",car:"--c2",book:"--c5",hea
 const catColor=c=>ICON_COLOR[catIconKey(c)]||"--c7";
 const kindBadge=k=>`<span class="kbadge" style="color:var(${KIND_COLOR[k]||"--c7"})">${KIND_ICON[k]||I.dots}</span>`;
 const ICON_CHOICES=["cart","home","bolt","car","book","health","child","shirt","sofa","food","play","gift","heart","bank","brief","spark","trend","key","card","wallet","target","umbrella","ingot","coin","layers","globe","building","repeat","bell","dots"];
-const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["borc","Borç"],["zekat","Zekât"]];
+const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Bütçe"],["borc","Borç"],["zekat","Zekât"]];
 
 /* ---------- render ---------- */
 const wide=()=>window.matchMedia("(min-width:900px)").matches;
@@ -807,9 +810,9 @@ const emptyBtn=(act,label)=>`<button class="btn primary sm" data-act="${act}">${
 function li(o){
   return `<div class="row li" title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
-const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Gelir-Gider"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
+const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Bütçe"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
-  /* telefonda 5 öğe: Özet, Portföy, +, Gelir-Gider, Zekât. Borç, Gelir-Gider ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
+  /* telefonda 5 öğe: Özet, Portföy, +, Bütçe, Zekât. Borç, Bütçe ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
   const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())));
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
   $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}<span>Ekle</span></button>`+TABS.slice(2).map(tabBtn).join("");
@@ -889,7 +892,7 @@ function rOzet(){
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
   </section>${others>0?familyCard(mp):""}`
   :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
-  ${onMain?"":`<div class="note">Gelir-gider, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}
+  ${onMain?"":`<div class="note">Bütçe, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}
   ${!onMain?"":`<section class="card side">
     <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü${ic(I.right,14)}</button></div>
     <div class="flow">
@@ -1002,7 +1005,7 @@ function rRapor(){
   const ym=view.rpMonth||today.slice(0,7);view.rpMonth=ym;
   const tile=(l,v,cls,sub)=>`<div><span class="label">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
   const rateTxt=r=>r==null?"—":"%"+fmtN(r,1);
-  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Gelir-Gider</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Vergi"]].map(([k,l])=>`<button data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
+  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Bütçe</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Vergi"]].map(([k,l])=>`<button data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
     <div class="sec"><div class="month-sw"><button class="icon-btn noprint" data-act="rpnav" data-d="-1" aria-label="${prev}">${I.left}</button><b>${title}</b><button class="icon-btn noprint" data-act="rpnav" data-d="1" aria-label="${next}">${I.right}</button></div><span class="sub printonly">Emanet · ${fmtDate(today)} tarihinde oluşturuldu</span></div>`;
   if(mode==="vergi")return head(Y+" vergi raporu","Önceki yıl","Sonraki yıl")+taxReport(Y);
   if(mode==="ay"){
@@ -1124,7 +1127,7 @@ function rPortfoy(){
   </section>
   ${(()=>{const u=ufeSum(hs);
     const parts=[u.c?`<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`:"",
-      cashIn?`<div class="sub">${esc(mpv.name)} içinde gelir-gider bakiyesi: <b class="num">${fmt(cb)}</b></div>`:"",
+      cashIn?`<div class="sub">${esc(mpv.name)} içinde bütçe bakiyesi: <b class="num">${fmt(cb)}</b></div>`:"",
       realized?`<div class="sub">Gerçekleşen kâr/zarar (satışlar, komisyon düşülmüş): <b class="num ${realized>=0?"pos-t":"neg-t"}">${fmt(realized)}</b></div>`:""].filter(Boolean);
     if(!parts.length)return"";
     return `<section class="card pf-extra">${parts.join("")}</section>`})()}
@@ -1318,8 +1321,13 @@ function rAkis(){
     :`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num neg-t">${fmt(0)}</div></div><div class="dr-r"><b class="neg-t">Bu ay harcanabilir tutar kalmadı</b><small>${dLeft} gün kaldı · açık ${fmt(-spendable,null,{dec:0})}</small></div></div>`;
   // ay sonu tahmini: şu anki kalan + bekleyen sabit gelir − bekleyen sabit ödeme/tasarruf − (sabit olmayan harcama hızı × kalan gün)
   const dayNo=+todayISO().slice(8),pendIn=recPend.filter(r=>r.type==="in").reduce((a,r)=>a+toBase(r.amount,r.cur),0);
-  const varOut=curM?monthTx(m).filter(t=>t.type==="out"&&!t.rid).reduce((a,t)=>a+toBase(t.amount,t.cur),0):0,pace=dayNo?varOut/dayNo:0,endEst=left+pendIn-pendOut-pace*(dim(y,mo)-dayNo);
-  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">Bu gidişle ay sonunda</span><b class="num ${endEst>=0?"":"neg-t"}">${fmt(endEst,null,{dec:0})}</b><small>günde ortalama ${fmt(pace,null,{dec:0})} harcama${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
+  /* harcama hızı: sabit kalemler (Öde ile girilen ya da sabit kaleme denk gelen) ve tek seferlik büyük harcamalar ortalamaya katılmaz;
+     onlar zaten "kalan"dan düşülmüş durumda, kalan günlere yayılmaları ay sonunu olduğundan kötü gösterir */
+  const recTx=new Set(recs.map(r=>recPaid(r,m)).filter(Boolean));
+  const vars=curM?monthTx(m).filter(t=>t.type==="out"&&!t.rid&&!recTx.has(t)).map(t=>toBase(t.amount,t.cur)):[];
+  const med=vars.length?vars.slice().sort((a,b)=>a-b)[Math.floor(vars.length/2)]:0,cap=Math.max(med*4,1000);
+  const big=vars.filter(v=>v>cap),varOut=vars.filter(v=>v<=cap).reduce((a,v)=>a+v,0),pace=dayNo?varOut/dayNo:0,endEst=left+pendIn-pendOut-pace*(dim(y,mo)-dayNo);
+  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">Bu gidişle ay sonunda</span><b class="num ${endEst>=0?"":"neg-t"}">${fmt(endEst,null,{dec:0})}</b><small>günde ortalama ${fmt(pace,null,{dec:0})} harcama${big.length?" · "+big.length+" büyük harcama ("+fmt(big.reduce((a,v)=>a+v,0),null,{dec:0})+") ortalamaya katılmadı":""}${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
   const recRow=r=>{const pd=recPaid(r,m),late=!pd&&curM&&dayIn(m,r.day)<todayISO(),c=r.method&&cardById(r.method);
     return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":r.type==="save"?"--c5":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
       trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":r.type==="save"?"Ayrıldı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":r.type==="save"?"Ayır":"Öde"}</button>`})};
@@ -1680,7 +1688,7 @@ function rZekat(){
   <div class="grid2">
   <section class="card"><h2 style="margin-bottom:8px">Hesap dökümü</h2><div class="kv">
     ${Object.entries(z.byKind).map(([k,v])=>`<div><span>${esc(k==="__cash"?CASH_LBL:(KINDS[k]||k))}</span><span>${fmt(v)}</span></div>`).join("")||(z.cash?"":`<div><span>Zekâta tabi varlık</span><span>${fmt(0)}</span></div>`)}
-    ${z.cash?`<div><span>Nakit (gelir-gider bakiyesi)</span><span class="${z.cash<0?"neg-t":""}">${fmt(z.cash)}</span></div>`:""}
+    ${z.cash?`<div><span>Nakit (bütçe bakiyesi)</span><span class="${z.cash<0?"neg-t":""}">${fmt(z.cash)}</span></div>`:""}
     ${s.zakatRecv?`<div><span>Tahsili umulan alacaklar</span><span class="pos-t">+${fmt(z.recv)}</span></div>`:""}
     ${s.zakatDebt?`<div><span>Borçlar</span><span class="neg-t">−${fmt(z.debt)}</span></div>`:""}
     <div class="total"><span>Net (TL karşılığı)</span><span>${fmt(z.net)}</span></div>
@@ -1837,7 +1845,7 @@ function pfSheet(p){
   const colors=["--c1","--c2","--c3","--c4","--c5","--c6"];
   formSheet({title:p?"Portföyü düzenle":"Yeni portföy",fields:[{id:"name",label:"Portföy adı",value:p?p.name:"",ph:"Örn. Uzun vade, Çocuk için, BES"},
     {id:"owner",label:"Kimin portföyü",value:p?ownerOf(p):(view.owner!=="all"?view.owner:MAIN()),list:[...new Set([...owners(),"Eşim","Oğlum","Kızım"])],ph:"Örn. Ben, Eşim"},
-    {id:"isMain",label:"Ana portföy (gelir-gider ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
+    {id:"isMain",label:"Ana portföy (bütçe ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
     {id:"color",label:"Renk",type:"select",value:p?p.color:colors[state.portfolios.length%6],options:[["--c1","Altın sarısı"],["--c2","Mavi"],["--c3","Yeşil"],["--c4","Gül"],["--c5","Mor"],["--c6","Kiremit"]]}],
     onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1";if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
     onDelete:p?()=>{state.portfolios=state.portfolios.filter(x=>x!==p);view.pf="all";commit("Portföy silindi")}:null});
@@ -1979,9 +1987,9 @@ function divSheet(pfId,h,tr){
   formSheet({title:(tr?"Temettüyü düzenle":"Temettü / kâr payı ekle")+" · "+esc(h.name),fields:[
     [{id:"amount",label:"Hesaba geçen net tutar ("+h.cur+")",type:"number",big:true,value:tr?tr.amount:"",ph:"0"},{id:"date",label:"Ödeme tarihi",type:"date",value:tr?(tr.date||""):todayISO()}],
     {id:"tax",label:"Kesilen stopaj (isteğe bağlı)",type:"number",value:tr&&tr.tax?tr.tax:"",ph:"0"},
-    ...(isMain&&!tr?[{id:"toTx",label:"Gelir-Gider'e de gelir olarak yazılsın mı",type:"seg",value:"no",options:[["no","Hayır"],["yes","Evet"]]}]:[]),
+    ...(isMain&&!tr?[{id:"toTx",label:"Bütçe'ye de gelir olarak yazılsın mı",type:"seg",value:"no",options:[["no","Hayır"],["yes","Evet"]]}]:[]),
     {id:"note",label:"Not",value:tr?(tr.note||""):"",ph:"İsteğe bağlı"}],
-    extra:`<div class="note">Temettü varlığın toplam kâr/zararına eklenir; adedi ve ortalama maliyeti değiştirmez. Para aracı kurumda kalıyorsa Gelir-Gider'e yazmanız gerekmez; bankanıza geçtiyse yazın, böylece nakit bakiyeniz doğru kalır.${linked?" Bu kayıt Gelir-Gider'deki bir gelirle bağlı; tutarı ve tarihi orada da güncellenir.":""}</div>`,
+    extra:`<div class="note">Temettü varlığın toplam kâr/zararına eklenir; adedi ve ortalama maliyeti değiştirmez. Para aracı kurumda kalıyorsa Bütçe'ye yazmanız gerekmez; bankanıza geçtiyse yazın, böylece nakit bakiyeniz doğru kalır.${linked?" Bu kayıt Bütçe'deki bir gelirle bağlı; tutarı ve tarihi orada da güncellenir.":""}</div>`,
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";if(!v.date)return"Tarih seçin.";if(v.date>todayISO())return"Tarih ileri olamaz.";
       const tx_=v.tax.trim()?parseNum(v.tax):0;if(isNaN(tx_)||tx_<0)return"Stopajı kontrol edin.";
       ensureTrades(h);let t=tr&&h.trades.find(x=>x.id===tr.id);if(!t){t={id:uid(),type:"div"};h.trades.push(t)}
@@ -2266,7 +2274,7 @@ function goalDetail(g){
       ${g.due?`<div><span class="label">Hedef tarih</span><b>${fmtDate(g.due)}</b></div>${r.left>0&&r.months>0?`<div><span class="label">Aylık ayırmanız gereken · ${r.months} ay</span><b class="num">${fmtU(r.monthly,g.unit)}</b></div>`:""}`:""}
     </div>
     ${g.src==="manual"?`<form class="form" id="gsF" novalidate><div class="label sh-sec">Para ayır</div><div class="frow"><div class="field"><label for="gsA">Tutar (${esc((GUNITS.find(u=>u[0]===g.unit)||[0,g.unit])[1])})</label><input id="gsA" inputmode="decimal" placeholder="0"></div><div class="field"><label for="gsD">Tarih</label><input id="gsD" type="date" value="${todayISO()}"></div></div><div class="err" id="gsErr"></div><div style="display:flex;gap:8px"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="gsW">Çek</button></div></form>
-    <div class="label sh-sec">Hareketler</div>${goalTx(g).length?`<div class="list">${goalTx(g).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="row"><div class="main"><div class="t num">+${fmtU(toUnit(toBase(t.amount,t.cur),g.unit),g.unit)}</div><div class="s">${fmtDate(t.date)} · Gelir-Gider’deki tasarruf kaydı</div></div></div>`).join("")}</div>`:""}${sv.length||goalTx(g).length?`<div class="list">${sv.map(x=>`<div class="row"><div class="main"><div class="t num ${x.amount<0?"neg-t":""}">${x.amount>0?"+":""}${fmtU(x.amount,g.unit)}</div><div class="s">${fmtDate(x.date)}</div></div><button class="icon-btn sm" data-del-gs="${x.id}" aria-label="Kaydı kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz kayıt yok.</div>`}`
+    <div class="label sh-sec">Hareketler</div>${goalTx(g).length?`<div class="list">${goalTx(g).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="row"><div class="main"><div class="t num">+${fmtU(toUnit(toBase(t.amount,t.cur),g.unit),g.unit)}</div><div class="s">${fmtDate(t.date)} · Bütçe’deki tasarruf kaydı</div></div></div>`).join("")}</div>`:""}${sv.length||goalTx(g).length?`<div class="list">${sv.map(x=>`<div class="row"><div class="main"><div class="t num ${x.amount<0?"neg-t":""}">${x.amount>0?"+":""}${fmtU(x.amount,g.unit)}</div><div class="s">${fmtDate(x.date)}</div></div><button class="icon-btn sm" data-del-gs="${x.id}" aria-label="Kaydı kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz kayıt yok.</div>`}`
     :g.src==="hs"?`<div class="label">Hedefe ait varlıklar</div><div class="list">${goalHs(g).map(h=>`<div class="row"><div class="main"><div class="t">${esc(h.name)}</div><div class="s">${esc(h.symbol||KINDS[h.kind]||"")}</div></div><div class="end num">${fmtU(toUnit(hVal(h),g.unit),g.unit)}</div></div>`).join("")||`<div class="sub">Seçili varlık bulunamadı; hedefi düzenleyip yeniden seçin.</div>`}</div>`
     :`<div class="note">İlerleme, ${esc((state.portfolios.find(p=>p.id===g.pf)||{}).name||"seçili portföy")} portföyünün güncel değerinden hesaplanıyor.</div>`}
     <div class="actions eq"><button class="btn" id="gEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
