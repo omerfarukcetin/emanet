@@ -731,3 +731,7 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .atbl.compact .vcell.static{flex-direction:row;align-items:baseline;gap:8px}
 .atbl.compact .arow.closed .vcell.static{flex-direction:row-reverse}
 .chips .chip small{font-weight:500;opacity:.7;margin-left:2px}
+
+/* ================= 2.20: tek kâr/zarar rozeti (dokununca günlük ↔ toplam) ================= */
+.plchips .delta.one{border-color:transparent!important}
+.plchips .delta .swap{display:inline-flex;opacity:.65;margin-left:1px}

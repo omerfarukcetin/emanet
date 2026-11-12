@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.19";
+const APP_VERSION="2.20";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -160,7 +160,7 @@ const dayLabel=()=>{const r=dayRef();if(!r)return"";const g=daysBetween(r.d,toda
 /* Varlık tablosunun sağ sütunu beş bilgi arasında döner: değer, günlük K/Z, toplam K/Z, adet, fiyat */
 const COLS=[["val","Değer"],["day","Günlük"],["total","Toplam"],["qty","Adet"],["price","Fiyat"]];
 const colMode=()=>COLS.some(c=>c[0]===S().col)?S().col:"val";
-const plMode=()=>colMode()==="day"?"day":"total";
+const plMode=()=>S().plMode==="total"?"total":"day";
 /* Tutarın hemen altındaki iki rozet: Günlük ve Toplam kâr/zarar. Para birimi karttaki ₺/$ seçiciyle değişir.
    Rozete dokunmak, varlık tablosundaki K/Z sütununun günlük mü toplam mı olacağını seçer. */
 const plCur=()=>S().plCur==="USD"?"USD":"TRY";
@@ -171,9 +171,9 @@ function plChips(hs,v,c){
   const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0);
   const tot=usd?{pl:vU-cU,pct:cU?(vU-cU)/cU*100:0}:{pl:v-c,pct:c?(v-c)/c*100:0};
   const d=daySum(hs),dd=d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null;
-  const chip=(k,label,x,on)=>`<button class="delta ${x?(x.pl>=0?"up":"down"):""}" data-act="plmode" data-k="${k}" aria-pressed="${on}" aria-label="${label} kâr/zarar; varlık tablosunda göster"><small>${label}</small>${x?`<b>${x.pl>=0?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span>%${fmtN(Math.abs(x.pct),x===dd?2:1)}</span>`:`<b>—</b><span>yarın</span>`}</button>`;
-  const dl=d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük";
-  return `<div class="plchips">${chip("day",dl,dd,colMode()==="day")}${chip("total","Toplam",tot,colMode()==="total")}</div>`;
+  // tek rozet: dokununca Günlük ↔ Toplam arasında değişir
+  const dl=d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük",x=day?dd:tot,label=day?dl:"Toplam",other=day?"toplam":"günlük";
+  return `<div class="plchips"><button class="delta one ${x?(x.pl>=0?"up":"down"):""}" data-act="plmode" aria-label="${label} kâr/zarar. ${other[0].toLocaleUpperCase("tr")+other.slice(1)} değişimi görmek için dokunun"><small>${label}</small>${x?`<b>${x.pl>=0?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span>%${fmtN(Math.abs(x.pct),day?2:1)}</span>`:`<b>—</b><span>yarın</span>`}<i class="swap" aria-hidden="true">${ic(I.akis,13)}</i></button></div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
 const eyeBtn=()=>`<button class="icon-btn" data-act="hide" aria-label="${S().hide?"Tutarları göster":"Tutarları gizle"}" aria-pressed="${S().hide}">${S().hide?I.eyeOff:I.eye}</button>`;
@@ -2181,7 +2181,7 @@ document.addEventListener("click",e=>{
     S().rates.USD=u;S().rates.EUR=eu;S().coins=c;S().ratesUpdated=todayISO();commit("Fiyatlar kaydedildi");return}
   if(a==="export")return exportData();
   if(a==="plcur"){S().plCur=t.dataset.k==="USD"?"USD":"TRY";commit();return}
-  if(a==="plmode"){S().col=t.dataset.k==="day"?"day":"total";commit();return}
+  if(a==="plmode"){S().plMode=plMode()==="day"?"total":"day";commit();return}
   if(a==="col"){S().col=t.dataset.k;commit();return}
   if(a==="colnext"){const i=COLS.findIndex(c=>c[0]===colMode());S().col=COLS[(i+1)%COLS.length][0];commit();return}
   if(a==="fold"){const k=t.dataset.k,f=foldMap();f[k]=!foldOpen(k);try{localStorage.setItem("emanet-fold",JSON.stringify(f))}catch(e){}render();return}
