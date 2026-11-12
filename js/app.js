@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.44";
+const APP_VERSION="2.45";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1321,13 +1321,11 @@ function rAkis(){
     :`<div class="dayrow"><div><span class="label">Günlük harcama limiti</span><div class="v num neg-t">${fmt(0)}</div></div><div class="dr-r"><b class="neg-t">Bu ay harcanabilir tutar kalmadı</b><small>${dLeft} gün kaldı · açık ${fmt(-spendable,null,{dec:0})}</small></div></div>`;
   // ay sonu tahmini: şu anki kalan + bekleyen sabit gelir − bekleyen sabit ödeme/tasarruf − (sabit olmayan harcama hızı × kalan gün)
   const dayNo=+todayISO().slice(8),pendIn=recPend.filter(r=>r.type==="in").reduce((a,r)=>a+toBase(r.amount,r.cur),0);
-  /* harcama hızı: sabit kalemler (Öde ile girilen ya da sabit kaleme denk gelen) ve tek seferlik büyük harcamalar ortalamaya katılmaz;
-     onlar zaten "kalan"dan düşülmüş durumda, kalan günlere yayılmaları ay sonunu olduğundan kötü gösterir */
+  /* harcama hızı: sabit kalemler (Öde ile girilen ya da sabit kaleme denk gelen) ortalamaya katılmaz; onlar ayrıca "bekleyen" olarak düşülür */
   const recTx=new Set(recs.map(r=>recPaid(r,m)).filter(Boolean));
   const vars=curM?monthTx(m).filter(t=>t.type==="out"&&!t.rid&&!recTx.has(t)).map(t=>toBase(t.amount,t.cur)):[];
-  const med=vars.length?vars.slice().sort((a,b)=>a-b)[Math.floor(vars.length/2)]:0,cap=Math.max(med*4,1000);
-  const big=vars.filter(v=>v>cap),varOut=vars.filter(v=>v<=cap).reduce((a,v)=>a+v,0),pace=dayNo?varOut/dayNo:0,endEst=left+pendIn-pendOut-pace*(dim(y,mo)-dayNo);
-  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">${endEst>=0?"Bu hızla ay sonunda artan":"Bu hızla ay sonunda eksik"}</span><b class="num ${endEst>=0?"pos-t":"neg-t"}">${fmt(Math.abs(endEst),null,{dec:0})}</b><small>Şu ana kadar günde ortalama ${fmt(pace,null,{dec:0})} harcadın${dayLimit>0?(pace>dayLimit?`; günlük limitin ${fmt(dayLimit,null,{dec:0})}. Kalan günlerde günde ${fmt(dayLimit,null,{dec:0})} altında kalırsan ay eksiye düşmez`:`; günlük limitin ${fmt(dayLimit,null,{dec:0})}, hızın limitin altında`):""}${big.length?" · "+big.length+" büyük harcama ("+fmt(big.reduce((a,v)=>a+v,0),null,{dec:0})+") ortalamaya katılmadı":""}${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
+  const varOut=vars.reduce((a,v)=>a+v,0),pace=dayNo?varOut/dayNo:0,endEst=left+pendIn-pendOut-pace*(dim(y,mo)-dayNo);
+  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">${endEst>=0?"Bu hızla ay sonunda artan":"Bu hızla ay sonunda eksik"}</span><b class="num ${endEst>=0?"pos-t":"neg-t"}">${fmt(Math.abs(endEst),null,{dec:0})}</b><small>Şu ana kadar günde ortalama ${fmt(pace,null,{dec:0})} harcadın${dayLimit>0?(pace>dayLimit?`; günlük limitin ${fmt(dayLimit,null,{dec:0})}. Kalan günlerde günde ${fmt(dayLimit,null,{dec:0})} altında kalırsan ay eksiye düşmez`:`; günlük limitin ${fmt(dayLimit,null,{dec:0})}, hızın limitin altında`):""}${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
   const recRow=r=>{const pd=recPaid(r,m),late=!pd&&curM&&dayIn(m,r.day)<todayISO(),c=r.method&&cardById(r.method);
     return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":r.type==="save"?"--c5":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
       trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":r.type==="save"?"Ayrıldı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":r.type==="save"?"Ayır":"Öde"}</button>`})};
