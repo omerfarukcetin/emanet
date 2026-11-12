@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.26";
+const APP_VERSION="2.27";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -145,23 +145,39 @@ function dayRoll(){
   const usd=+rate("USD").toFixed(4),live=new Set();
   state.portfolios.forEach(p=>p.holdings.forEach(h=>{if(!(+h.qty>0))return;live.add(h.id);
     const u=+(effPrice(h).p*rate(h.cur)).toFixed(6),o=D.cur[h.id];
-    if(!o||o.u!==u||o.s!==usd){D.cur[h.id]={u,s:usd};ch=true}}));
+    const a=effPrice(h).auto?1:0;if(!o||o.u!==u||o.s!==usd||o.a!==a){D.cur[h.id]={u,s:usd,a};ch=true}}));
   Object.keys(D.cur).forEach(id=>{if(!live.has(id)){delete D.cur[id];ch=true}});
   return ch;
 }
 const dayRef=()=>state.day&&state.day.ref&&state.day.d===todayISO()?state.day.ref:null;
+/* Önceki günün kapanışı (fiyat dalındaki data/close.json): sunucu her 10 dakikada yazar, cihazın o gün açılıp açılmamasına bağlı değildir.
+   Varlık için kapanış fiyatı varsa günlük K/Z ondan hesaplanır; yoksa cihazda tutulan son görülen değere düşülür. */
+let closeD=null;
+const closeOK=()=>closeD&&closeD.prev&&closeD.prev.p&&closeD.d===todayISO()?closeD.prev:null;
+function closeKey(h){
+  if(h.kind==="altin"){const k=goldKey(h);return k&&h.cur==="TRY"?["gold:"+k]:[]}
+  if(h.kind==="gumus")return h.cur==="TRY"?["gold:gumus"]:[];
+  const sy=(h.symbol||"").toUpperCase().trim();if(!sy)return[];
+  return h.kind==="abd"?["q:abd:"+sy,"q:hisse:"+sy]:["q:"+h.kind+":"+sy];
+}
 function dayPL(h){
-  const ref=dayRef(),q=+h.qty||0;if(!ref||!(q>0))return null;
-  const uNow=effPrice(h).p*rate(h.cur),usd=rate("USD"),r=ref.h[h.id];
-  let u0,s0;
-  if(r){u0=r.u;s0=r.s}
-  else if(h.buyDate&&h.buyDate>ref.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}
-  else return null;
+  const q=+h.qty||0;if(!(q>0))return null;
+  const ep=effPrice(h),uNow=ep.p*rate(h.cur),usd=rate("USD");let u0,s0;
+  const cp=closeOK(),k=cp&&ep.auto?closeKey(h).find(x=>+cp.p[x]>0):null;
+  const fx0=c=>c==="TRY"?1:+cp.p["fx:"+c]||0;
+  if(cp&&h.buyDate&&h.buyDate>cp.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}           // kapanıştan sonra alındı: baz alış maliyeti
+  else if(k){u0=+cp.p[k]*fx0(h.cur);s0=fx0("USD")}
+  else{
+    const ref=dayRef();if(!ref)return null;const r=ref.h[h.id];
+    if(r&&!(r.a===0&&ep.auto)){u0=r.u;s0=r.s}                                         // elle girilen fiyattan otomatiğe geçtiyse karşılaştırılmaz
+    else if(h.buyDate&&h.buyDate>ref.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}
+    else return null;
+  }
   if(!(u0>0)||!(s0>0)||!(usd>0))return null;
   return{pl:q*(uNow-u0)/rate(S().base),base:q*u0/rate(S().base),plU:q*(uNow/usd-u0/s0),baseU:q*u0/s0};
 }
 function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);if(d){pl+=d.pl;b+=d.base;plU+=d.plU;bU+=d.baseU;n++}});return n?{pl,pct:b?pl/b*100:0,plU,pctU:bU?plU/bU*100:0}:null}
-const dayLabel=()=>{const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
+const dayLabel=()=>{if(closeOK())return"bugün";const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
 /* Varlık tablosunun sağ sütunu beş bilgi arasında döner: değer, günlük K/Z, toplam K/Z, adet, fiyat */
 const COLS=[["val","Değer"],["day","Günlük"],["total","Toplam"],["qty","Adet"],["price","Fiyat"]];
 const colMode=()=>COLS.some(c=>c[0]===S().col)?S().col:"val";
@@ -514,9 +530,11 @@ async function loadMarket(announce){
   const changed=!market||market.updatedAt!==got.updatedAt;
   market=got;try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
   if(changed&&ready){snapshotSave();render();fillFx()}
+  if(changed||!closeD)loadClose();
   if(announce)toast(changed?"Fiyatlar güncellendi":"Fiyatlar güncel · "+marketWhen());
 }
 let bench=null;
+async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
 async function loadBench(){for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){bench=d;if(ready&&view.tab==="portfoy")render();return}}catch(e){}}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
