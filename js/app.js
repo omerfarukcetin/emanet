@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.25";
+const APP_VERSION="2.26";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -838,7 +838,7 @@ function rOzet(){
     <div class="hero-top"><div style="min-width:0">
       <span class="label">${mp?esc(mp.name)+(state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
-    <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div>${mp?spark([mp.id]):""}</div>
+    <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div></div>
     ${mp?plChips(hs,t.v,t.c):""}
     <div class="subrow">${eqvChips(t.v)}</div>
   </section>
@@ -1010,7 +1010,7 @@ function rPortfoy(){
   </div>
   <section class="hero flat">
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(ows.length>1?" · "+esc(ownerOf(cur)):""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}${cur?`<button class="icon-btn" data-act="edit-pf" data-id="${cur.id}" aria-label="Portföyü düzenle">${I.edit}</button>`:""}</div></div>
-    <div class="bigrow"><div class="big" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div>${spark((cur?[cur]:vis).map(p=>p.id))}</div>
+    <div class="bigrow"><div class="big" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
     ${plChips(hs,v,c)}
     <div class="subrow">${eqvChips(v)}</div>
     ${(()=>{const u=ufeSum(hs);if(!u.c)return ufe?"":"";return `<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub" style="margin-top:-6px">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`})()}

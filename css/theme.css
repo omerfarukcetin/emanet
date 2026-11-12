@@ -834,3 +834,16 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .ufe-l small{font-size:.74rem;color:var(--muted);line-height:1.35}
 .ufe-l b{white-space:nowrap;font-weight:700}
 .sheet .kv>div>span:first-child{flex:1}
+
+/* ================= 2.26: daha sıkı yerleşim ================= */
+.top-in{padding-block:6px 4px}
+.brand h1{font-size:1.3rem}
+.top .icon-btn{width:38px;height:38px;min-width:38px}
+main{gap:10px;padding-top:4px}
+main .chips .chip{padding:6px 13px;font-size:.88rem}
+.hero,.hero.net{padding:14px 16px 13px;gap:8px}
+.hero .big{margin:0}
+main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
+.arow{padding-block:1px}
+.hero-spark{display:none}
+@media (min-width:1160px){.top-in{padding-block:14px 8px}.brand h1{font-size:1.6rem}}
