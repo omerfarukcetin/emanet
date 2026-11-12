@@ -855,3 +855,8 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .hero .curseg.h{padding:2px}
 .hero .curseg.h button{width:26px;height:26px;font-size:.78rem}
 .hero,.hero.net{gap:6px}
+
+/* ================= 2.30: Portföy üst kartı Özet ile aynı ================= */
+.pf-extra{display:flex;flex-direction:column;gap:8px}
+.pf-extra .sec{margin-bottom:0}
+.pf-extra .ufe-line{border-top:0;padding-top:0;margin-top:0}
