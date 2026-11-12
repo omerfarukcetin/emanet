@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.36";
+const APP_VERSION="2.37";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -620,7 +620,7 @@ async function onLogin(user){
   hideAuth();mode="cloud";setSync("cloud","Eşitleniyor…");
   if(!state)skeleton();
   await pull(true);
-  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();window.splashOut&&window.splashOut();setTimeout(()=>{fillFx();syncWatch()},0);
+  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(()=>{fillFx();syncWatch()},0);
 }
 async function signOut(){
   try{clearTimeout(saveTimer);await flush()}catch(e){}
@@ -649,13 +649,13 @@ async function boot(){
   if(session){if(!sbUser)await onLogin(session.user)}
   else{let g=null;try{g=localStorage.getItem(GUEST)}catch(e){}if(g)goLocal("Girişsiz · bu cihazda");else showAuth()}
 }
-function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();if(state&&state.updatedAt)snapshotSave();render();window.splashOut&&window.splashOut();setTimeout(fillFx,0)}
+function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(fillFx,0)}
 
 /* ---------- giriş ekranı ---------- */
 const AUTH_ERR={"Invalid login credentials":"E-posta veya şifre hatalı.","Email not confirmed":"E-posta adresiniz henüz onaylanmamış. Gelen kutunuzdaki bağlantıya tıklayın.","User already registered":"Bu e-posta ile zaten bir hesap var. Giriş yapın."};
 const authMsg=e=>{const m=e&&e.message||"";return AUTH_ERR[m]||(/rate limit/i.test(m)?"Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin.":/password/i.test(m)?"Şifre en az 6 karakter olmalı.":/fetch|network/i.test(m)?"Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.":"İşlem tamamlanamadı: "+m)};
 function hideAuth(){$("#auth").hidden=true}
-function showAuth(){window.splashOut&&window.splashOut();
+function showAuth(){
   const el=$("#auth");el.hidden=false;
   el.innerHTML=`<div class="auth-card">
     <div class="auth-brand">${STAR}<b>Emanet</b></div>
