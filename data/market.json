@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-12T12:31:01.966Z",
+ "updatedAt": "2026-11-12T12:32:47.651Z",
  "fx": {
-  "EUR": 55.8542,
-  "USD": 50.2629
+  "EUR": 55.8901,
+  "USD": 50.229
  },
  "gold": {
   "ata": 42692,
@@ -28,12 +28,12 @@
   "hisse:SOKE": {
    "p": 7.18,
    "cur": "TRY",
-   "t": "2026-11-12T12:14:59.000Z"
+   "t": "2026-11-12T12:16:21.000Z"
   },
   "hisse:BALSU": {
-   "p": 7.03,
+   "p": 7.02,
    "cur": "TRY",
-   "t": "2026-11-12T12:15:06.000Z"
+   "t": "2026-11-12T12:17:31.000Z"
   },
   "ppf:KLU": {
    "p": 5.241559,
@@ -71,11 +71,10 @@
    "t": "2026-11-12T12:08:42.000Z"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ENR: fon fiyatı alınamadı (fetch failed)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
