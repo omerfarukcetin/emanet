@@ -13,7 +13,7 @@
   --acc-l:#2443b6; --acc-d:#93a9ff; --accent:var(--acc-l); --on-accent:#ffffff;
   --pos:#0c7a56; --neg:#c43a29; --warn:#9c5f06;
   --pos-bg:#dff3ea; --neg-bg:#fbe5e1; --warn-bg:#f8ecd6;
-  --c1:#c08a16; --c2:#2e5fd0; --c3:#15775a; --c4:#c2476b; --c5:#6f55c7; --c6:#c8572d; --c7:#59627a;
+  --c1:#c08a16; --c2:#2e5fd0; --c3:#15775a; --c4:#c2476b; --c5:#6f55c7; --c6:#c8572d; --c7:#59627a; --c8:#0e8a9a; --c9:#d9731a; --c10:#2a86d6;
   --shadow:0 1px 2px rgba(19,26,44,.05),0 14px 34px -18px rgba(19,26,44,.22);
   --f-display:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-body:var(--f-display); --f-mono:var(--f-display);
@@ -40,7 +40,7 @@
     --bg:#0b1020; --surface:#131a2e; --surface-2:#1b2440; --line:#263050;
     --fg:#e9edf8; --muted:#a3acc4; --faint:#6c7690; --accent:var(--acc-d); --on-accent:#0b1020;
     --pos:#52d3a2; --neg:#ff9485; --warn:#f0b75e; --pos-bg:#0f3327; --neg-bg:#3b1c18; --warn-bg:#392a10;
-    --c1:#e5b64c; --c2:#7ea2ff; --c3:#52d3a2; --c4:#f08fae; --c5:#a995f5; --c6:#f29a73; --c7:#a3acc4;
+    --c1:#e5b64c; --c2:#7ea2ff; --c3:#52d3a2; --c4:#f08fae; --c5:#a995f5; --c6:#f29a73; --c7:#a3acc4; --c8:#4fd0e0; --c9:#f5a55a; --c10:#6cb8ff;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 16px 36px -18px rgba(0,0,0,.6);
   }
   :root[data-tone="krem"]:not([data-app-theme="light"]){--bg:#15120d;--surface:#1e1a14;--surface-2:#28231b;--line:#393226;--muted:#b0a695;--faint:#7c7465}
@@ -55,7 +55,7 @@
   --bg:#0b1020; --surface:#131a2e; --surface-2:#1b2440; --line:#263050;
   --fg:#e9edf8; --muted:#a3acc4; --faint:#6c7690; --accent:var(--acc-d); --on-accent:#0b1020;
   --pos:#52d3a2; --neg:#ff9485; --warn:#f0b75e; --pos-bg:#0f3327; --neg-bg:#3b1c18; --warn-bg:#392a10;
-  --c1:#e5b64c; --c2:#7ea2ff; --c3:#52d3a2; --c4:#f08fae; --c5:#a995f5; --c6:#f29a73; --c7:#a3acc4;
+  --c1:#e5b64c; --c2:#7ea2ff; --c3:#52d3a2; --c4:#f08fae; --c5:#a995f5; --c6:#f29a73; --c7:#a3acc4; --c8:#4fd0e0; --c9:#f5a55a; --c10:#6cb8ff;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 16px 36px -18px rgba(0,0,0,.6);
 }
 :root[data-app-theme="dark"][data-tone="krem"]{--bg:#15120d;--surface:#1e1a14;--surface-2:#28231b;--line:#393226;--muted:#b0a695;--faint:#7c7465}
@@ -860,3 +860,29 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .pf-extra{display:flex;flex-direction:column;gap:8px}
 .pf-extra .sec{margin-bottom:0}
 .pf-extra .ufe-line{border-top:0;padding-top:0;margin-top:0}
+
+/* ================= 2.31: biraz daha renk ================= */
+.kbadge{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:color-mix(in srgb,currentColor 14%,var(--surface))}
+.kbadge svg{width:17px;height:17px;display:block}
+.arow.cat .an{gap:10px}
+.arow.cat{padding-block:6px}
+.kl .kmain{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.kl .kt{display:flex;align-items:baseline;gap:6px;min-width:0}
+.kl .kbar{display:block;height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden;max-width:150px}
+.kl .kbar i{display:block;height:100%;border-radius:99px}
+.mk{background:color-mix(in srgb,currentColor 14%,var(--surface))}
+.budrow{display:flex;gap:10px;align-items:center}
+.budrow .main{flex:1;min-width:0}
+.budrow .bar i,.rp-cat .share i{border-radius:99px}
+/* gelir / gider rozetleri ve dikkat kartı yumuşak renkli zemin */
+.delta.up{background:color-mix(in srgb,var(--pos) 16%,transparent)}
+.delta.down{background:color-mix(in srgb,var(--neg) 16%,transparent)}
+.hero.net .delta.up{background:rgba(120,230,170,.18)}
+.hero.net .delta.down{background:rgba(255,150,140,.18)}
+.card.attn{background:linear-gradient(180deg,color-mix(in srgb,var(--warn) 7%,var(--surface)),var(--surface) 70%)}
+.trio.tint{border-top:0;padding-top:4px;gap:8px}
+.trio.tint>div{border:0!important;border-radius:14px;padding:10px 12px}
+.trio.tint .t-in{background:color-mix(in srgb,var(--pos) 11%,var(--surface))}
+.trio.tint .t-out{background:color-mix(in srgb,var(--neg) 10%,var(--surface))}
+.trio.tint .t-save{background:color-mix(in srgb,var(--c5) 11%,var(--surface))}
+.trio.tint{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:8px!important}

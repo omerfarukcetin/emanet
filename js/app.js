@@ -7,11 +7,11 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.30";
+const APP_VERSION="2.31";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
-const KIND_COLOR={hisse:"--c2",abd:"--c4",fon:"--c5",ppf:"--c3",altin:"--c1",gumus:"--c7",doviz:"--c3",kripto:"--c6",nakit:"--c3",mevduat:"--c5",bes:"--c4",emlak:"--c6",diger:"--c7"};
+const KIND_COLOR={hisse:"--c2",abd:"--c8",fon:"--c5",ppf:"--c3",altin:"--c1",gumus:"--c7",doviz:"--c9",kripto:"--c6",nakit:"--c3",mevduat:"--c10",bes:"--c4",emlak:"--c6",diger:"--c7"};
 const PRICED=["hisse","abd","fon","ppf","kripto","diger"];
 const FUNDS=["fon","ppf"];
 /* açılır listeden seçilen hazır ürünler: [kod, ad, market.gold anahtarı] */
@@ -758,7 +758,12 @@ const ic=(svg,n=16)=>svg.replace('aria-hidden="true"',`width="${n}" height="${n}
 const KIND_ICON={hisse:I.candle,abd:I.globe,fon:I.layers,ppf:I.note,altin:I.ingot,gumus:I.ingot,doviz:I.coin,kripto:I.hex,nakit:I.wallet,mevduat:I.bank,bes:I.umbrella,emlak:I.building,diger:I.dots};
 /* kategori adından ikon: kullanıcı eski ya da kendi kategori adını da taşıyor olabilir, bu yüzden anahtar kelimeyle eşleşir */
 const CAT_ICONS=[[/birikim/i,"target"],[/acil durum/i,"umbrella"],[/^altın$/i,"ingot"],[/fon ve yatırım/i,"layers"],[/^döviz$/i,"coin"],[/^bes$/i,"umbrella"],[/maaş/i,"brief"],[/ek ödeme|ikramiye/i,"spark"],[/kira gelir/i,"key"],[/yatırım|temettü/i,"trend"],[/yan gelir|satış/i,"wallet"],[/kira|aidat/i,"home"],[/fatura/i,"bolt"],[/market|mutfak/i,"cart"],[/kart/i,"card"],[/kredi|taksit/i,"bank"],[/ulaşım|araç/i,"car"],[/eğitim/i,"book"],[/sağlık/i,"health"],[/çocuk/i,"child"],[/giyim/i,"shirt"],[/ev\b|eşya/i,"sofa"],[/yemek|eğlence/i,"food"],[/abone/i,"play"],[/hediye/i,"gift"],[/yardım|sadaka|bağış/i,"heart"]];
-const catIcon=c=>{const u=state&&state.settings&&state.settings.catIcons&&state.settings.catIcons[c];if(u&&I[u])return I[u];const m=CAT_ICONS.find(([re])=>re.test(c||""));return I[m?m[1]:"dots"]};
+const catIconKey=c=>{const u=state&&state.settings&&state.settings.catIcons&&state.settings.catIcons[c];if(u&&I[u])return u;const m=CAT_ICONS.find(([re])=>re.test(c||""));return m?m[1]:"dots"};
+const catIcon=c=>I[catIconKey(c)];
+/* her kategoriye simgesine göre sabit bir renk: listeler tek renk görünmesin */
+const ICON_COLOR={cart:"--c3",home:"--c9",bolt:"--c1",car:"--c2",book:"--c5",health:"--c4",child:"--c10",shirt:"--c4",sofa:"--c6",food:"--c9",play:"--c5",gift:"--c4",heart:"--c4",bank:"--c7",brief:"--c3",spark:"--c1",trend:"--c3",key:"--c8",card:"--c2",wallet:"--c3",target:"--c5",umbrella:"--c8",ingot:"--c1",coin:"--c9",layers:"--c5",globe:"--c8",building:"--c6",repeat:"--c10",bell:"--c1",dots:"--c7"};
+const catColor=c=>ICON_COLOR[catIconKey(c)]||"--c7";
+const kindBadge=k=>`<span class="kbadge" style="color:var(${KIND_COLOR[k]||"--c7"})">${KIND_ICON[k]||I.dots}</span>`;
 const ICON_CHOICES=["cart","home","bolt","car","book","health","child","shirt","sofa","food","play","gift","heart","bank","brief","spark","trend","key","card","wallet","target","umbrella","ingot","coin","layers","globe","building","repeat","bell","dots"];
 const TABS=[["ozet","Özet"],["portfoy","Portföy"],["akis","Gelir-Gider"],["borc","Borç"],["zekat","Zekât"]];
 
@@ -913,7 +918,7 @@ function kindCard(hs,total){
 /* ---------- rapor: aylık ve yıllık özet, yazdırılabilir ---------- */
 function monthAgg(ym){const tx=monthTx(ym);let i=0,o=0,s=0;const co={},ci={};tx.forEach(t=>{const v=toBase(t.amount,t.cur);if(t.type==="in"){i+=v;ci[t.cat]=(ci[t.cat]||0)+v}else if(t.type==="out"){o+=v;co[t.cat]=(co[t.cat]||0)+v}else if(t.type==="save")s+=v});return{ym,i,o,s,net:i-o,rate:i?(i-o)/i*100:null,co,ci,n:tx.filter(t=>t.type!=="card").length}}
 const catBars=(obj,total,color,extra)=>{const arr=Object.entries(obj).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...arr.map(a=>a[1]));
-  return arr.length?`<div class="rp-cats">${arr.slice(0,10).map(([c,v])=>`<div class="rp-cat">${mkIcon(catIcon(c),color)}<div class="main"><div class="t"><span>${esc(c)}</span><b class="num">${fmt(v,null,{dec:0})}</b></div><div class="share"><i style="width:${(v/mx*100).toFixed(1)}%;background:var(${color})"></i></div><div class="s">%${fmtN(total?v/total*100:0,0)}${extra?extra(c,v):""}</div></div></div>`).join("")}${arr.length>10?`<div class="sub">ve ${arr.length-10} kategori daha · ${fmt(arr.slice(10).reduce((a,x)=>a+x[1],0),null,{dec:0})}</div>`:""}</div>`:`<div class="sub">Kayıt yok.</div>`};
+  return arr.length?`<div class="rp-cats">${arr.slice(0,10).map(([c,v])=>`<div class="rp-cat">${mkIcon(catIcon(c),catColor(c))}<div class="main"><div class="t"><span>${esc(c)}</span><b class="num">${fmt(v,null,{dec:0})}</b></div><div class="share"><i style="width:${(v/mx*100).toFixed(1)}%;background:var(${catColor(c)})"></i></div><div class="s">%${fmtN(total?v/total*100:0,0)}${extra?extra(c,v):""}</div></div></div>`).join("")}${arr.length>10?`<div class="sub">ve ${arr.length-10} kategori daha · ${fmt(arr.slice(10).reduce((a,x)=>a+x[1],0),null,{dec:0})}</div>`:""}</div>`:`<div class="sub">Kayıt yok.</div>`};
 function rRapor(){
   const mode=view.rpMode==="ay"?"ay":"yil",today=todayISO();
   const Y=view.rpYear||+today.slice(0,4);view.rpYear=Y;
@@ -931,7 +936,7 @@ function rRapor(){
     <section class="card"><div class="tiles rp-tiles">${tile("Gelir",fmt(a.i,null,{dec:0}),"pos-t",b.i?"geçen ay "+fmt(b.i,null,{dec:0}):"")}${tile("Gider",fmt(a.o,null,{dec:0}),"neg-t",b.o?"geçen ay "+fmt(b.o,null,{dec:0}):"")}${tile("Kalan",fmt(a.net,null,{dec:0}),a.net>=0?"":"neg-t",b.i||b.o?"geçen ay "+fmt(b.net,null,{dec:0}):"")}${tile("Birikim oranı",rateTxt(a.rate),"",b.rate!=null?"geçen ay "+rateTxt(b.rate):"")}${a.s||saveTarget(a)?tile("Tasarrufa ayrılan",fmt(a.s,null,{dec:0}),"",saveTarget(a)?"hedef "+fmt(saveTarget(a),null,{dec:0})+" · %"+fmtN(a.s/saveTarget(a)*100,0):(b.s?"geçen ay "+fmt(b.s,null,{dec:0}):"")):""}</div></section>
     <section class="card"><h2 style="margin-bottom:10px">Harcama kategorileri</h2>${catBars(a.co,a.o,"--accent",(c,v)=>(+bud[c]>0?` · bütçe ${fmt(+bud[c],null,{dec:0})}${v>+bud[c]?" (aşıldı)":""}`:"")+(b.co[c]?` · geçen ay ${fmt(b.co[c],null,{dec:0})}`:""))}</section>
     <section class="card side"><h2 style="margin-bottom:10px">Gelir kaynakları</h2>${catBars(a.ci,a.i,"--pos")}</section>
-    <section class="card side"><h2 style="margin-bottom:6px">En büyük 5 harcama</h2>${big.length?`<div class="list">${big.map(t=>li({mark:mkIcon(catIcon(t.cat),"--accent"),title:esc(t.cat),sub:[fmtDate(t.date),esc(t.note||"")].filter(Boolean).join(" · "),amount:fmt(t.amount,t.cur)})).join("")}</div>`:`<div class="sub">Bu ay gider yok.</div>`}</section>`;
+    <section class="card side"><h2 style="margin-bottom:6px">En büyük 5 harcama</h2>${big.length?`<div class="list">${big.map(t=>li({mark:mkIcon(catIcon(t.cat),catColor(t.cat)),title:esc(t.cat),sub:[fmtDate(t.date),esc(t.note||"")].filter(Boolean).join(" · "),amount:fmt(t.amount,t.cur)})).join("")}</div>`:`<div class="sub">Bu ay gider yok.</div>`}</section>`;
   }
   const months=Array.from({length:12},(_,i)=>monthAgg(Y+"-"+String(i+1).padStart(2,"0"))),act=months.filter(m=>m.i||m.o);
   const I_=months.reduce((a,m)=>a+m.i,0),O_=months.reduce((a,m)=>a+m.o,0),S_=months.reduce((a,m)=>a+m.s,0),co={},ci={};
@@ -1169,7 +1174,7 @@ function kindList(hs,total,pfId){
   const by={};hs.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
   const cats=Object.entries(by).map(([k,list])=>({k,x:cellData(list,total),v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
   return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
-  <div class="atbl compact">${cats.map(c=>`<div class="arow cat" role="button" tabindex="0" data-act="open-pf" data-id="${pfId}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[c.k]||"--c7"})"></i><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}</span><small class="kshare num">%${fmtN(c.x.share,0)}</small></span><span class="vcell static">${c.x.day?`<small class="num ${c.x.day.pct>=0?"pos-t":"neg-t"}">${fmtPct(c.x.day.pct)}</small>`:""}<b class="num">${fmt(c.x.v,c.x.cur,{dec:0})}</b></span></div>`).join("")}</div>`;
+  <div class="atbl compact">${cats.map(c=>`<div class="arow cat kl" role="button" tabindex="0" data-act="open-pf" data-id="${pfId}"><span class="an">${kindBadge(c.k)}<span class="kmain"><span class="kt"><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}</span><small class="kshare num">%${fmtN(c.x.share,0)}</small></span><span class="kbar"><i style="width:${Math.max(2,c.x.share).toFixed(1)}%;background:var(${KIND_COLOR[c.k]||"--c7"})"></i></span></span></span><span class="vcell static">${c.x.day?`<small class="num ${c.x.day.pct>=0?"pos-t":"neg-t"}">${fmtPct(c.x.day.pct)}</small>`:""}<b class="num">${fmt(c.x.v,c.x.cur,{dec:0})}</b></span></div>`).join("")}</div>`;
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
@@ -1181,7 +1186,7 @@ function assetTable(hs,total,o){
   const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
   return `<div class="stack" aria-hidden="true">${cats.map(c=>`<i style="flex:${c.v};background:var(${KIND_COLOR[c.k]||"--c7"})"></i>`).join("")}</div>
   <div class="atbl compact">${head}${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
-    return `<div class="arow cat" role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[c.k]||"--c7"})"></i><span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
+    return `<div class="arow cat" role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
 function pfListCard(vis,total){
@@ -1249,7 +1254,7 @@ function rAkis(){
   <div class="sec"><div class="month-sw"><button class="icon-btn" data-act="month" data-d="-1" aria-label="Önceki ay">${I.left}</button><b>${MONTHS[mo-1]} ${y}</b><button class="icon-btn" data-act="month" data-d="1" aria-label="Sonraki ay">${I.right}</button></div><button class="btn sm" data-act="rapor">${ic(I.trend,16)}Rapor</button></div>
   <section class="hero flat">
     <div class="hero-top"><div><span class="label">Bu ay kalan</span><div class="big ${left>=0?"":"neg-t"}">${money(left)}</div>${ms.i?`<div class="sub">Gelirin %${fmtN(savings,1)} kadarı kaldı${pendOut?` · bekleyen sabit kalemler ${fmt(pendOut)}`:""}</div>`:pendOut?`<div class="sub">Bekleyen sabit ödemeler ${fmt(pendOut)}</div>`:""}</div>${eyeBtn()}</div>
-    <div class="trio"><div><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div><div><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div><div><span class="label">Tasarruf</span><div class="v">${fmt(ms.s)}</div></div></div>
+    <div class="trio tint"><div class="t-in"><span class="label">Gelir</span><div class="v pos-t">${fmt(ms.i)}</div></div><div class="t-out"><span class="label">Gider</span><div class="v neg-t">${fmt(ms.o)}</div></div><div class="t-save"><span class="label">Tasarruf</span><div class="v" style="color:var(--c5)">${fmt(ms.s)}</div></div></div>
     ${budTot?`<div class="sub" style="margin-bottom:-6px">Bütçeden kalan <b class="num ${budTot-ms.o<0?"neg-t":""}">${fmt(budTot-ms.o)}</b></div><div class="bar" aria-label="Bütçe kullanımı"><i style="width:${Math.min(100,ms.o/budTot*100)}%;background:var(${ms.o>budTot?"--neg":ms.o>budTot*.9?"--warn":"--accent"})"></i></div>`:""}
     ${dayRow}
     ${forecast}
@@ -1273,7 +1278,7 @@ function rAkis(){
   <section class="card">
     <div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Kategoriler ve bütçe</h2><span><button class="btn ghost sm" data-act="budget">${budTot?"Bütçeyi düzenle":"Bütçe belirle"}</button></span></div>
     ${catArr.length?`<div style="display:flex;flex-direction:column;gap:12px">${catArr.map(([c,v])=>{const lim=+bud[c]||0;const over=lim&&v>lim,near=lim&&v>lim*.9,pv=prevCats[c]||0,dp=pv?(v-pv)/pv*100:null;
-      return `<div><div style="display:flex;justify-content:space-between;gap:8px;font-size:.88rem;margin-bottom:4px"><span>${esc(c)}${dp!=null&&Math.abs(dp)>=1?` <small class="${dp>0?"neg-t":"pos-t"}" title="Geçen ay ${fmt(pv,null,{dec:0})}">${dp>0?"▲":"▼"} %${fmtN(Math.min(999,Math.abs(dp)),0)}</small>`:pv?"":` <small class="sub">yeni</small>`}</span><span class="num ${over?"neg-t":""}">${fmt(v)}${lim?` <span class="sub">/ ${fmt(lim)}</span>`:""}</span></div><div class="bar" style="position:relative"><i style="width:${(lim?Math.min(100,v/lim*100):v/cmax*100)}%;background:var(${over?"--neg":near?"--warn":lim?"--accent":"--c7"});opacity:${lim?1:.55}"></i></div></div>`}).join("")}</div>`
+      return `<div class="budrow">${mkIcon(catIcon(c),catColor(c))}<div class="main"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.88rem;margin-bottom:4px"><span>${esc(c)}${dp!=null&&Math.abs(dp)>=1?` <small class="${dp>0?"neg-t":"pos-t"}" title="Geçen ay ${fmt(pv,null,{dec:0})}">${dp>0?"▲":"▼"} %${fmtN(Math.min(999,Math.abs(dp)),0)}</small>`:pv?"":` <small class="sub">yeni</small>`}</span><span class="num ${over?"neg-t":""}">${fmt(v)}${lim?` <span class="sub">/ ${fmt(lim)}</span>`:""}</span></div><div class="bar" style="position:relative"><i style="width:${(lim?Math.min(100,v/lim*100):v/cmax*100)}%;background:var(${over?"--neg":near?"--warn":catColor(c)})"></i></div></div></div>`}).join("")}</div>`
       :`<div class="sub">Bu ay gider yok.</div>`}
     <div class="card-foot"><button class="btn ghost sm" data-act="cats">Kategorileri düzenle${ic(I.right,14)}</button></div>
   </section>
@@ -1481,7 +1486,7 @@ function benchCard(ids){
 
 /* ---------- gelir-gider: arama ve süzme ---------- */
 function txRow(t){const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card",sv=t.type==="save",g=sv&&t.goal&&(state.goals||[]).find(x=>x.id===t.goal);
-  return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),inc?"--pos":cp?"--c2":sv?"--c5":"--accent"),title:cp?"Kart ödemesi":esc(t.cat),
+  return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),cp?"--c2":catColor(t.cat)),title:cp?"Kart ödemesi":esc(t.cat),
     sub:[sv?"Tasarruf"+(g?" · "+esc(g.name):"")+(t.buy?" · portföye alındı":""):"",cp?esc(card?card.name:"kart"):"",mc?esc(mc.name):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
     amount:(inc?"+":cp||sv?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})}
 function txMatch(){
@@ -2172,7 +2177,7 @@ function catsSheet(ty){
   ty=CAT_T[ty]?ty:"out";const list=catList(ty);
   openSheet(`<h3>Kategoriler</h3>
     <div class="seg full" role="group" style="margin-bottom:10px">${Object.entries(CAT_T).map(([k,l])=>`<button type="button" data-ct="${k}" aria-pressed="${k===ty}">${l}</button>`).join("")}</div>
-    <div class="list">${list.map((c,i)=>`<div class="row catrow">${mkIcon(catIcon(c),ty==="in"?"--pos":ty==="save"?"--c5":"--accent")}<button type="button" class="main catname" data-ce="${i}"><span class="t">${esc(c)}</span><span class="s">${(n=>n?n+" kayıt":"kayıt yok")(catUse(ty,c))}</span></button>
+    <div class="list">${list.map((c,i)=>`<div class="row catrow">${mkIcon(catIcon(c),catColor(c))}<button type="button" class="main catname" data-ce="${i}"><span class="t">${esc(c)}</span><span class="s">${(n=>n?n+" kayıt":"kayıt yok")(catUse(ty,c))}</span></button>
       <span class="catmv"><button type="button" class="icon-btn sm" data-cu="${i}" ${i===0?"disabled":""} aria-label="${esc(c)}: yukarı taşı">${ic(I.left,14).replace("<svg",'<svg style="transform:rotate(90deg)"')}</button><button type="button" class="icon-btn sm" data-cd="${i}" ${i===list.length-1?"disabled":""} aria-label="${esc(c)}: aşağı taşı">${ic(I.right,14).replace("<svg",'<svg style="transform:rotate(90deg)"')}</button></span></div>`).join("")}</div>
     <div class="sub" style="margin-top:8px">Adını ya da ikonunu değiştirmek, silmek için kategoriye dokunun.</div>
     <div class="actions"><button type="button" class="btn" id="catSort">Kullanıma göre sırala</button><button type="button" class="btn primary grow" id="catAdd">${ic(I.plus,16)}Kategori ekle</button></div>`,sh=>{
