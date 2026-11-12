@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.41";
+const APP_VERSION="2.42";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -1710,8 +1710,8 @@ const ACCENTS=[["kobalt","Kobalt","#2443b6","#93a9ff"],["lacivert","Lacivert","#
 const TONES=[["gri","Porselen",["#f2f4f9","#ffffff","#e9edf5","#dce2ed"],["#0b1020","#131a2e","#1b2440","#263050"]],["duman","Gri",["#e3e5e9","#f6f7f9","#d8dbe1","#c9ced7"],["#121315","#1b1d20","#25282c","#33373d"]],["mavi","Açık mavi",["#dbe8f8","#f6faff","#c9dcf3","#b6cdea"],["#081326","#0f1d36","#172949","#22365c"]],["adacayi","Açık yeşil",["#dfeee3","#f6fbf7","#cde3d3","#bad5c2"],["#0d1511","#141e19","#1c2922","#29382f"]],["krem","Krem",["#f6f1e8","#fffdf9","#eee6d8","#e2d9c8"],["#15120d","#1e1a14","#28231b","#393226"]],["lavanta","Lavanta",["#eeebf7","#fefdff","#e2ddf1","#d3cce6"],["#100d1c","#181429","#221d38","#30294c"]],["gul","Gül kurusu",["#f7ecee","#fffdfd","#f0dde1","#e5cdd2"],["#190e11","#22151a","#2e1d23","#402a32"]]];
 /* tema galerisi: açık temalar bir ton seçer; koyu temalar koyu görünümü sabitler */
 /* koyu temalar: [anahtar, ad, önizleme renkleri]. İlk ikisi açık tonların koyu hâlidir; diğerleri yalnızca koyu temada vardır */
-const DARKS=[["gri","Gece",["#0b1020","#131a2e","#1b2440","#263050"]],["duman","Kömür",["#121315","#1b1d20","#25282c","#33373d"]],["antrasit","Antrasit",["#1d1f23","#272a2f","#31353b","#3f444c"]],["kursun","Kurşun gri",["#2a2d32","#353940","#40454d","#50565f"]],["sicakgri","Sıcak gri",["#24221f","#2f2c28","#3a3632","#4a4540"]],["lacivert","Gece mavisi",["#151d30","#1e2840","#28344f","#364462"]]];
-const DARK_ONLY=["antrasit","kursun","sicakgri","lacivert"];
+const DARKS=[["gri","Gece",["#0b1020","#131a2e","#1b2440","#263050"]],["duman","Kömür",["#121315","#1b1d20","#25282c","#33373d"]],["antrasit","Antrasit",["#1d1f23","#272a2f","#31353b","#3f444c"]],["kursun","Kurşun gri",["#2a2d32","#353940","#40454d","#50565f"]],["sicakgri","Sıcak gri",["#24221f","#2f2c28","#3a3632","#4a4540"]],["lacivert","Gece mavisi",["#151d30","#1e2840","#28344f","#364462"]],["fume","Füme",["#383b41","#44484f","#4f545b","#60656d"]]];
+const DARK_ONLY=["antrasit","kursun","sicakgri","lacivert","fume"];
 function rAyarlar(){
   const s=S(), zo=zOwner(), hh=getHawl(zo);
   const seg=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="set" data-k="${key}" data-v="${v}" aria-pressed="${s[key]===v}">${l}</button>`).join("")}</div>`;

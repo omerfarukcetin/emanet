@@ -973,3 +973,8 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .atbl .arow .vcell small,.atbl .arow small{font-size:var(--fs-sub)!important}
 .budrow .main>div:first-child{font-size:var(--fs-row)!important}
 .budrow small{font-size:var(--fs-sub)}
+
+/* ================= 2.42: Füme (en açık koyu tema) ================= */
+:root[data-tone="fume"]{--bg:#e3e5e9;--surface:#f6f7f9;--surface-2:#d8dbe1;--line:#c9ced7}
+@media (prefers-color-scheme:dark){:root[data-tone="fume"]:not([data-app-theme="light"]){--bg:#383b41;--surface:#44484f;--surface-2:#4f545b;--line:#60656d}}
+:root[data-app-theme="dark"][data-tone="fume"]{--bg:#383b41;--surface:#44484f;--surface-2:#4f545b;--line:#60656d}
