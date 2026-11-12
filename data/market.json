@@ -1,22 +1,22 @@
 {
- "updatedAt": "2026-11-12T03:30:33.942Z",
+ "updatedAt": "2026-11-12T03:40:21.027Z",
  "fx": {
-  "EUR": 55.7957,
-  "USD": 50.2717
+  "EUR": 55.8154,
+  "USD": 50.2716
  },
  "gold": {
-  "ata": 43215,
+  "ata": 43196,
   "aziz": null,
-  "ceyrek": 10565,
-  "cumhuriyet": 43215,
-  "gram": 6434.42,
+  "ceyrek": 10560,
+  "cumhuriyet": 43196,
+  "gram": 6431.52,
   "gumus": 83.24,
-  "hamit": 43215,
-  "resat": 43215,
-  "resatAlis": 42055.03,
-  "resatSatis": 42731.87,
-  "tam": 42091,
-  "yarim": 21123,
+  "hamit": 43196,
+  "resat": 43196,
+  "resatAlis": 42055.46,
+  "resatSatis": 42731.67,
+  "tam": 42072,
+  "yarim": 21114,
   "resatKaynak": "altin.in"
  },
  "quotes": {
@@ -56,7 +56,7 @@
    "t": "2026-11-11"
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
