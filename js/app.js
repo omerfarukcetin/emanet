@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.34";
+const APP_VERSION="2.35";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -699,6 +699,7 @@ function applyPrefs(){
   r.setAttribute("data-fs",s.fontSize||"m");
   r.setAttribute("data-accent",s.accent||"kobalt");
   if(s.tone&&s.tone!=="gri")r.setAttribute("data-tone",s.tone);else r.removeAttribute("data-tone");
+  requestAnimationFrame(()=>{try{const bg=getComputedStyle(document.body).backgroundColor;document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.setAttribute("content",bg))}catch(e){}});
   r.setAttribute("data-compact",s.compact?"1":"0");
   $("#eyeBtn").innerHTML=s.hide?I.eyeOff:I.eye;
   $("#eyeBtn").setAttribute("aria-pressed",s.hide?"true":"false");
@@ -1703,23 +1704,25 @@ function rZekat(){
 const ACCENTS=[["kobalt","Kobalt","#2443b6","#93a9ff"],["lacivert","Lacivert","#1f3a68","#9fbbe8"],["turkuaz","Turkuaz","#0c8a93","#63d6dc"],["zumrut","Zümrüt","#15775a","#62d3ab"],["kehribar","Kehribar","#a45a06","#f3bd6a"],["mercan","Mercan","#c7452c","#ff9c87"],["gul","Gül","#bf2f6b","#ff9ec2"],["mor","Mor","#6a3fc0","#b7a3ff"]];
 const TONES=[["gri","Porselen",["#f2f4f9","#ffffff","#e9edf5","#dce2ed"],["#0b1020","#131a2e","#1b2440","#263050"]],["duman","Gri",["#e3e5e9","#f6f7f9","#d8dbe1","#c9ced7"],["#121315","#1b1d20","#25282c","#33373d"]],["mavi","Açık mavi",["#dbe8f8","#f6faff","#c9dcf3","#b6cdea"],["#081326","#0f1d36","#172949","#22365c"]],["adacayi","Açık yeşil",["#dfeee3","#f6fbf7","#cde3d3","#bad5c2"],["#0d1511","#141e19","#1c2922","#29382f"]],["krem","Krem",["#f6f1e8","#fffdf9","#eee6d8","#e2d9c8"],["#15120d","#1e1a14","#28231b","#393226"]],["lavanta","Lavanta",["#eeebf7","#fefdff","#e2ddf1","#d3cce6"],["#100d1c","#181429","#221d38","#30294c"]],["gul","Gül kurusu",["#f7ecee","#fffdfd","#f0dde1","#e5cdd2"],["#190e11","#22151a","#2e1d23","#402a32"]]];
 /* tema galerisi: açık temalar bir ton seçer; koyu temalar koyu görünümü sabitler */
-const DARKS=[["gri","Gece"],["duman","Kömür"]];
+/* koyu temalar: [anahtar, ad, önizleme renkleri]. İlk ikisi açık tonların koyu hâlidir; diğerleri yalnızca koyu temada vardır */
+const DARKS=[["gri","Gece",["#0b1020","#131a2e","#1b2440","#263050"]],["duman","Kömür",["#121315","#1b1d20","#25282c","#33373d"]],["antrasit","Antrasit",["#1d1f23","#272a2f","#31353b","#3f444c"]],["kursun","Kurşun gri",["#2a2d32","#353940","#40454d","#50565f"]],["sicakgri","Sıcak gri",["#24221f","#2f2c28","#3a3632","#4a4540"]],["lacivert","Gece mavisi",["#151d30","#1e2840","#28344f","#364462"]]];
+const DARK_ONLY=["antrasit","kursun","sicakgri","lacivert"];
 function rAyarlar(){
   const s=S(), zo=zOwner(), hh=getHawl(zo);
   const seg=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button data-act="set" data-k="${key}" data-v="${v}" aria-pressed="${s[key]===v}">${l}</button>`).join("")}</div>`;
   const tog=(key,label,small,path)=>{const val=path?s[path][key]:s[key];return `<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><label class="toggle"><input type="checkbox" id="t-${path||"s"}-${key}" data-act="tog" data-k="${key}" ${path?`data-p="${path}"`:""} ${val?"checked":""}><span></span></label></div>`};
   const num=(id,label,val,small)=>`<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><input class="inline-in" id="${id}" inputmode="decimal" data-act="num" data-k="${id}" value="${esc(String(val).replace(".",","))}"></div>`;
   const dark=s.theme==="dark"||(s.theme!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);
-  const acc=ACCENTS.some(x=>x[0]===s.accent)?s.accent:"kobalt",tone=TONES.some(x=>x[0]===s.tone)?s.tone:"gri",fixedDark=s.theme==="dark";
+  const acc=ACCENTS.some(x=>x[0]===s.accent)?s.accent:"kobalt",tone=TONES.some(x=>x[0]===s.tone)||DARK_ONLY.includes(s.tone)?s.tone:"gri",fixedDark=s.theme==="dark";
   const accHex=(ACCENTS.find(x=>x[0]===acc)||ACCENTS[0]);
   const tile=(k,l,c,th,on)=>`<button class="tone" data-act="theme" data-th="${th}" data-v="${k}" aria-pressed="${on}" aria-label="${l}"><span class="tone-p" style="background:${c[0]};border-color:${c[3]}" aria-hidden="true"><span style="background:${c[1]};border-color:${c[3]}"><i style="background:${accHex[th==="dark"?3:2]}"></i><i style="background:${c[2]}"></i><i style="background:${c[2]}"></i></span></span><span class="tone-n">${on?ic(I.check,14):""}${l}</span></button>`;
   const G={};
   G.gorunum=`<section class="card"><div class="set-group">
     <div class="set-row col"><div class="lbl"><b>Vurgu rengi</b><small>${(ACCENTS.find(x=>x[0]===acc)||ACCENTS[0])[1]}</small></div><div class="swatches">${ACCENTS.map(([k,l,c,d])=>`<button class="sw" data-act="set" data-k="accent" data-v="${k}" aria-pressed="${acc===k}" aria-label="${l}" title="${l}" style="--sw:${dark?d:c};color:${dark?"#0b1020":"#fff"}">${acc===k?ic(I.check,18):""}</button>`).join("")}</div></div>
-    <div class="set-row col"><div class="lbl"><b>Tema</b><small>${fixedDark?(DARKS.find(d=>d[0]===tone)||DARKS[0])[1]:(TONES.find(x=>x[0]===tone)||TONES[0])[1]}${s.theme==="system"&&dark?" · şu an koyu hâli":""}</small></div>
+    <div class="set-row col"><div class="lbl"><b>Tema</b><small>${fixedDark?(DARKS.find(d=>d[0]===tone)||DARKS[0])[1]:(TONES.find(x=>x[0]===tone)||[0,"Gri"])[1]}${s.theme==="system"&&dark?" · şu an koyu hâli":""}</small></div>
       <div class="tones">${TONES.map(([k,l,lt])=>tile(k,l,lt,"light",!fixedDark&&tone===k)).join("")}</div>
       <div class="label" style="margin-top:4px">Koyu temalar</div>
-      <div class="tones">${DARKS.map(([k,l])=>tile(k,l,TONES.find(x=>x[0]===k)[3],"dark",fixedDark&&(tone===k||(k==="gri"&&tone!=="duman")))).join("")}</div></div>
+      <div class="tones">${DARKS.map(([k,l,c])=>tile(k,l,c,"dark",fixedDark&&(tone===k||(k==="gri"&&!DARKS.some(d=>d[0]===tone))))).join("")}</div></div>
     <div class="set-row"><div class="lbl"><b>Gece otomatik koyulaş</b><small>Telefon ya da bilgisayar koyu moddayken seçtiğiniz temanın koyu hâli kullanılır</small></div><label class="toggle"><input type="checkbox" id="autoDark" ${s.theme==="system"?"checked":""} ${fixedDark?"disabled":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}

@@ -926,3 +926,17 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .qchip svg{color:var(--qc)}
 .qchip b{font-weight:700}
 .qchip[aria-pressed="true"]{border-color:var(--qc);box-shadow:0 0 0 2px color-mix(in srgb,var(--qc) 30%,transparent)}
+
+/* ================= 2.35: daha açık koyu tonlar ================= */
+/* yalnızca koyu temada seçilir; açık modda gri tonu kullanılır */
+:root[data-tone="antrasit"],:root[data-tone="kursun"],:root[data-tone="sicakgri"],:root[data-tone="lacivert"]{--bg:#e3e5e9;--surface:#f6f7f9;--surface-2:#d8dbe1;--line:#c9ced7}
+@media (prefers-color-scheme:dark){
+  :root[data-tone="antrasit"]:not([data-app-theme="light"]){--bg:#1d1f23;--surface:#272a2f;--surface-2:#31353b;--line:#3f444c}
+  :root[data-tone="kursun"]:not([data-app-theme="light"]){--bg:#2a2d32;--surface:#353940;--surface-2:#40454d;--line:#50565f}
+  :root[data-tone="sicakgri"]:not([data-app-theme="light"]){--bg:#24221f;--surface:#2f2c28;--surface-2:#3a3632;--line:#4a4540}
+  :root[data-tone="lacivert"]:not([data-app-theme="light"]){--bg:#151d30;--surface:#1e2840;--surface-2:#28344f;--line:#364462}
+}
+:root[data-app-theme="dark"][data-tone="antrasit"]{--bg:#1d1f23;--surface:#272a2f;--surface-2:#31353b;--line:#3f444c}
+:root[data-app-theme="dark"][data-tone="kursun"]{--bg:#2a2d32;--surface:#353940;--surface-2:#40454d;--line:#50565f}
+:root[data-app-theme="dark"][data-tone="sicakgri"]{--bg:#24221f;--surface:#2f2c28;--surface-2:#3a3632;--line:#4a4540}
+:root[data-app-theme="dark"][data-tone="lacivert"]{--bg:#151d30;--surface:#1e2840;--surface-2:#28344f;--line:#364462}
