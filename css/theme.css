@@ -824,3 +824,13 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .arow.sub.enter:nth-child(n+2){animation-delay:calc(var(--i,0) * 30ms)}
 .fold-in>*:not(.foldh){animation:rowIn .25s ease-out both}
 @media (prefers-reduced-motion:reduce){.flash,.arow.sub.enter,.fold-in>*{animation:none}}
+
+/* ================= 2.25: Yİ-ÜFE alım alım ================= */
+.sheet .kv .kv-note{display:block;white-space:normal;font-size:.78rem;line-height:1.45;color:var(--muted);font-family:var(--f-body);padding-top:8px}
+.ufe-d{border-top:1px solid var(--line);padding:8px 0}
+.ufe-d summary{cursor:pointer;font-size:.84rem;font-weight:600;color:var(--accent);list-style:revert}
+.ufe-l{display:flex!important;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 0;border-top:1px dashed var(--line)}
+.ufe-l span{display:flex;flex-direction:column;gap:2px;min-width:0;white-space:normal!important}
+.ufe-l small{font-size:.74rem;color:var(--muted);line-height:1.35}
+.ufe-l b{white-space:nowrap;font-weight:700}
+.sheet .kv>div>span:first-child{flex:1}

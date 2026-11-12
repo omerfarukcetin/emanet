@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.24";
+const APP_VERSION="2.25";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -422,19 +422,28 @@ const fmtYM=ym=>{const[y,m]=ym.split("-").map(Number);return MONTHS[m-1]+" "+y};
 const ufeAt=ym=>ufe&&ufe.idx&&+ufe.idx[ym]||0;
 function ufeEnd(){const want=prevMonth(todayISO()),l=ufe&&ufe.latest;const ym=l&&l<want?l:want;return{ym,v:ufeAt(ym)}}
 function ufeRatio(date){if(!date)return null;const b=prevMonth(date),e=ufeEnd();if(!e.v)return null;if(b>=e.ym)return 1;const bv=ufeAt(b);return bv?e.v/bv:null}
+/* Her alım ayrı bir parti olarak izlenir; satışlar en eski partiden düşülür (ilk giren ilk çıkar, vergide de böyledir).
+   Her partinin TL maliyeti kendi alış ayının endeksiyle güncellenir:
+   - reel maliyet: tüm partiler endekslenir (ekonomik karşılaştırma için);
+   - vergi için maliyet: yalnızca endeks artışı %10'u bulan partiler endekslenir (GVK mük. 81, değer artış kazancı). */
+function ufeLots(h){
+  const b=buysOf(h);if(!b.length||!b.every(t=>t.date))return null;
+  const tr=(h.trades||[]).filter(t=>t.type==="buy"||t.type==="sell").slice().sort((a,c)=>(a.date||"").localeCompare(c.date||""));
+  const lots=[];
+  for(const t of tr){
+    if(t.type==="buy"){const q=+t.qty||0;if(!(q>0))continue;const fx=h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||fxOf(h,h.cur));const k=ufeRatio(t.date);if(k==null)return null;
+      lots.push({date:t.date,q,unit:((+t.price||0)*q+(+t.fee||0))*fx/q,k,fxPending:h.cur!=="TRY"&&!(t.fx&&+t.fx[h.cur])})}
+    else{let r=+t.qty||0;while(r>1e-9&&lots.length){const l=lots[0],x=Math.min(l.q,r);l.q-=x;r-=x;if(l.q<=1e-9)lots.shift()}}
+  }
+  return lots.filter(l=>l.q>1e-9);
+}
 function ufeInfo(h){
-  const b=buysOf(h);let r=null,from=null;
-  if(b.length&&b.every(t=>t.date)){
-    const tr=(h.trades||[]).slice().sort((a,c)=>(a.date||"").localeCompare(c.date||""));
-    let q=0,T=0,X=0;
-    for(const t of tr){
-      if(t.type==="buy"){const amt=(+t.qty||0)*(+t.price||0)+(+t.fee||0);const fx=h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||fxOf(h,h.cur));const tl=amt*fx;const k=ufeRatio(t.date);if(k==null)return null;T+=tl;X+=tl*k;q+=+t.qty||0;if(!from||t.date<from)from=t.date}
-      else if(t.type==="sell"&&q>0){const s=Math.min(1,(+t.qty||0)/q);T*=1-s;X*=1-s;q-=+t.qty||0}
-    }
-    r=T>0?X/T:null;
-  }else if(h.buyDate){r=ufeRatio(h.buyDate);from=h.buyDate}
-  if(r==null)return null;
-  const tl=costIn(h,"TRY");return{ratio:r,costTL:tl*r,cost:toBase(tl*r,"TRY"),from:prevMonth(from),to:ufeEnd().ym,multi:b.length>1};
+  let lots=ufeLots(h),from=null;
+  if(lots===null&&h.buyDate){const k=ufeRatio(h.buyDate);if(k==null)return null;lots=[{date:h.buyDate,q:+h.qty||0,unit:+h.qty?costIn(h,"TRY")/+h.qty:0,k}]}
+  if(!lots||!lots.length)return null;
+  let T=0,X=0,XT=0;lots.forEach(l=>{const c=l.q*l.unit;l.cost=c;l.real=c*l.k;l.tax=l.k>=1.1?c*l.k:c;T+=c;X+=l.real;XT+=l.tax;if(!from||l.date<from)from=l.date});
+  if(!(T>0))return null;
+  return{ratio:X/T,costTL:X,cost:toBase(X,"TRY"),taxCost:toBase(XT,"TRY"),baseTL:T,from:prevMonth(from),to:ufeEnd().ym,multi:lots.length>1,lots};
 }
 function ufeSum(hs){let c=0,v=0,n=0;hs.forEach(h=>{const u=ufeInfo(h);if(u){c+=u.cost;v+=hVal(h)}else n++});return{c,v,n,pl:v-c,plp:c?(v-c)/c*100:0}}
 /* ---------- işlem defteri: miktar, ortalama maliyet ve gerçekleşen K/Z işlemlerden hesaplanır ---------- */
@@ -1814,9 +1823,12 @@ function holdingDetail(pfId,h){
   const tr=(h.trades||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const dvb=hDiv(h),pl=val-cs+dvb,plp=cs?pl/cs*100:0;
   const rest=`      ${(()=>{const u=ufeInfo(h);if(!u)return ufe&&!h.buyDate?`<div><span>Yİ-ÜFE'ye göre</span><span class="sub" style="font-family:var(--f-body)">alış tarihi gerekli</span></div>`:"";const inc=(u.ratio-1)*100;
-        return `<div><span>Yİ-ÜFE ile güncel TL maliyet<br><small class="sub">${u.multi?"alımlar ayrı ayrı · ":""}${fmtYM(u.from)} → ${fmtYM(u.to)} · endeks artışı ${fmtPct(inc)}</small></span><span>${fmt(u.cost)}</span></div>
+        const lotRows=u.lots.map(l=>`<div class="ufe-l"><span>${fmtDate(l.date)} · ${fmtN(l.q,4)} adet<small>TL maliyet ${fmt(toBase(l.cost,"TRY"),null,{dec:0})} · endeks ${fmtPct((l.k-1)*100)}${l.k>=1.1?" · vergide endekslenir":" · %10'un altında, vergide endekslenmez"}${l.fxPending?" · alış günü kuru bekleniyor":""}</small></span><b class="num">${fmt(toBase(l.real,"TRY"),null,{dec:0})}</b></div>`).join("");
+        return `<div><span>Yİ-ÜFE ile güncel TL maliyet<br><small class="sub">${u.multi?u.lots.length+" alım ayrı ayrı · ortalama artış ":"endeks artışı "}${fmtPct(inc)} · ${fmtYM(u.to)} endeksine göre</small></span><span>${fmt(u.cost)}</span></div>
         <div><span>Reel kâr/zarar (Yİ-ÜFE)</span><span class="${val>=u.cost?"pos-t":"neg-t"}">${fmt(val-u.cost)} (${fmtPct(u.cost?(val-u.cost)/u.cost*100:0)})</span></div>
-        ${inc>=10?`<div><span class="sub" style="font-family:var(--f-body);text-align:left">Endeks artışı %10'u aştığı için değer artış kazancı vergisinde maliyet bu yöntemle endekslenebilir. Vergi durumu varlık türüne ve elde tutma süresine göre değişir.</span></div>`:""}`})()}
+        ${Math.abs(u.taxCost-u.cost)>1||u.lots.some(l=>l.k>=1.1)?`<div><span>Vergi için endekslenmiş maliyet<br><small class="sub">yalnızca artışı %10'u bulan alımlar</small></span><span>${fmt(u.taxCost)}</span></div>`:""}
+        ${u.multi?`<details class="ufe-d"><summary>Alımlar tek tek</summary>${lotRows}</details>`:""}
+        <div class="kv-note">Satışlarda en eski alımdan düşülür (ilk giren ilk çıkar). Endeksleme, alış ayından önceki ayın Yİ-ÜFE'sinden ${fmtYM(u.to)} ayına göre yapılır ve yalnızca artış %10'u bulursa vergide uygulanabilir. Kesin vergi hesabı için mali müşavirinize danışın.</div>`})()}
       ${+h.realized?`<div><span>Gerçekleşen kâr/zarar</span><span class="${h.realized>=0?"pos-t":"neg-t"}">${fmt(+h.realized,h.cur)}</span></div>`:""}
       ${h.fxAt?`<div><span>Alış günü kuru${h.fxAt.multi?" (ağırlıklı)":""}<br><small class="sub">${esc(h.fxAt.src||"")}${h.fxAt.pending?" · bazı alımların kuru bekleniyor":""}</small></span><span>USD ${fmtN(h.fxAt.USD,4)}${+h.fxAt.EUR?"<br>EUR "+fmtN(h.fxAt.EUR,4):""}</span></div>
       <div><span>${h.cur==="USD"?"TL maliyeti":"Dolar maliyeti"}</span><span>${h.cur==="USD"?fmt(costIn(h,"TRY"),"TRY"):fmt(costIn(h,"USD"),"USD")}</span></div>
