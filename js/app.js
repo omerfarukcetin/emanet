@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.18";
+const APP_VERSION="2.19";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (gelir-gider)";
@@ -760,6 +760,8 @@ function onboarding(){
 
 /* Özet'te görüntülenen portföy: yalnızca bu cihazdaki görünümü değiştirir, ana portföyü değiştirmez.
    Gelir-gider, nakit bakiyesi, hedefler ve vadeler her zaman ana portföye bağlıdır. */
+/* Özet ve Portföy aynı portföy seçimini paylaşır; seçim bu cihazda hatırlanır. Portföy'deki "Tümü" yalnızca o sayfaya özgüdür. */
+function setPf(id){view.pf=id;view.ozPf=id;try{localStorage.setItem("emanet-ozpf",id)}catch(e){}}
 const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf();
 function rOzet(){
   const mp=ozPf(),onMain=!mp||isMainPf(mp);
@@ -773,9 +775,10 @@ function rOzet(){
   const kinds=Object.entries(byK).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
   const others=state.portfolios.length-(mp?1:0);
   return `
+  ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}</div>`:""}
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
-      ${state.portfolios.length>1?`<label class="pfsel"><span class="sr">Görüntülenen portföy</span><select data-act="ozpf" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<option value="${p.id}" ${mp&&p.id===mp.id?"selected":""}>${esc(p.name)}${isMainPf(p)?" (ana)":""}${owners().length>1?" · "+esc(ownerOf(p)):""}</option>`).join("")}</select></label>`:`<span class="label">${mp?esc(mp.name):"Net varlık"}</span>`}
+      <span class="label">${mp?esc(mp.name)+(state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt">${money(t.v)}</div>${mp?spark([mp.id]):""}</div>
     ${mp?plChips(hs,t.v,t.c):""}
@@ -926,7 +929,7 @@ function donut(parts){
 
 function rPortfoy(){
   const ows=owners();if(view.owner!=="all"&&!ows.includes(view.owner))view.owner="all";
-  if(view.pf==null)view.pf=(mainPf()||{}).id||"all";
+  if(view.pf==null)view.pf=(ozPf()||{}).id||"all";
   const vis=state.portfolios.filter(p=>view.owner==="all"||ownerOf(p)===view.owner);
   if(view.pf!=="all"&&!vis.find(p=>p.id===view.pf))view.pf="all";
   const hsAll=allHoldings(view.pf,view.owner);
@@ -2127,8 +2130,9 @@ document.addEventListener("click",e=>{
   if(a==="start-sample"){state=normalize(sample());commit("Örnek veriler yüklendi");return}
   if(a==="new-pf")return pfSheet();
   if(a==="edit-pf")return pfSheet(state.portfolios.find(p=>p.id===id));
-  if(a==="open-pf"){view.pf=id;view.tab="portfoy";render();window.scrollTo({top:0});return}
-  if(a==="pf"){view.pf=id;render();if(!t.closest(".chips"))window.scrollTo({top:0});return}
+  if(a==="open-pf"){setPf(id);view.tab="portfoy";render();window.scrollTo({top:0});return}
+  if(a==="ozpf"){setPf(id);render();return}
+  if(a==="pf"){if(id==="all")view.pf=id;else setPf(id);render();if(!t.closest(".chips"))window.scrollTo({top:0});return}
   if(a==="add-h")return holdingSheet();
   if(a==="hide"){S().hide=!S().hide;commit();return}
   if(a==="edit-tr"){const p=state.portfolios.find(p=>p.id===t.dataset.pf),h=p&&p.holdings.find(x=>x.id===t.dataset.h),tr=h&&(h.trades||[]).find(x=>x.id===id);if(tr)tradeSheet(p.id,h,tr.type,tr);return}

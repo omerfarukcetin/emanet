@@ -730,3 +730,4 @@ button.vcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .kshare{font-size:.74rem;color:var(--muted)}
 .atbl.compact .vcell.static{flex-direction:row;align-items:baseline;gap:8px}
 .atbl.compact .arow.closed .vcell.static{flex-direction:row-reverse}
+.chips .chip small{font-weight:500;opacity:.7;margin-left:2px}
