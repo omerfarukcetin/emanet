@@ -847,3 +847,11 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 .arow{padding-block:1px}
 .hero-spark{display:none}
 @media (min-width:1160px){.top-in{padding-block:14px 8px}.brand h1{font-size:1.6rem}}
+
+/* ================= 2.29: üst kartta ad ile tutar arası ================= */
+.hero-top{align-items:center;min-height:0}
+.hero .hero-acts .icon-btn{width:32px;height:32px;min-width:32px;min-height:32px;padding:0}
+.hero .hero-acts .icon-btn svg{width:17px;height:17px}
+.hero .curseg.h{padding:2px}
+.hero .curseg.h button{width:26px;height:26px;font-size:.78rem}
+.hero,.hero.net{gap:6px}
