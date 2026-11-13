@@ -1163,3 +1163,9 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .shr-r{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem;word-break:break-all}
 .shr-add{display:flex;gap:8px;margin-top:8px}
 .shr-add input{flex:1;min-width:0}
+
+/* ================= 2.63: gün içi özet saatleri ================= */
+.ts-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.ts-chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 11px;border-radius:99px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);font-weight:700;font-size:.86rem}
+.ts-chip button{border:0;background:none;color:inherit;font-size:1.05rem;line-height:1;width:24px;height:24px;border-radius:50%;cursor:pointer}
+.ts-chip button:hover{background:color-mix(in srgb,var(--accent) 18%,transparent)}

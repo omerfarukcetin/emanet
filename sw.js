@@ -64,14 +64,14 @@ async function notify(kindForced, test) {
     const now = {}; snap.pfs.forEach(p => p.hs.forEach(h => { now[h.id] = unit(h); }));
     // bir referans güne göre her portföyün değişimi (yalnızca fiyat hareketi: bugünkü miktar × birim değer farkı)
     const since = ref => snap.pfs.map(p => {
-      let v = 0, pl = 0, b = 0, top = null;
+      let v = 0, pl = 0, b = 0, top = null; const mv = [];
       for (const h of p.hs) {
         const u = now[h.id]; v += h.q * u;
         const u0 = ref ? (+ref.u[h.id] || (h.buy && h.buy > ref.d ? +h.cu : 0)) : 0;
-        if (u0 > 0 && u > 0) { const d = h.q * (u - u0); pl += d; b += h.q * u0; if (!top || Math.abs(d) > Math.abs(top.d)) top = { d, n: h.n, p: (u / u0 - 1) * 100 }; }
+        if (u0 > 0 && u > 0) { const d = h.q * (u - u0); pl += d; b += h.q * u0; if (!top || Math.abs(d) > Math.abs(top.d)) top = { d, n: h.n, p: (u / u0 - 1) * 100 }; mv.push({ n: h.n, p: (u / u0 - 1) * 100, d }); }
       }
       const has = b > 0, pc = has ? pl / b * 100 : 0;
-      return { n: p.n, main: p.main, v, has, pl, pc, top, chg: has ? arrow(pl) + (snap.hide ? "" : tl(Math.abs(pl)) + " · ") + pct(pc) : "" };
+      return { n: p.n, main: p.main, v, has, pl, pc, top, mv, chg: has ? arrow(pl) + (snap.hide ? "" : tl(Math.abs(pl)) + " · ") + pct(pc) : "" };
     });
     const pick = ls => ({ m: ls.find(l => l.main) || ls[0], rest: ls.filter(l => !l.main && l.has) });
     const val = m => m.n + (snap.hide ? "" : " · " + tl(m.v));
@@ -89,6 +89,9 @@ async function notify(kindForced, test) {
     let kinds = kindForced ? [kindForced] : [];
     if (!kindForced) {
       if (P.d && due("daily") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("daily");
+      // gün içi özetler: saati gelmiş (en fazla 2 saat geçmiş) ve bugün gönderilmemiş saatler; birden çoğu birikmişse tek bildirim
+      const tsDue = (Array.isArray(P.ts) ? P.ts : []).filter(s => T.hm >= s && st["ts:" + s] !== today && (+T.hm.slice(0, 2) * 60 + +T.hm.slice(3)) - (+s.slice(0, 2) * 60 + +s.slice(3)) <= 120);
+      if (tsDue.length && (P.we || (T.dow >= 1 && T.dow <= 5)) && !kinds.includes("daily")) { kinds.push("pulse"); if (!test) tsDue.forEach(s => { st["ts:" + s] = today; }); }
       if (P.w && due("weekly") && T.dow === 5) kinds.push("weekly");
       if (P.m && due("monthly") && T.lastDay) kinds.push("monthly");
       if (P.zk !== false && snap.zk && snap.zk.d && due("zakat") && [7, 1, 0].includes(dayGap(today, snap.zk.d))) kinds.push("zakat");
@@ -119,6 +122,15 @@ async function notify(kindForced, test) {
         } else if (m.has) show("gun-sonu", (gap > 3 ? "Son " + gap + " gün " : "Bugün ") + m.chg, [val(m), ...rest.map(l => l.n + ": " + l.chg)].join("\n"), open);
         else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
+      if (kind === "pulse") {
+        const ls = since(dref), { m, rest } = pick(ls);
+        const all = ls.flatMap(l => l.mv).filter(x => isFinite(x.p)).sort((a, b) => b.p - a.p), up = all[0], dn = all[all.length - 1];
+        const lines = [val(m)];
+        if (up && up.p > 0) lines.push("En çok yükselen: " + up.n + " " + arrow(up.p) + pct(up.p));
+        if (dn && dn.p < 0 && dn !== up) lines.push("En çok düşen: " + dn.n + " " + arrow(dn.p) + pct(dn.p));
+        rest.slice(0, 3).forEach(l => lines.push(l.n + ": " + l.chg));
+        show("gun-ici", "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open);
+      }
       if (kind === "weekly") {
         const ref = back(7, 5, 10), w = snap.per && snap.per.w;
         if (ref) { const { m, rest } = pick(since(ref)); show("haftalik", "Bu hafta " + (m.has ? m.chg : ""), [val(m), ...rest.map(l => l.n + ": " + l.chg), dm(ref.d) + " – " + dm(today)].join("\n"), open); }
@@ -144,7 +156,7 @@ async function notify(kindForced, test) {
         const body = !z ? "Örnek bildirim. Zekât tarihiniz ayarlıysa gerçek tutar yazar." : z.reached ? (snap.hide ? "Hesaplanan zekâtı görmek için dokunun." : "Hesaplanan zekât: " + tl(z.left)) + "\nÖdediğinizde Zekât sekmesinden kaydedin." : "Varlıklarınız şu an nisabın altında; zekât düşmüyor.";
         show("zekat", title, body, open.replace(/#.*$/, "") + "#zekat");
       }
-      if (!test && kind !== "big") st[kind] = today;
+      if (!test && kind !== "big" && kind !== "pulse") st[kind] = today;
     }
     if (!test) {
       closes = closes.filter(c => c.d !== today).concat([{ d: today, u: now }]).sort((a, b) => a.d.localeCompare(b.d)).slice(-45);

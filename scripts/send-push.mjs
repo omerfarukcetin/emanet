@@ -50,6 +50,9 @@ export function decide(row, nowMs) {
   const t = /^\d\d:\d\d$/.test(p.t) ? p.t : "18:30", daily = p.d !== false;
   const zkGap = p.zk !== false && /^\d{4}-\d\d-\d\d$/.test(p.zd || "") ? Math.round((Date.parse(p.zd + "T00:00:00Z") - Date.parse(D + "T00:00:00Z")) / 864e5) : null;
   const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap));
+  // gün içi özet saatleri: saati gelmiş, en fazla 2 saat geçmiş ve bugün gönderilmemiş olanlar (kayıt "fired" alanında ts:SS:DD olarak tutulur)
+  const mins = x => +x.slice(0, 2) * 60 + +x.slice(3);
+  const ts = Array.isArray(p.ts) && row.fired && (p.we || (dow >= 1 && dow <= 5)) ? p.ts.filter(x => /^\d\d:\d\d$/.test(x) && hm >= x && mins(hm) - mins(x) <= 120 && row.fired["ts:" + x] !== D) : [];
   let big = false, mv = null;
   if (+p.bm > 0 && row.last_big !== D && hm >= "08:00" && hm <= "23:00" && !(daily && row.last_poke === D)) { mv = dayMove(row.weights); big = mv != null && Math.abs(mv) >= +p.bm; }
   // fiyat alarmları: yalnızca veritabanı işlevi "fired" alanını döndürüyorsa (yeni kurulum) değerlendirilir
@@ -59,14 +62,14 @@ export function decide(row, nowMs) {
     const on = a.op === "gte" ? c >= +a.v : c <= +a.v, was = a.id in row.fired;
     if (on && !was && hm >= "08:00" && hm <= "23:00") fire.push(a.id); else if (!on && was) rearm.push(a.id);
   }
-  return { D, sched: !!sched, big, mv, fire, rearm };
+  return { D, sched: !!sched, big, mv, fire, rearm, ts };
 }
 
 let ok = 0, gone = 0, fail = 0, skip = 0;
 for (const row of rows) {
-  const d = FORCE ? { D: "", sched: true, big: false, fire: [], rearm: [] } : decide(row, Date.now());
+  const d = FORCE ? { D: "", sched: true, big: false, fire: [], rearm: [], ts: [] } : decide(row, Date.now());
   for (const id of d.rearm) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "rearm:" + id, d: d.D }).catch(() => {});
-  if (!d.sched && !d.big && !d.fire.length) { skip++; continue; }
+  if (!d.sched && !d.big && !d.fire.length && !d.ts.length) { skip++; continue; }
   let host = "?";
   try {
     const u = new URL(row.endpoint); host = u.host;
@@ -74,7 +77,7 @@ for (const row of rows) {
     const r = await fetch(row.endpoint, { method: "POST", headers: { authorization: `vapid t=${vapidToken(u.origin)}, k=${pub}`, ttl: "10800", urgency: (d.big || d.fire.length) && !d.sched ? "high" : "normal", "content-length": "0" } });
     if (r.status >= 200 && r.status < 300) {
       ok++;
-      if (!FORCE) { if (d.sched) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "poke", d: d.D }); if (d.big) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "big", d: d.D }); for (const id of d.fire) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "alert:" + id, d: d.D }); }
+      if (!FORCE) { if (d.sched) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "poke", d: d.D }); if (d.big) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "big", d: d.D }); for (const id of d.fire) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "alert:" + id, d: d.D }); for (const x of d.ts) await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "alert:ts:" + x, d: d.D }); }
     } else if (r.status === 404 || r.status === 410) { gone++; await rpc("emanet_push_mark", { secret: priv, ep: row.endpoint, kind: "gone", d: d.D || "2000-01-01" }).catch(() => {}); }
     else { fail++; console.log(`- ${host}: HTTP ${r.status} ${(await r.text()).slice(0, 160)}`); }
   } catch (e) { fail++; console.log(`- ${host}: ${e.message}`); }

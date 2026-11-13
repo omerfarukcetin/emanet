@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.62";
+const APP_VERSION="2.63";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1520,7 +1520,7 @@ async function notifSnap(){
       ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
       pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0).map(h=>{
         const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
-        return{id:h.id,n:h.name,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
+        return{id:h.id,n:sy||h.name,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
     await(await caches.open(NK)).put(notifKey(),new Response(JSON.stringify(snap),{headers:{"content-type":"application/json"}}));
   }catch(e){}
   notifSync();
@@ -1528,7 +1528,7 @@ async function notifSnap(){
 /* cihazın bildirim ayarları (yalnızca bu cihazda): d günlük özet, t saat, we hafta sonu, w haftalık, m aylık, bm büyük hareket eşiği (%) */
 const NP="emanet-notif-prefs";
 function notifPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(NP)||"{}")||{}}catch(e){}
-  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false}}
+  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
 function notifPrefSet(k,v){const p=notifPrefs();p[k]=v;try{localStorage.setItem(NP,JSON.stringify(p))}catch(e){}notifSnap();notifSync(true);render()}
 /* büyük hareket uyarısı için: ana portföyün hangi fiyata yüzde kaç bağlı olduğu (tutar yok) */
 function notifWeights(){
@@ -1629,6 +1629,8 @@ function notifCard(){
   ${on?`<section class="card"><h2 style="margin-bottom:4px">Özetler</h2><div class="set-group">
     ${tg("d","Gün sonu özeti","Ana portföyün günlük kâr/zararı; diğer portföyler altında")}
     <div class="set-row"><div class="lbl"><b>Saat</b><small>Özetler bu saatte, fiyatlar güncellendikten hemen sonra gelir</small></div>${sel("t",times.map(x=>[x,x]),p.t)}</div>
+    <div class="set-row col"><div class="lbl"><b>Gün içi özetler</b><small>Seçtiğin her saatte portföyün o anki durumu: toplam, günlük değişim, en çok yükselen ve en çok düşen varlık. En çok 6 saat.</small></div>
+      <div class="ts-list">${p.ts.map(x=>`<span class="ts-chip">${x}<button type="button" data-tsdel="${x}" aria-label="${x} saatini kaldır">×</button></span>`).join("")}${p.ts.length<6?`${sel("tsAdd",[["","+ Saat ekle"],...times.filter(x=>!p.ts.includes(x)&&x!==p.t).map(x=>[x,x])],"")}`:""}</div></div>
     ${tg("we","Hafta sonu da gönder","Altın, döviz ve kripto hafta sonu da oynar")}
     ${tg("w","Haftalık özet","Her cuma, haftanın değişimi")}
     ${tg("m","Aylık özet","Ayın son günü: gelir, gider, birikim oranı ve portföyün aylık değişimi")}
@@ -1640,7 +1642,7 @@ function notifCard(){
   </div></section>
   ${alertsCard(true)}
   <section class="card"><h2 style="margin-bottom:4px">Deneme</h2><div class="set-group">
-    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
+    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["pulse","Gün içi"],["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
     <div class="note">Tutarlarınız sunucuya gönderilmez; bildirimin metni bu cihazda hesaplanır. “Tutarları gizle” açıksa yalnızca yüzdeler yazar. Telefon pil tasarrufundaysa bildirim gecikebilir.</div>
   </div></section>`:alertsCard(false)}`;
 }
@@ -1778,6 +1780,7 @@ function histScrub(e){
 document.addEventListener("pointermove",histScrub);
 document.addEventListener("pointerdown",histScrub);
 document.addEventListener("pointerout",e=>{const w=e.target.closest&&e.target.closest(".hist-wrap");if(w&&!w.contains(e.relatedTarget)){const c=w.querySelector(".hcur");if(c)c.hidden=true}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-tsdel]");if(!b)return;const p=notifPrefs();notifPrefSet("ts",p.ts.filter(x=>x!==b.dataset.tsdel))});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-taxrep]");if(!b)return;closeSheet();view.taxPf=b.dataset.taxrep;view.rpMode="vergi";view.rpYear=+todayISO().slice(0,4);view.tab="rapor";render();window.scrollTo(0,0)});
 document.addEventListener("click",e=>{
   const dn=e.target.closest&&e.target.closest("[data-dn]");
@@ -1795,6 +1798,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="tgAdd
 document.addEventListener("input",e=>{if(e.target.id==="txQ"){view.txQ=e.target.value;const l=$("#txList");if(l)l.innerHTML=txList()}});
 document.addEventListener("change",e=>{
   if(e.target.id==="txCat"){view.txCat=e.target.value;render()}
+  if(e.target.dataset&&e.target.dataset.np==="tsAdd"){const v=e.target.value;if(v){const p=notifPrefs();notifPrefSet("ts",[...p.ts,v].sort())}return}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
   if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
