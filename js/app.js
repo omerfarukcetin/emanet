@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.49";
+const APP_VERSION="2.51";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -712,6 +712,7 @@ function applyPrefs(){
   const s=S();
   if(s.theme==="system")r.removeAttribute("data-app-theme");else r.setAttribute("data-app-theme",s.theme);
   r.setAttribute("data-fs",s.fontSize||"m");
+  r.classList.toggle("simple",!!s.simple);
   r.setAttribute("data-accent",s.accent||"kobalt");
   if(s.tone&&s.tone!=="gri")r.setAttribute("data-tone",s.tone);else r.removeAttribute("data-tone");
   requestAnimationFrame(()=>{try{const bg=getComputedStyle(document.body).backgroundColor;document.querySelectorAll('meta[name="theme-color"]').forEach(m=>m.setAttribute("content",bg))}catch(e){}});
@@ -760,6 +761,8 @@ const I={
   bank:sv('<path d="M4 9.5 12 4l8 5.500z"/><path d="M6.5 12.500v5M10.2 12.500v5M13.8 12.500v5M17.5 12.500v5M4 20h16"/>'),
   brief:sv('<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3.5 13h17"/>'),
   sliders:sv('<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>'),
+  up:sv('<path d="M6 15l6-6 6 6"/>'),
+  down:sv('<path d="M6 9l6 6 6-6"/>'),
   expand:sv('<path d="M7 9l5-5 5 5M7 15l5 5 5-5"/>'),
   collapse:sv('<path d="M7 4l5 5 5-5M7 20l5-5 5 5"/>'),
   spark:sv('<path d="M12 4l1.9 5.100L19 11l-5.1 1.900L12 18l-1.9-5.100L5 11l5.1-1.900z"/>'),
@@ -840,8 +843,10 @@ function render(){
   const prevN=motionBefore(m);
   m.innerHTML=(view.tab==="akis"||view.tab==="borc"?subTabs():"")+R();
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
-  if(F){fab.hidden=false;fab.innerHTML=I.plus+"<span>"+F[0]+"</span>";fab.onclick=F[1]}else fab.hidden=true;
-  const na=$("#navAdd");if(na){na.disabled=!F;na.setAttribute("aria-label",F?F[0]:"Ekle");na.title=F?F[0]:"";na.lastElementChild.textContent=F?F[0]:"Ekle";na.onclick=F?F[1]:null}
+  /* + her sekmede aynı menüyü açar (ayarlar ve rapor dışında) */
+  const addOn=!!F||view.tab==="zekat";
+  if(addOn){fab.hidden=false;fab.innerHTML=I.plus+"<span>Ekle</span>";fab.onclick=addMenu}else fab.hidden=true;
+  const na=$("#navAdd");if(na){na.disabled=!addOn;na.setAttribute("aria-label","Ekle");na.title="Ekle";na.lastElementChild.textContent="Ekle";na.onclick=addOn?addMenu:null}
   twoCol(m);
   motionAfter(m,prevN);
   view.kJust=null;
@@ -888,7 +893,8 @@ function rOzet(){
   const byK={};hs.forEach(h=>byK[h.kind]=(byK[h.kind]||0)+hVal(h));
   const kinds=Object.entries(byK).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
   const others=state.portfolios.length-(mp?1:0);
-  return `
+  const P={};
+  const top=`
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}</div>`:""}
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0">
@@ -898,15 +904,16 @@ function rOzet(){
     ${mp?plChips(hs,t.v,t.c)+heroStats(hs,t.v,t.c):""}
     <div class="subrow">${eqvChips(t.v)}</div>
   </section>
-  ${onMain?attnCard():""}
-  ${mp?`<section class="card">
+  `;
+  P.attn=`${onMain?attnCard():""}`;
+  P.assets=`${mp?`<section class="card">
     ${vHead(hs,"ozet")}
     ${kinds.length||mp.holdings.length?assetTable(hs,t.v,{ctx:"ozet",pf:mp.id,closed:mp.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:mp}))})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
-  </section>${others>0?familyCard(mp):""}`
-  :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}
-  ${onMain?"":`<div class="note">Bütçe, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}
-  ${!onMain?"":`<section class="card side">
+  </section>`
+  :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}`;
+  P.note=`${onMain?"":`<div class="note">Bütçe, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}`;
+  P.flow=`${!onMain?"":`<section class="card side">
     <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü${ic(I.right,14)}</button></div>
     <div class="flow">
       <dl class="flow-n">
@@ -917,12 +924,30 @@ function rOzet(){
       </dl>
       ${flowChart(true)}
     </div>
-  </section>`}
-  ${onMain?goalsCard().replace('<section class="card"','<section class="card side"'):""}
-  ${onMain&&upcoming.length?`<section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü${ic(I.right,14)}</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}
-  `;
+  </section>`}`;
+  P.goals=`${onMain?goalsCard().replace('<section class="card"','<section class="card side"'):""}`;
+  P.due=`${onMain&&upcoming.length?`<section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü${ic(I.right,14)}</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}`;
+  P.fam=mp&&others>0?familyCard(mp):"";
+  const ord=ozOrder(),hide=new Set(S().ozHide||[]);
+  return top+ord.filter(k=>!hide.has(k)).map(k=>P[k]+(k==="assets"?P.note:"")).join("")+`<div class="oz-edit"><button class="btn ghost sm" data-act="ozcards">${ic(I.sliders,14)}Özet kartlarını düzenle</button></div>`;
 }
 
+/* Özet kartlarının sırası ve görünürlüğü (Ayarlar > Görünüm ya da Özet'in altındaki bağlantı) */
+const OZ_CARDS=[["attn","Bugün dikkat"],["assets","Varlıklar"],["fam","Aile özeti"],["flow","Nakit akışı"],["goals","Birikim hedefleri"],["due","Yaklaşan vadeler"]];
+function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k));OZ_CARDS.forEach(([k])=>{if(!o.includes(k))o.push(k)});return o}
+function ozCardsSheet(){
+  const o=ozOrder(),hide=new Set(S().ozHide||[]);
+  openSheet(`<h3>Özet kartları</h3><div class="sub" style="margin-bottom:10px">Okları kullanarak sırayı değiştirin; anahtarla kartı gizleyin ya da gösterin.</div>
+    <div class="ozc">${o.map((k,i)=>`<div class="ozc-r ${hide.has(k)?"off":""}"><b>${(OZ_CARDS.find(c=>c[0]===k)||[])[1]}</b>
+      <button type="button" class="icon-btn sm" data-mv="${k}" data-d="-1" aria-label="Yukarı taşı" ${i===0?"disabled":""}>${ic(I.up,16)}</button>
+      <button type="button" class="icon-btn sm" data-mv="${k}" data-d="1" aria-label="Aşağı taşı" ${i===o.length-1?"disabled":""}>${ic(I.down,16)}</button>
+      <label class="toggle"><input type="checkbox" data-sh="${k}" ${hide.has(k)?"":"checked"} aria-label="Göster"><span></span></label></div>`).join("")}</div>
+    <div class="actions"><button type="button" class="btn ghost" data-reset="1">Varsayılana dön</button><button type="button" class="btn primary" data-done="1">Tamam</button></div>`,sh=>{
+    sh.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{const o=ozOrder(),i=o.indexOf(b.dataset.mv),j=i+ +b.dataset.d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];S().ozOrder=o;commit();ozCardsSheet()});
+    sh.querySelectorAll("[data-sh]").forEach(c=>c.onchange=()=>{const h=new Set(S().ozHide||[]);c.checked?h.delete(c.dataset.sh):h.add(c.dataset.sh);S().ozHide=[...h];commit();c.closest(".ozc-r").classList.toggle("off",!c.checked)});
+    sh.querySelector("[data-reset]").onclick=()=>{delete S().ozOrder;delete S().ozHide;commit("Özet varsayılan düzene döndü");ozCardsSheet()};
+    sh.querySelector("[data-done]").onclick=closeSheet});
+}
 /* Aile özeti: tüm portföylerin toplamı, her birinin değeri, payı ve günlük değişimi. Satıra dokunmak Özet'i o portföye geçirir. */
 const PF_COLORS=["--c2","--c4","--c3","--c9","--c5","--c8","--c1","--c10"];
 const pfColor=p=>p.color||PF_COLORS[Math.max(0,state.portfolios.indexOf(p))%PF_COLORS.length];
@@ -1019,7 +1044,7 @@ function rRapor(){
   const ym=view.rpMonth||today.slice(0,7);view.rpMonth=ym;
   const tile=(l,v,cls,sub)=>`<div><span class="label">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
   const rateTxt=r=>r==null?"—":"%"+fmtN(r,1);
-  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Bütçe</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Vergi"]].map(([k,l])=>`<button data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
+  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Bütçe</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Vergi"]].map(([k,l])=>`<button ${k==="vergi"?'class="adv" ':""}data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
     <div class="sec"><div class="month-sw"><button class="icon-btn noprint" data-act="rpnav" data-d="-1" aria-label="${prev}">${I.left}</button><b>${title}</b><button class="icon-btn noprint" data-act="rpnav" data-d="1" aria-label="${next}">${I.right}</button></div><span class="sub printonly">Emanet · ${fmtDate(today)} tarihinde oluşturuldu</span></div>`;
   if(mode==="vergi")return head(Y+" vergi raporu","Önceki yıl","Sonraki yıl")+taxReport(Y);
   if(mode==="ay"){
@@ -1144,7 +1169,7 @@ function rPortfoy(){
       cashIn?`<div class="sub">${esc(mpv.name)} içinde bütçe bakiyesi: <b class="num">${fmt(cb)}</b></div>`:"",
       realized?`<div class="sub">Gerçekleşen kâr/zarar (satışlar, komisyon düşülmüş): <b class="num ${realized>=0?"pos-t":"neg-t"}">${fmt(realized)}</b></div>`:""].filter(Boolean);
     if(!parts.length)return"";
-    return `<section class="card pf-extra">${parts.join("")}</section>`})()}
+    return `<section class="card pf-extra adv">${parts.join("")}</section>`})()}
   ${multi?pfListCard(vis,v):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
@@ -1209,9 +1234,9 @@ function targetPlan(p,hs,add){
 function targetCard(p,hs){
   if(!p||!hs.length)return"";
   const tg=p.target;
-  if(!tg||!Object.keys(tg).length)return `<section class="card side"><div class="sec"><h2>Hedef dağılım</h2><button class="btn ghost sm" data-act="target" data-id="${p.id}">${ic(I.plus,14)}Hedef belirle</button></div><div class="sub">Örneğin “altın %50, fon %30, hisse %20” gibi bir hedef koyun; sapmayı ve dengelemek için ne alınması gerektiğini burada görün.</div></section>`;
+  if(!tg||!Object.keys(tg).length)return `<section class="card side adv"><div class="sec"><h2>Hedef dağılım</h2><button class="btn ghost sm" data-act="target" data-id="${p.id}">${ic(I.plus,14)}Hedef belirle</button></div><div class="sub">Örneğin “altın %50, fon %30, hisse %20” gibi bir hedef koyun; sapmayı ve dengelemek için ne alınması gerektiğini burada görün.</div></section>`;
   const add=parseNum(view.tgAdd||"")||0,{rows,V}=targetPlan(p,hs,add),thr=V*.01,off=rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2;
-  return `<section class="card side"><div class="sec"><h2>Hedef dağılım</h2><button class="btn ghost sm" data-act="target" data-id="${p.id}">Düzenle</button></div>
+  return `<section class="card side adv"><div class="sec"><h2>Hedef dağılım</h2><button class="btn ghost sm" data-act="target" data-id="${p.id}">Düzenle</button></div>
     <div class="sub" style="margin:-4px 0 10px">${off<2?"Portföy hedefe çok yakın.":"Hedeften toplam sapma: "+fmtN(off,1)+" puan."}</div>
     <div class="tg">${rows.map(r=>`<div class="tg-r"><div class="tg-h"><span class="tg-n"><i class="dot" style="background:var(${KIND_COLOR[r.k]||"--c7"})"></i>${esc((KINDS[r.k]||r.k).replace(/\s*\(.*\)/,""))}</span><span class="num tg-p">%${fmtN(r.cp,0)} <small>→ %${fmtN(r.t,0)}</small></span></div>
       <div class="tg-bar" aria-hidden="true"><i style="width:${Math.min(100,r.cp)}%;background:var(${KIND_COLOR[r.k]||"--c7"})"></i><b style="left:${Math.min(100,r.t)}%"></b></div>
@@ -1608,7 +1633,7 @@ function benchChart(b,sel){
 function benchCard(ids){
   const range=view.hRange||90,b=benchCalc(ids,range);
   const segR=`<div class="seg" role="group" aria-label="Dönem">${[[30,"1A"],[90,"3A"],[365,"1Y"],["all","Tümü"]].map(([k,l])=>`<button data-act="hrange" data-k="${k}" aria-pressed="${String(range)===String(k)}">${l}</button>`).join("")}</div>`;
-  if(!b)return `<section class="card side"><div class="sec"><h2>Getiri karşılaştırması</h2></div><div class="sub" style="margin-top:6px">Karşılaştırma için en az iki ayrı günün kaydı gerekir. Uygulamayı açtığınız her gün portföy değeri kaydedilir; ${histRows(ids,"all").length>=2?"daha uzun bir dönem seçerseniz görünür.":"yarından itibaren burada görünür."}</div>${histRows(ids,"all").length>=2?`<div style="margin-top:10px">${segR}</div>`:""}</section>`;
+  if(!b)return `<section class="card side adv"><div class="sec"><h2>Getiri karşılaştırması</h2></div><div class="sub" style="margin-top:6px">Karşılaştırma için en az iki ayrı günün kaydı gerekir. Uygulamayı açtığınız her gün portföy değeri kaydedilir; ${histRows(ids,"all").length>=2?"daha uzun bir dönem seçerseniz görünür.":"yarından itibaren burada görünür."}</div>${histRows(ids,"all").length>=2?`<div style="margin-top:10px">${segR}</div>`:""}</section>`;
   const sel=b.items.some(i=>i.k===view.bnSel)?view.bnSel:null;
   const it=b.items.slice().sort((x,y)=>y.v-x.v),mx=Math.max(...it.map(i=>Math.abs(i.v)),.01);
   const pf=b.items[0],inf=b.items.find(i=>i.infl),alt=it.filter(i=>i.k!=="pf"&&!i.infl),best=alt[0],S0=b.start;
@@ -1616,7 +1641,7 @@ function benchCard(ids){
   let verdict="";
   if(best)verdict=pf.v>=best.v?`Portföyünüz bu dönemde karşılaştırılan seçeneklerin hepsinden iyi getirdi; en yakını ${best.n} (${pts(pf.v-best.v)} geride).`:`Bu dönemin en iyisi ${best.n} oldu; portföyünüz ondan ${pts(best.v-pf.v)} geride kaldı. Dönem başındaki ${amt(0)} ${best.n} olarak dursaydı bugün ${amt(best.v)} olurdu, portföyde ${amt(pf.v)} oldu.`;
   const real=inf?((1+pf.v/100)/(1+inf.v/100)-1)*100:null;
-  return `<section class="card side"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Getiri karşılaştırması</h2>${segR}</div>
+  return `<section class="card side adv"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Getiri karşılaştırması</h2>${segR}</div>
     ${b.items[0].line.length>=3?benchChart(b,sel):""}
     <div class="bn" role="list">${it.map(i=>`<button class="bn-row ${i.k==="pf"?"me":""} ${sel===i.k?"on":""}" role="listitem" data-act="bnsel" data-k="${i.k}" style="--bc:var(${i.c})" aria-pressed="${sel===i.k}"><span class="bn-n"><i class="bn-dot"></i>${i.n}</span><span class="bn-bar" aria-hidden="true"><i class="${i.v<0?"neg":""}" style="width:${Math.max(2,Math.abs(i.v)/mx*100).toFixed(1)}%"></i></span><b class="num ${i.v>=0?"pos-t":"neg-t"}">${fmtPct(i.v)}</b><small class="bn-a num">${amt(i.v)}</small></button>`).join("")}</div>
     ${verdict?`<p class="bn-v">${verdict}${real!=null?` Enflasyondan (TÜFE) arındırılmış getiriniz <b class="${real>=0?"pos-t":"neg-t"}">${fmtPct(real)}</b>.`:""}</p>`:""}
@@ -1685,6 +1710,7 @@ document.addEventListener("input",e=>{if(e.target.id==="txQ"){view.txQ=e.target.
 document.addEventListener("change",e=>{
   if(e.target.id==="txCat"){view.txCat=e.target.value;render()}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
+  if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
   if(e.target.id==="notifTog"){e.target.disabled=true;notifSet(e.target.checked)}
 });
@@ -1784,6 +1810,8 @@ function rAyarlar(){
       <div class="label" style="margin-top:4px">Koyu temalar</div>
       <div class="tones">${DARKS.map(([k,l,c])=>tile(k,l,c,"dark",fixedDark&&(tone===k||(k==="gri"&&!DARKS.some(d=>d[0]===tone))))).join("")}</div></div>
     <div class="set-row"><div class="lbl"><b>Gece otomatik koyulaş</b><small>Telefon ya da bilgisayar koyu moddayken seçtiğiniz temanın koyu hâli kullanılır</small></div><label class="toggle"><input type="checkbox" id="autoDark" ${s.theme==="system"?"checked":""} ${fixedDark?"disabled":""}><span></span></label></div>
+    <div class="set-row"><div class="lbl"><b>Özet kartları</b><small>Özet sayfasındaki kartların sırası ve hangilerinin görüneceği</small></div><button class="btn sm" data-act="ozcards">Düzenle</button></div>
+    <div class="set-row"><div class="lbl"><b>Sade görünüm</b><small>Yİ-ÜFE, getiri karşılaştırması, hedef dağılım ve vergi raporu gizlenir; tutarlar, varlıklar ve bütçe kalır</small></div><label class="toggle"><input type="checkbox" id="simpleView" ${s.simple?"checked":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}
     ${tog("hide","Tutarları gizle","Başkalarının yanında açarken")}
@@ -1999,11 +2027,11 @@ function holdingDetail(pfId,h){
   const dvb=hDiv(h),pl=val-cs+dvb,plp=cs?pl/cs*100:0;
   const rest=`      ${(()=>{const u=ufeInfo(h);if(!u)return ufe&&!h.buyDate?`<div><span>Yİ-ÜFE'ye göre</span><span class="sub" style="font-family:var(--f-body)">alış tarihi gerekli</span></div>`:"";const inc=(u.ratio-1)*100;
         const lotRows=u.lots.map(l=>`<div class="ufe-l"><span>${fmtDate(l.date)} · ${fmtN(l.q,4)} adet<small>TL maliyet ${fmt(toBase(l.cost,"TRY"),null,{dec:0})} · endeks ${fmtPct((l.k-1)*100)}${l.k>=1.1?" · vergide endekslenir":" · %10'un altında, vergide endekslenmez"}${l.fxPending?" · alış günü kuru bekleniyor":""}</small></span><b class="num">${fmt(toBase(l.real,"TRY"),null,{dec:0})}</b></div>`).join("");
-        return `<div><span>Yİ-ÜFE ile güncel TL maliyet<br><small class="sub">${u.multi?u.lots.length+" alım ayrı ayrı · ortalama artış ":"endeks artışı "}${fmtPct(inc)} · ${fmtYM(u.to)} endeksine göre</small></span><span>${fmt(u.cost)}</span></div>
-        <div><span>Reel kâr/zarar (Yİ-ÜFE)</span><span class="${val>=u.cost?"pos-t":"neg-t"}">${fmt(val-u.cost)} (${fmtPct(u.cost?(val-u.cost)/u.cost*100:0)})</span></div>
-        ${Math.abs(u.taxCost-u.cost)>1||u.lots.some(l=>l.k>=1.1)?`<div><span>Vergi için endekslenmiş maliyet<br><small class="sub">yalnızca artışı %10'u bulan alımlar</small></span><span>${fmt(u.taxCost)}</span></div>`:""}
-        ${u.multi?`<details class="ufe-d"><summary>Alımlar tek tek</summary>${lotRows}</details>`:""}
-        <div class="kv-note">Satışlarda en eski alımdan düşülür (ilk giren ilk çıkar). Endeksleme, alış ayından önceki ayın Yİ-ÜFE'sinden ${fmtYM(u.to)} ayına göre yapılır ve yalnızca artış %10'u bulursa vergide uygulanabilir. Kesin vergi hesabı için mali müşavirinize danışın.</div>${h.cur!=="TRY"?`<div class="kv-note"><button type="button" class="btn sm" data-taxrep="${pf.id}">${ic(I.trend,14)}Yıllık vergi raporunu aç</button></div>`:""}`})()}
+        return `<div class="adv"><span>Yİ-ÜFE ile güncel TL maliyet<br><small class="sub">${u.multi?u.lots.length+" alım ayrı ayrı · ortalama artış ":"endeks artışı "}${fmtPct(inc)} · ${fmtYM(u.to)} endeksine göre</small></span><span>${fmt(u.cost)}</span></div>
+        <div class="adv"><span>Reel kâr/zarar (Yİ-ÜFE)</span><span class="${val>=u.cost?"pos-t":"neg-t"}">${fmt(val-u.cost)} (${fmtPct(u.cost?(val-u.cost)/u.cost*100:0)})</span></div>
+        ${Math.abs(u.taxCost-u.cost)>1||u.lots.some(l=>l.k>=1.1)?`<div class="adv"><span>Vergi için endekslenmiş maliyet<br><small class="sub">yalnızca artışı %10'u bulan alımlar</small></span><span>${fmt(u.taxCost)}</span></div>`:""}
+        ${u.multi?`<details class="ufe-d adv"><summary>Alımlar tek tek</summary>${lotRows}</details>`:""}
+        <div class="kv-note adv">Satışlarda en eski alımdan düşülür (ilk giren ilk çıkar). Endeksleme, alış ayından önceki ayın Yİ-ÜFE'sinden ${fmtYM(u.to)} ayına göre yapılır ve yalnızca artış %10'u bulursa vergide uygulanabilir. Kesin vergi hesabı için mali müşavirinize danışın.</div>${h.cur!=="TRY"?`<div class="kv-note adv"><button type="button" class="btn sm" data-taxrep="${pf.id}">${ic(I.trend,14)}Yıllık vergi raporunu aç</button></div>`:""}`})()}
       ${+h.realized?`<div><span>Gerçekleşen kâr/zarar</span><span class="${h.realized>=0?"pos-t":"neg-t"}">${fmt(+h.realized,h.cur)}</span></div>`:""}
       ${h.fxAt?`<div><span>Alış günü kuru${h.fxAt.multi?" (ağırlıklı)":""}<br><small class="sub">${esc(h.fxAt.src||"")}${h.fxAt.pending?" · bazı alımların kuru bekleniyor":""}</small></span><span>USD ${fmtN(h.fxAt.USD,4)}${+h.fxAt.EUR?"<br>EUR "+fmtN(h.fxAt.EUR,4):""}</span></div>
       <div><span>${h.cur==="USD"?"TL maliyeti":"Dolar maliyeti"}</span><span>${h.cur==="USD"?fmt(costIn(h,"TRY"),"TRY"):fmt(costIn(h,"USD"),"USD")}</span></div>
@@ -2136,6 +2164,37 @@ function quickTx(){
   const all=[...by.values()],freq=all.filter(o=>o.n>=2).sort((a,b)=>b.n-a.n||b.last.localeCompare(a.last));
   const seen=new Set(freq.map(o=>o.cat+"|"+o.amount)),rec=all.filter(o=>!seen.has(o.cat+"|"+o.amount)).sort((a,b)=>b.last.localeCompare(a.last));
   return freq.concat(rec).slice(0,6);
+}
+/* ---------- tek + menüsü: her sekmede aynı ---------- */
+function curPfId(){const v=view.pf;return v&&v!=="all"&&state.portfolios.some(p=>p.id===v)?v:(mainPf()||state.portfolios[0]||{}).id}
+function addMenu(){
+  const it=[
+    ["out","Harcama",I.cart,"--neg","Market, fatura, kira…"],
+    ["in","Gelir",I.wallet,"--pos","Maaş, ek gelir"],
+    ["save","Tasarruf",I.target,"--c5","Birikime ayrılan"],
+    ["buy","Varlık al",I.buy,"--c2","Hisse, fon, altın, döviz"],
+    ["sell","Varlık sat",I.sell,"--c9","Elindekinden sat"],
+    ["debt","Borç / alacak",I.borc,"--c8","Verdiğin ya da aldığın"],
+    ["zakat","Zekât ödemesi",I.zekat,"--c3","Ödediğin zekâtı kaydet"],
+    ...(state.cards.length?[["card","Kart ödemesi",I.card,"--c10","Kredi kartı borcu"]]:[])];
+  openSheet(`<h3>Ne eklemek istersin?</h3><div class="amenu">${it.map(([k,l,ico,c,d])=>`<button type="button" class="am" data-am="${k}" style="--ac:var(${c})"><span class="am-ic">${ic(ico,22)}</span><b>${l}</b><small>${d}</small></button>`).join("")}</div>`,sh=>{
+    sh.querySelectorAll("[data-am]").forEach(b=>b.onclick=()=>{const k=b.dataset.am;
+      if(k==="out"||k==="in"||k==="save"||k==="card")return txSheet(null,{type:k});
+      if(k==="buy"||k==="sell")return pickHolding(k);
+      if(k==="debt")return debtSheet();
+      if(k==="zakat")return zakatSheet()})});
+}
+/* Alım/satış için varlık seçimi: seçili portföyün varlıkları; alımda "yeni varlık" da var */
+function pickHolding(type,pid0){
+  const pid=pid0||curPfId(),pf=state.portfolios.find(p=>p.id===pid);if(!pf)return holdingSheet();
+  const hs=pf.holdings.filter(h=>type==="buy"||+h.qty>0).slice().sort((a,b)=>hVal(b)-hVal(a));
+  const others=state.portfolios.length>1?`<div class="chips am-pf" role="group" aria-label="Portföy">${state.portfolios.map(p=>`<button class="chip" data-pp="${p.id}" aria-pressed="${p.id===pid}">${esc(p.name)}</button>`).join("")}</div>`:"";
+  openSheet(`<h3>${type==="buy"?"Hangi varlığı aldın?":"Hangi varlığı sattın?"}</h3>${others}
+    ${type==="buy"?`<button type="button" class="am-new" data-new="1">${ic(I.plus,18)}<span><b>Yeni varlık ekle</b><small>Listede olmayan bir hisse, fon, altın ya da döviz</small></span></button>`:""}
+    <div class="list">${hs.length?hs.map(h=>`<div class="row li" role="button" tabindex="0" data-ph="${h.id}">${kindBadge(h.kind)}<div class="main"><div class="t">${esc(h.name)}</div><div class="s">${esc((KINDS[h.kind]||h.kind).replace(/\s*\(.*\)/,""))} · ${fmtN(+h.qty||0,4)} adet</div></div><div class="end"><span class="num">${fmt(hVal(h),null,{dec:0})}</span></div></div>`).join(""):`<div class="sub" style="padding:12px 0">${type==="buy"?"Bu portföyde henüz varlık yok.":"Bu portföyde satılacak varlık yok."}</div>`}</div>`,sh=>{
+    sh.querySelectorAll("[data-pp]").forEach(b=>b.onclick=()=>pickHolding(type,b.dataset.pp));
+    const nb=sh.querySelector("[data-new]");if(nb)nb.onclick=()=>holdingSheet(pid);
+    sh.querySelectorAll("[data-ph]").forEach(r=>r.onclick=()=>{const h=pf.holdings.find(x=>x.id===r.dataset.ph);if(h)tradeSheet(pid,h,type)})});
 }
 function txSheet(t,preset){
   const type=t?t.type:(preset&&preset.type)||"out";
@@ -2543,6 +2602,7 @@ document.addEventListener("click",e=>{
   if(a==="histtoggle"){view.histOpen=!view.histOpen;render();return}
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
+  if(a==="ozcards"){ozCardsSheet();return}
   if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");
