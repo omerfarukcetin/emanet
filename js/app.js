@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.63";
+const APP_VERSION="2.64";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -187,7 +187,7 @@ function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);
 const dayLabel=()=>{if(closeOK())return"bugün";const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
 /* Varlık tablosunun sağ sütunu beş bilgi arasında döner: değer, günlük K/Z, toplam K/Z, adet, fiyat */
 /* Varlık tablosunun sağ sütunu: üstte her zaman değer, altta seçilen bilgi. Varsayılan günlük değişim. */
-const COLS=[["day","Günlük"],["total","Toplam"],["qty","Adet"],["share","Pay"]];
+const COLS=[["day","Günlük"],["total","Toplam"],["qty","Adet · pay"]];
 const colMode=()=>COLS.some(c=>c[0]===S().col)?S().col:"day";
 const plMode=()=>S().plMode==="total"?"total":"day";
 /* Tutarın hemen altındaki iki rozet: Günlük ve Toplam kâr/zarar. Para birimi karttaki ₺/$ seçiciyle değişir.
@@ -1368,9 +1368,7 @@ function vcell(x,h,n){
   let b;
   if(m==="day")b=pl(x.day);
   else if(m==="total")b=pl(x.tot);
-  else if(m==="qty"&&h)b=`<small class="num">${hide?"••••":fmtN(+h.qty,4)} adet · ort. ${hide?"••":fmtN(+h.cost,+h.cost<10?4:2)}</small>`;
-  else if(m==="qty")b=`<small class="num">${n} varlık</small>`;
-  else b=`<small class="num">portföyün %${fmtN(x.share,x.share<10?1:0)}</small>`;
+  else{const sh="%"+fmtN(x.share,x.share<10?1:0);b=h?`<small class="num">${hide?"••••":fmtN(+h.qty,4)} adet · ${sh}</small>`:`<small class="num">${n} varlık · ${sh}</small>`}
   return `<button class="vcell" data-act="colnext" aria-label="${COLS.find(c=>c[0]===m)[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><b class="num">${fmt(x.v,x.cur,{dec:0})}</b>${b}</button>`;
 }
 /* Özet için kısa liste: yalnızca kategoriler, değer ve günlük değişim. Ayrıntı Portföy sayfasındadır. */
