@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-13T03:40:25.990Z",
+ "updatedAt": "2026-11-13T03:51:46.293Z",
  "fx": {
-  "EUR": 55.7701,
-  "USD": 50.3775
+  "EUR": 55.6906,
+  "USD": 50.258
  },
  "gold": {
   "ata": 42826,
@@ -76,8 +76,9 @@
    "t": "2026-11-12"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
