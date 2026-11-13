@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.53";
+const APP_VERSION="2.54";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -173,6 +173,7 @@ function dayPL(h){
   const fx0=c=>c==="TRY"?1:+cp.p["fx:"+c]||0;
   if(cp&&h.buyDate&&h.buyDate>cp.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}           // kapanıştan sonra alındı: baz alış maliyeti
   else if(k){u0=+cp.p[k]*fx0(h.cur);s0=fx0("USD")}
+  else if(cp&&!ep.auto&&fx0(h.cur)>0&&fx0("USD")>0){u0=ep.p*fx0(h.cur);s0=fx0("USD")}   // elle girilen fiyat (BES gibi): gün içinde fiyat değişmez, yalnızca kur etkisi
   else{
     const ref=dayRef();if(!ref)return null;const r=ref.h[h.id];
     if(r&&!(r.a===0&&ep.auto)){u0=r.u;s0=r.s}                                         // elle girilen fiyattan otomatiğe geçtiyse karşılaştırılmaz
@@ -539,6 +540,12 @@ function marketWhen(){if(!market||!market.updatedAt)return"";const d=new Date(ma
 
 /* ---------- piyasa verisi ----------
    Fiyatlar depodaki data/market.json dosyasından okunur; dosyayı .github/workflows/prices.yml 10 dakikada bir günceller ("fiyat" dalında). */
+/* Fiyat dosyasındaki hatalardan yalnızca sizin elinizde olup fiyatı gelmeyenler gösterilir (silinmiş ya da başkasına ait semboller değil) */
+function myMarketErrors(){
+  if(!market||!market.errors)return[];const q=market.quotes||{};
+  const mine=state?state.portfolios.flatMap(p=>p.holdings).filter(h=>+h.qty>0&&h.symbol):[];
+  return market.errors.filter(e=>{const sy=(e.split(":")[0]||"").trim().toUpperCase();return mine.some(h=>h.symbol.toUpperCase()===sy&&!q[h.kind+":"+sy]&&!(h.kind==="abd"&&q["hisse:"+sy]))});
+}
 function marketUrls(){
   const u=[];if(CFG.marketUrl)u.push(CFG.marketUrl);
   const m=location.hostname.match(/^([^.]+)\.github\.io$/),repo=location.pathname.split("/").filter(Boolean)[0];
@@ -1833,7 +1840,7 @@ function rAyarlar(){
   </div></section>`;
   G.fiyat=`<section class="card" id="ratesCard"><div class="set-group">
     ${tog("autoPrices","Fiyatları otomatik al","Döviz, altın, hisse, fon ve kripto fiyatları yaklaşık 10 dakikada bir kendiliğinden yenilenir")}
-    <div class="set-row"><div class="lbl"><b>Son güncelleme</b><small>${market?marketWhen()+(market.source?" · "+esc(market.source):""):"Henüz otomatik fiyat yok"}${market&&market.errors&&market.errors.length?"<br>Alınamayanlar: "+esc(market.errors.join("; ")):""}</small></div><button class="btn sm" data-act="refresh">Şimdi denetle</button></div>
+    <div class="set-row"><div class="lbl"><b>Son güncelleme</b><small>${market?marketWhen()+(market.source?" · "+esc(market.source):""):"Henüz otomatik fiyat yok"}${(e=>e.length?"<br>Alınamayanlar: "+esc(e.join("; ")):"")(myMarketErrors())}</small></div><button class="btn sm" data-act="refresh">Şimdi denetle</button></div>
     ${AUTO()?`<div class="note">Otomatik fiyat bulunan kalemlerde aşağıdaki elle girilen değerler kullanılmaz; bulunamayanlarda yedek olarak kullanılır. Hisse ve fonlarda varlığa kod girmeniz yeterli (ör. THYAO, AAPL, TTE).</div>`:""}
     <div class="set-row"><div class="lbl"><b>Gösterim para birimi</b><small>Toplamlar bu birimde gösterilir</small></div>${seg("base",CURS.map(c=>[c,c]))}</div>
     ${AUTO()&&market.fx&&+market.fx.USD>0?`<div class="set-row"><div class="lbl"><b>USD / TRY</b><small>Otomatik</small></div><span class="num">${fmtN(rate("USD"),4)}</span></div><div class="set-row"><div class="lbl"><b>EUR / TRY</b><small>Otomatik</small></div><span class="num">${fmtN(rate("EUR"),4)}</span></div>`
