@@ -952,7 +952,7 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 /* ================= 2.41: tek tip yazı ölçüsü =================
    Liste satırlarının tamamı aynı ölçüyü kullanır:
    başlık / tutar .94rem · alt satır .78rem · kart başlığındaki bağlantı ve düğme .8rem */
-:root{--fs-row:.94rem;--fs-sub:.78rem;--fs-act:.8rem}
+:root{--fs-row:.86rem;--fs-sub:.72rem;--fs-act:.8rem}
 .arow .t,.arow.cat .t,.arow.sub .t{font-size:var(--fs-row)}
 .arow.sub .t{font-weight:500}
 .vcell b,.vcell .num,.arow .vcell b{font-size:var(--fs-row)}
@@ -1150,7 +1150,6 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .atbl.compact .vcell small{white-space:nowrap}
 .atbl.compact .arow.closed .vcell.static{flex-direction:column;align-items:flex-end}
 /* 2.59: varlık tablosunda biraz daha küçük yazı */
-.atbl{--fs-row:.86rem;--fs-sub:.72rem}
 .atbl.compact .arow{min-height:48px;padding-block:5px}
 /* 2.60: aile özeti günlük rozeti açık temada okunur */
 .fam-tot .delta>span{color:inherit;opacity:1;font-weight:700}
@@ -1169,3 +1168,10 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .ts-chip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 11px;border-radius:99px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);font-weight:700;font-size:.86rem}
 .ts-chip button{border:0;background:none;color:inherit;font-size:1.05rem;line-height:1;width:24px;height:24px;border-radius:50%;cursor:pointer}
 .ts-chip button:hover{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+/* 2.67: Varlıklar tablosundaki ölçü her listede geçerli */
+.row .t,.row.li .t,.list .row .t{font-size:var(--fs-row)!important}
+.row .s,.row.li .s,.list .row .s{font-size:var(--fs-sub)!important}
+.row.li .am,.row .end .num{font-size:var(--fs-row)!important}
+.kv>div>span{font-size:var(--fs-row)}
+.kv>div small{font-size:var(--fs-sub)}
+.fam-tot b.num{font-size:1.05rem}
