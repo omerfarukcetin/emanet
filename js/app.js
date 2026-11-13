@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.65";
+const APP_VERSION="2.66";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -823,6 +823,7 @@ const I={
   bank:sv('<path d="M4 9.5 12 4l8 5.500z"/><path d="M6.5 12.500v5M10.2 12.500v5M13.8 12.500v5M17.5 12.500v5M4 20h16"/>'),
   brief:sv('<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3.5 13h17"/>'),
   sliders:sv('<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>'),
+  sort:sv('<path d="M7 4v16M4 7l3-3 3 3M17 20V4M14 17l3 3 3-3"/>'),
   up:sv('<path d="M6 15l6-6 6 6"/>'),
   down:sv('<path d="M6 9l6 6 6-6"/>'),
   expand:sv('<path d="M7 9l5-5 5 5M7 15l5 5 5-5"/>'),
@@ -1012,6 +1013,19 @@ function rOzet(){
   return top+ord.filter(k=>!hide.has(k)).map(k=>P[k]+(k==="assets"?P.note:"")).join("")+`<div class="oz-edit"><button class="btn ghost sm" data-act="ozcards">${ic(I.sliders,14)}Özet kartlarını düzenle</button></div>`;
 }
 
+/* Varlıklar tablosunda kategori sırası: ayarlanmadıysa değere göre; ayarlandıysa seçilen sıra (Özet ve Portföy için ortak) */
+function kindOrderSheet(present){
+  const ko=(S().kindOrder||[]).filter(k=>KINDS[k]),order=[...ko.filter(k=>present.includes(k)),...present.filter(k=>!ko.includes(k))];
+  openSheet(`<h3>Kategori sırası</h3><div class="sub" style="margin-bottom:10px">${S().kindOrder?"Okları kullanarak sırayı değiştirin.":"Şu an değere göre sıralı (en büyük üstte). Okları kullanınca bu sıra sabitlenir."}</div>
+    <div class="ozc">${order.map((k,i)=>`<div class="ozc-r">${kindBadge(k)}<b>${esc((KINDS[k]||k).replace(/\s*\(.*\)/,""))}</b>
+      <button type="button" class="icon-btn sm" data-mv="${k}" data-d="-1" aria-label="Yukarı taşı" ${i===0?"disabled":""}>${ic(I.up,16)}</button>
+      <button type="button" class="icon-btn sm" data-mv="${k}" data-d="1" aria-label="Aşağı taşı" ${i===order.length-1?"disabled":""}>${ic(I.down,16)}</button></div>`).join("")}</div>
+    <div class="actions"><button type="button" class="btn ghost" data-reset="1">Değere göre sırala</button><button type="button" class="btn primary" data-done="1">Tamam</button></div>`,sh=>{
+    sh.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{const o=order.slice(),i=o.indexOf(b.dataset.mv),j=i+ +b.dataset.d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];
+      S().kindOrder=[...o,...(S().kindOrder||[]).filter(k=>!o.includes(k))];commit();kindOrderSheet(present)});
+    sh.querySelector("[data-reset]").onclick=()=>{delete S().kindOrder;commit("Kategoriler değere göre sıralanıyor");kindOrderSheet(present)};
+    sh.querySelector("[data-done]").onclick=closeSheet});
+}
 /* Özet kartlarının sırası ve görünürlüğü (Ayarlar > Görünüm ya da Özet'in altındaki bağlantı) */
 const OZ_CARDS=[["attn","Bugün dikkat"],["assets","Varlıklar"],["fam","Aile özeti"],["flow","Nakit akışı"],["goals","Birikim hedefleri"],["due","Yaklaşan vadeler"]];
 function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k));OZ_CARDS.forEach(([k])=>{if(!o.includes(k))o.push(k)});return o}
@@ -1389,7 +1403,7 @@ function kindList(hs,total,pfId){
 function vHead(hs,ctx){
   const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen(ctx,k)),cm=COLS.find(c=>c[0]===colMode());
   return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${AUTO()?"Fiyatlar "+marketWhen():"Fiyatlar elle girilir"}</small></div>
-    <div class="vh-a">${hs.length?`<button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ctx="${ctx}" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`;
+    <div class="vh-a">${hs.length?`<button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="korder" data-ks="${esc(ks.join(","))}" aria-label="Kategorilerin sırasını değiştir" title="Sırala">${ic(I.sort,16)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ctx="${ctx}" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`;
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
@@ -1398,7 +1412,8 @@ function assetTable(hs,total,o){
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
   const by={};sorted.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
-  const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
+  const ko=S().kindOrder||[],ki=k=>{const i=ko.indexOf(k);return i<0?999:i};
+  const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>ki(a.k)-ki(b.k)||b.v-a.v);
   return `<div class="atbl compact">${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
     return `<div class="arow cat"${heat(x)} role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
@@ -2778,6 +2793,7 @@ document.addEventListener("click",e=>{
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
   if(a==="ozcards"){ozCardsSheet();return}
+  if(a==="korder"){kindOrderSheet(t.dataset.ks.split(","));return}
   if(a==="dgmode"){view.dgMode=t.dataset.k;render();return}
   if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
