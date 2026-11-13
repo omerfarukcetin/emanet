@@ -1,39 +1,39 @@
 {
- "updatedAt": "2026-11-13T14:40:23.465Z",
+ "updatedAt": "2026-11-13T14:50:35.803Z",
  "fx": {
-  "EUR": 55.6929,
-  "USD": 50.3736
+  "EUR": 55.7216,
+  "USD": 50.3723
  },
  "gold": {
-  "ata": 42580,
+  "ata": 42621,
   "aziz": null,
-  "ceyrek": 10409,
-  "cumhuriyet": 42580,
-  "gram": 6305.89,
-  "gumus": 80.71,
-  "hamit": 42580,
-  "resat": 42580,
-  "resatAlis": 41497.74,
-  "resatSatis": 42165.56,
-  "tam": 41472,
-  "yarim": 20813,
+  "ceyrek": 10419,
+  "cumhuriyet": 42621,
+  "gram": 6311.82,
+  "gumus": 80.93,
+  "hamit": 42621,
+  "resat": 42621,
+  "resatAlis": 41547.06,
+  "resatSatis": 42215.06,
+  "tam": 41512,
+  "yarim": 20832,
   "resatKaynak": "altin.in"
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 7,
+   "p": 6.83,
    "cur": "USD",
-   "t": "2026-11-13T14:40:00.000Z"
+   "t": "2026-11-13T14:50:12.000Z"
   },
   "hisse:SOKE": {
-   "p": 7.42,
+   "p": 7.4,
    "cur": "TRY",
-   "t": "2026-11-13T14:21:33.000Z"
+   "t": "2026-11-13T14:35:17.000Z"
   },
   "hisse:BALSU": {
-   "p": 6.8,
+   "p": 6.81,
    "cur": "TRY",
-   "t": "2026-11-13T14:25:06.000Z"
+   "t": "2026-11-13T14:35:15.000Z"
   },
   "ppf:KLU": {
    "p": 5.246403,
@@ -56,14 +56,14 @@
    "t": "2026-11-13"
   },
   "abd:SPMO": {
-   "p": 133.83,
+   "p": 132.78,
    "cur": "USD",
-   "t": "2026-11-13T14:39:58.000Z"
+   "t": "2026-11-13T14:50:22.000Z"
   },
   "abd:SCHD": {
-   "p": 35.94,
+   "p": 35.98,
    "cur": "USD",
-   "t": "2026-11-13T14:40:12.000Z"
+   "t": "2026-11-13T14:50:26.000Z"
   },
   "hisse:OPT25": {
    "p": 49.76,
@@ -76,12 +76,12 @@
    "t": "2026-11-13"
   },
   "hisse:FZLGY": {
-   "p": 7.03,
+   "p": 7.04,
    "cur": "TRY",
-   "t": "2026-11-13T14:25:00.000Z"
+   "t": "2026-11-13T14:35:14.000Z"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
