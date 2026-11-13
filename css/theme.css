@@ -1109,3 +1109,7 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .hero.sw-edge{animation:swEdge .3s ease}
 @media (prefers-reduced-motion:reduce){.hero.sw-l,.hero.sw-r,.hero.sw-edge{animation:none}}
 @media (min-width:1160px){.hdots{display:none}}
+
+/* ================= 2.56: varlık satırlarında ısı haritası ================= */
+.atbl .arow[data-heat]{background:linear-gradient(90deg,transparent 0%,var(--heat) 55%,var(--heat) 100%);border-radius:12px}
+.atbl .arow[data-heat]+.arow[data-heat]{margin-top:2px}

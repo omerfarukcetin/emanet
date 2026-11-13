@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.55";
+const APP_VERSION="2.56";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1308,6 +1308,13 @@ function cellData(list,total){
   const v=list.reduce((a,h)=>a+hVal(h),0),c=list.reduce((a,h)=>a+hCost(h),0),vU=ru?v*rb/ru:0,cU=list.reduce((a,h)=>a+costIn(h,"USD"),0),d=daySum(list),dv=divOf(list),dvU=ru?dv*rb/ru:0;
   return{usd,cur:usd?"USD":S().base,v:usd?vU:v,share:total?v/total*100:0,tot:usd?{pl:vU-cU+dvU,pct:cU?(vU-cU+dvU)/cU*100:0}:{pl:v-c+dv,pct:c?(v-c+dv)/c*100:0},day:d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null};
 }
+/* Günlük ya da toplam görünümde satır, değişimin yönüne ve büyüklüğüne göre hafif yeşil/kırmızı zemin alır (ısı haritası) */
+function heat(x){
+  const m=colMode(),p=m==="day"?x.day:m==="total"?x.tot:null;
+  if(!p||!isFinite(p.pct)||Math.abs(p.pct)<(m==="day"?.05:.5))return"";
+  const a=Math.round(4+Math.min(1,Math.abs(p.pct)/(m==="day"?3:40))*16);
+  return ` style="--heat:color-mix(in srgb,var(${p.pct>=0?"--pos":"--neg"}) ${a}%,transparent)" data-heat="1"`;
+}
 function vcell(x,h,n){
   const m=colMode(),hide=S().hide,pn=v=>fmtN(v,Math.abs(v)<10?4:2).replace(/,?0+$/,z=>z.length>3?",00":z);
   const plc=p=>p?[`<b class="num ${p.pl>=0?"pos-t":"neg-t"}">${hide?"••••":(p.pl>=0?"+":"−")+fmt(Math.abs(p.pl),x.cur,{dec:0})}</b>`,`<small class="num ${p.pl>=0?"pos-t":"neg-t"}">${fmtPct(p.pct)}</small>`]:[`<b class="sub">—</b>`,`<small>yarın</small>`];
@@ -1335,14 +1342,14 @@ function vHead(hs,ctx){
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
-  const hrow=(h,sub)=>`<div class="arow ${sub?"sub":""}" title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}${h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?`<small>${esc(h.symbol)}</small>`:""}</span>${priceFlag(h)}</span>${vcell(cellData([h],total),h)}</div>`;
+  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}${h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?`<small>${esc(h.symbol)}</small>`:""}</span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
   const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
   const by={};sorted.forEach(h=>(by[h.kind]=by[h.kind]||[]).push(h));
   const cats=Object.entries(by).map(([k,list])=>({k,list,v:list.reduce((a,h)=>a+hVal(h),0)})).sort((a,b)=>b.v-a.v);
   return `<div class="atbl compact">${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
-    return `<div class="arow cat" role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
+    return `<div class="arow cat"${heat(x)} role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
 function pfListCard(vis,total){
