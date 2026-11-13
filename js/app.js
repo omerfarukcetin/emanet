@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.74";
+const APP_VERSION="2.75";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1551,7 +1551,7 @@ function rAkis(){
   const recTx=new Set(recs.map(r=>recPaid(r,m)).filter(Boolean));
   const vars=curM?monthTx(m).filter(t=>t.type==="out"&&!t.rid&&!recTx.has(t)).map(t=>toBase(t.amount,t.cur)):[];
   const varOut=vars.reduce((a,v)=>a+v,0),pace=dayNo?varOut/dayNo:0,endEst=left+pendIn-pendOut-pace*(dim(y,mo)-dayNo);
-  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">${endEst>=0?"Bu hızla ay sonunda artan":"Bu hızla ay sonunda eksik"}</span><b class="num ${endEst>=0?"pos-t":"neg-t"}">${fmt(Math.abs(endEst),null,{dec:0})}</b><small>Şu ana kadar günde ortalama ${fmt(pace,null,{dec:0})} harcadın${dayLimit>0?(pace>dayLimit?`; günlük limitin ${fmt(dayLimit,null,{dec:0})}. Kalan günlerde günde ${fmt(dayLimit,null,{dec:0})} altında kalırsan ay eksiye düşmez`:`; günlük limitin ${fmt(dayLimit,null,{dec:0})}, hızın limitin altında`):""}${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
+  const forecast=curM&&dayNo>=3&&(ms.i||ms.o)?`<div class="fc"><span class="label">Bu hızla ay sonunda</span><b class="num ${endEst>=0?"pos-t":"neg-t"}">${endEst>=0?"+":"−"}${fmt(Math.abs(endEst),null,{dec:0})}</b><small>Şu ana kadar günde ortalama ${fmt(pace,null,{dec:0})} harcadın${dayLimit>0?(pace>dayLimit?`; günlük limitin ${fmt(dayLimit,null,{dec:0})}. Kalan günlerde günde ${fmt(dayLimit,null,{dec:0})} altında kalırsan ay eksiye düşmez`:`; günlük limitin ${fmt(dayLimit,null,{dec:0})}, hızın limitin altında`):""}${pendOut?" · bekleyen sabit kalemler "+fmt(pendOut,null,{dec:0}):""}${pendIn?" · beklenen gelir "+fmt(pendIn,null,{dec:0}):""}</small></div>`:"";
   const recRow=r=>{const pd=recPaid(r,m),late=!pd&&curM&&dayIn(m,r.day)<todayISO(),c=r.method&&cardById(r.method);
     return li({act:"rec-edit",id:r.id,mark:mk(String(r.day||1).padStart(2,"0"),r.type==="in"?"--pos":r.type==="save"?"--c5":"--muted"),title:esc(r.name),sub:esc(r.cat)+(c?" · "+esc(c.name):""),amount:fmt(r.amount,r.cur),
       trail:pd?`<span class="pill pos">${r.type==="in"?"Alındı":r.type==="save"?"Ayrıldı":"Ödendi"}</span>`:`<button class="btn sm ${late?"primary":""}" data-act="rec-pay" data-id="${r.id}">${r.type==="in"?"Alındı":r.type==="save"?"Ayır":"Öde"}</button>`})};
