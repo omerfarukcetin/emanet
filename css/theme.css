@@ -1053,12 +1053,12 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 
 /* ================= 2.50: tek + menüsü ================= */
 .amenu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-bottom:6px}
-.am{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border-radius:18px;border:1px solid color-mix(in srgb,var(--ac) 22%,var(--line));background:color-mix(in srgb,var(--ac) 7%,var(--surface));color:var(--fg);font:inherit;text-align:left;cursor:pointer;min-height:96px}
-.am:hover{background:color-mix(in srgb,var(--ac) 12%,var(--surface))}
-.am:active{transform:scale(.98)}
-.am-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--ac) 16%,var(--surface));color:var(--ac);margin-bottom:4px}
-.am b{font-size:.98rem}
-.am small{font-size:.76rem;color:var(--muted);line-height:1.3}
+.amx{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border-radius:18px;border:1px solid color-mix(in srgb,var(--ac) 22%,var(--line));background:color-mix(in srgb,var(--ac) 7%,var(--surface));color:var(--fg);font:inherit;text-align:left;cursor:pointer;min-height:96px}
+.amx:hover{background:color-mix(in srgb,var(--ac) 12%,var(--surface))}
+.amx:active{transform:scale(.98)}
+.amx-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--ac) 16%,var(--surface));color:var(--ac);margin-bottom:4px}
+.amx b{font-size:.98rem}
+.amx small{font-size:.76rem;color:var(--muted);line-height:1.3}
 @media (min-width:700px){.amenu{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .am-new{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;margin:4px 0 8px;border-radius:16px;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 5%,var(--surface));color:var(--fg);font:inherit;text-align:left;cursor:pointer}
 .am-new svg{color:var(--accent)}
@@ -1087,3 +1087,9 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .dq{position:absolute;top:0;right:0;display:flex;gap:4px}
 .dq button{border:0;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);font:inherit;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer}
 .frow{align-items:start}
+
+/* ================= 2.53: işlem listesi daha sık ================= */
+.row.li[data-act="edit-tx"]{min-height:0;padding-block:7px}
+.row.li[data-act="edit-tx"] .mk{width:30px;height:30px;border-radius:9px}
+.row.li[data-act="edit-tx"] .mk svg{width:16px;height:16px}
+.row.li[data-act="edit-tx"] .s{margin-top:0}

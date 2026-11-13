@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.52";
+const APP_VERSION="2.53";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -833,7 +833,7 @@ window.matchMedia("(min-width:1160px)").addEventListener("change",()=>{if(state)
 const emptyIc=svg=>`<span class="empty-ic" aria-hidden="true">${ic(svg,26)}</span>`;
 const emptyBtn=(act,label)=>`<button class="btn primary sm" data-act="${act}">${ic(I.plus,16)}${label}</button>`;
 function li(o){
-  return `<div class="row li${o.cls?" "+o.cls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
+  return `<div class="row li${o.rowCls?" "+o.rowCls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
 const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Bütçe"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
@@ -1730,7 +1730,7 @@ function debtRow(d){
   if(left<=0)st=`<span class="pill pos">Kapandı</span>`;
   else if(d.due){const n=daysBetween(todayISO(),d.due);st=n<0?`<span class="pill neg">${-n} gün gecikti</span>`:n<=14?`<span class="pill warn">${n} gün kaldı</span>`:`<span class="pill">${fmtDate(d.due)}</span>`}
   const po=state.portfolios.length>1&&d.pf?state.portfolios.find(p=>p.id===d.pf):null,pf=po?po.name:"",pc=po?pfColor(po):null;
-  return li({act:"open-debt",id:d.id,cls:"d-row "+(lent?"d-lent":"d-owe"),style:pc?`--pc:var(${pc})`:"",mark:mk(esc((d.person||"?").trim().slice(0,1).toUpperCase()),pc||(lent?"--pos":"--neg")),title:esc(d.person),
+  return li({act:"open-debt",id:d.id,rowCls:"d-row "+(lent?"d-lent":"d-owe"),style:pc?`--pc:var(${pc})`:"",mark:mk(esc((d.person||"?").trim().slice(0,1).toUpperCase()),pc||(lent?"--pos":"--neg")),title:esc(d.person),
     sub:`<span class="dtag">${lent?"Alacak":"Borç"}</span>`+(pf?` <span class="ptag">${esc(pf)}</span>`:"")+" · "+fmt(tot-left,d.cur)+" / "+fmt(tot,d.cur)+" ödendi"+(isG(d.cur)&&left>0&&rate(d.cur)?" · ≈ "+fmt(toBase(left,d.cur),null,{dec:0}):""),
     extra:`<div class="share"><i style="width:${pct}%;background:var(${lent?"--pos":"--neg"})"></i></div>`,amount:fmt(left,d.cur),trail:st});
 }
@@ -2213,7 +2213,7 @@ function addMenu(){
     ["debt","Borç / alacak",I.borc,"--c8","Verdiğin ya da aldığın"],
     ["zakat","Zekât ödemesi",I.zekat,"--c3","Ödediğin zekâtı kaydet"],
     ...(state.cards.length?[["card","Kart ödemesi",I.card,"--c10","Kredi kartı borcu"]]:[])];
-  openSheet(`<h3>Ne eklemek istersin?</h3><div class="amenu">${it.map(([k,l,ico,c,d])=>`<button type="button" class="am" data-am="${k}" style="--ac:var(${c})"><span class="am-ic">${ic(ico,22)}</span><b>${l}</b><small>${d}</small></button>`).join("")}</div>`,sh=>{
+  openSheet(`<h3>Ne eklemek istersin?</h3><div class="amenu">${it.map(([k,l,ico,c,d])=>`<button type="button" class="amx" data-am="${k}" style="--ac:var(${c})"><span class="am-ic">${ic(ico,22)}</span><b>${l}</b><small>${d}</small></button>`).join("")}</div>`,sh=>{
     sh.querySelectorAll("[data-am]").forEach(b=>b.onclick=()=>{const k=b.dataset.am;
       if(k==="out"||k==="in"||k==="save"||k==="card")return txSheet(null,{type:k});
       if(k==="buy"||k==="sell")return pickHolding(k);
