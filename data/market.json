@@ -1,22 +1,22 @@
 {
- "updatedAt": "2026-11-13T12:20:29.093Z",
+ "updatedAt": "2026-11-13T12:30:35.234Z",
  "fx": {
-  "EUR": 55.7073,
-  "USD": 50.3683
+  "EUR": 55.7083,
+  "USD": 50.372
  },
  "gold": {
-  "ata": 42420,
+  "ata": 42401,
   "aziz": null,
-  "ceyrek": 10370,
-  "cumhuriyet": 42420,
-  "gram": 6308.17,
-  "gumus": 81.13,
-  "hamit": 42420,
-  "resat": 42420,
-  "resatAlis": 41423.18,
-  "resatSatis": 42089.23,
-  "tam": 41316,
-  "yarim": 20734,
+  "ceyrek": 10366,
+  "cumhuriyet": 42401,
+  "gram": 6306.75,
+  "gumus": 81.06,
+  "hamit": 42401,
+  "resat": 42401,
+  "resatAlis": 41405.21,
+  "resatSatis": 42071.26,
+  "tam": 41298,
+  "yarim": 20725,
   "resatKaynak": "altin.in"
  },
  "quotes": {
@@ -26,14 +26,14 @@
    "t": "2026-11-12T21:00:01.000Z"
   },
   "hisse:SOKE": {
-   "p": 7.57,
+   "p": 7.52,
    "cur": "TRY",
-   "t": "2026-11-13T12:04:13.000Z"
+   "t": "2026-11-13T12:15:12.000Z"
   },
   "hisse:BALSU": {
    "p": 6.97,
    "cur": "TRY",
-   "t": "2026-11-13T12:05:16.000Z"
+   "t": "2026-11-13T12:15:17.000Z"
   },
   "ppf:KLU": {
    "p": 5.246403,
@@ -66,9 +66,9 @@
    "t": "2026-11-12T21:00:00.000Z"
   },
   "hisse:OPT25": {
-   "p": 49.74,
+   "p": 50,
    "cur": "TRY",
-   "t": "2026-11-13T11:47:49.000Z"
+   "t": "2026-11-13T12:08:00.000Z"
   },
   "fon:KPA": {
    "p": 1.460227,
@@ -76,7 +76,7 @@
    "t": "2026-11-13"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
