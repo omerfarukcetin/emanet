@@ -287,6 +287,74 @@ if (errors.length) console.log("Notlar:\n- " + errors.join("\n- "));
   if (changed) { out.updatedAt = new Date().toISOString(); await fs.writeFile(BF, JSON.stringify(out) + "\n"); }
 }
 
+// ---------- varlık karnesi: teknik göstergeler (data/tech.json) ----------
+// Her izlenen varlığın son bir yıllık günlük kapanışlarından hesaplanır; günde bir kez yenilenir.
+// Uygulama bu özetten sade cümleler üretir. Yatırım tavsiyesi değildir; yalnızca geçmiş fiyat hareketinin özeti.
+{
+  const TF = "data/tech.json", T = await readJSON(TF, {}), DAY = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+  const B = await readJSON("data/bench.json", {}), out = { v: 1, s: { ...(T.s || {}) } };
+  const keys = [], want = new Set();
+  for (const it of items) if (["hisse", "abd", "fon", "ppf", "kripto"].includes(it.kind)) { const k = it.kind + ":" + it.symbol; if (!want.has(k)) { want.add(k); keys.push({ k, it }); } }
+  for (const k of ["gold:gram", "gold:gumus", "fx:USD", "fx:EUR"]) { want.add(k); keys.push({ k }); }
+  for (const k of Object.keys(out.s)) if (!want.has(k)) delete out.s[k];
+  const benchSeries = k => {
+    const u = B.usd || {}, pick = (src, f) => Object.keys(src).sort().map(d => { const v = f(d); return v > 0 ? [d, v] : null; }).filter(Boolean);
+    if (k === "gold:gram") return pick(B.xau || {}, d => (B.xau[d] && u[d]) ? B.xau[d] * u[d] / 31.1035 : 0);
+    if (k === "gold:gumus") return pick(B.xag || {}, d => (B.xag[d] && u[d]) ? B.xag[d] * u[d] / 31.1035 : 0);
+    if (k === "fx:USD") return pick(u, d => u[d]);
+    if (k === "fx:EUR") return pick(B.eur || {}, d => B.eur[d]);
+    return [];
+  };
+  const closesOf = async ({ k, it }) => {
+    if (!it) return benchSeries(k);
+    if (it.kind === "fon" || it.kind === "ppf") {
+      for (const periyod of [12, 6, 3]) {
+        try {
+          const d = await tefasPost("fonFiyatBilgiGetir", { fonKodu: it.symbol, dil: "TR", periyod });
+          const rows = rowsOf(d).map(r => ({ p: num(field(r, /^fiyat$/i) ?? field(r, /fiyat|price/i)), d: parseDay(field(r, /tarih|date/i)) })).filter(r => r.p > 0 && r.d);
+          if (rows.length >= 30) return rows.sort((a, b) => a.d - b.d).map(r => [r.d.toISOString().slice(0, 10), r.p]);
+        } catch { /* daha kısa dönemi dene */ }
+        await sleep(1100);
+      }
+      return [];
+    }
+    const sym = encodeURIComponent(yahooSymbol(it));
+    for (const host of ["query1", "query2"]) {
+      try {
+        const d = (await (await get(`https://${host}.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1y`)).json())?.chart?.result?.[0];
+        const ts = d?.timestamp || [], cl = d?.indicators?.quote?.[0]?.close || [], r = [];
+        ts.forEach((t, i) => { const v = +cl[i]; if (v > 0) r.push([new Date((t + 3 * 3600) * 1000).toISOString().slice(0, 10), v]); });
+        if (r.length >= 30) return r;
+      } catch { /* diğer sunucu */ }
+      await sleep(400);
+    }
+    return [];
+  };
+  const stats = rows => {
+    rows = rows.slice(-260); const c = rows.map(r => r[1]), n = c.length, last = c[n - 1];
+    const ma = w => n >= w ? c.slice(-w).reduce((a, b) => a + b, 0) / w : null;
+    let g = 0, l = 0; for (let i = 1; i < Math.min(15, n); i++) { const d = c[i] - c[i - 1]; d > 0 ? g += d : l -= d; }
+    g /= 14; l /= 14; for (let i = 15; i < n; i++) { const d = c[i] - c[i - 1]; g = (g * 13 + Math.max(d, 0)) / 14; l = (l * 13 + Math.max(-d, 0)) / 14; }
+    const rsi = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    const lr = []; for (let i = 1; i < n; i++) lr.push(Math.log(c[i] / c[i - 1]));
+    const mean = lr.reduce((a, b) => a + b, 0) / lr.length, sd = Math.sqrt(lr.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, lr.length - 1));
+    let peak = c[0], mdd = 0; for (const v of c) { peak = Math.max(peak, v); mdd = Math.min(mdd, v / peak - 1); }
+    const back = k => n > k ? (last / c[n - 1 - k] - 1) * 100 : null, r4 = v => v == null ? null : +v.toPrecision(5);
+    const step = Math.max(1, Math.ceil(n / 60)), sp = []; for (let i = 0; i < n; i += step) sp.push([rows[i][0], r4(c[i])]); if (sp[sp.length - 1][0] !== rows[n - 1][0]) sp.push([rows[n - 1][0], r4(last)]);
+    return { d: DAY, n, from: rows[0][0], last: r4(last), ma50: r4(ma(50)), ma200: r4(ma(200)), rsi: +rsi.toFixed(1), hi: r4(Math.max(...c)), lo: r4(Math.min(...c)),
+      vol: +(sd * Math.sqrt(252) * 100).toFixed(1), mdd: +(mdd * 100).toFixed(1), r1m: r4(back(21)), r3m: r4(back(63)), r1y: r4((last / c[0] - 1) * 100), sp };
+  };
+  let done = 0, changed = false;
+  for (const x of keys) {
+    if (out.s[x.k]?.d === DAY) continue;
+    if (x.it && ++done > 20) break;                 // bir turda en fazla 20 uzak istek; kalanlar sonraki turda
+    try { const rows = await closesOf(x); if (rows.length >= 30) { out.s[x.k] = stats(rows); changed = true; } else if (out.s[x.k]) out.s[x.k].d = DAY; }
+    catch (e) { console.log(`karne ${x.k}: ${e.message}`); }
+    await sleep(300);
+  }
+  if (changed || Object.keys(T.s || {}).length !== Object.keys(out.s).length) { out.updatedAt = new Date().toISOString(); await fs.writeFile(TF, JSON.stringify(out) + "\n"); console.log(`karne: ${Object.keys(out.s).length} varlık`); }
+}
+
 // ---------- gün içi değişim için: bugünün ve bir önceki günün fiyatları (data/close.json) ----------
 // Büyük hareket uyarısı bu dosyadan hesaplanır. Gün (Türkiye saatiyle) değişince bugünün son fiyatları "önceki gün" olur.
 try {
