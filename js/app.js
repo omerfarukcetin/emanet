@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.57";
+const APP_VERSION="2.58";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -186,8 +186,9 @@ function dayPL(h){
 function daySum(hs){let pl=0,b=0,plU=0,bU=0,n=0;hs.forEach(h=>{const d=dayPL(h);if(d){pl+=d.pl;b+=d.base;plU+=d.plU;bU+=d.baseU;n++}});return n?{pl,pct:b?pl/b*100:0,plU,pctU:bU?plU/bU*100:0}:null}
 const dayLabel=()=>{if(closeOK())return"bugün";const r=dayRef();if(!r)return"";const g=daysBetween(r.d,todayISO());return g<=1?"bugün":"son "+g+" günde"};
 /* Varlık tablosunun sağ sütunu beş bilgi arasında döner: değer, günlük K/Z, toplam K/Z, adet, fiyat */
-const COLS=[["val","Değer"],["day","Günlük"],["total","Toplam"],["qty","Adet"],["price","Fiyat"]];
-const colMode=()=>COLS.some(c=>c[0]===S().col)?S().col:"val";
+/* Varlık tablosunun sağ sütunu: üstte her zaman değer, altta seçilen bilgi. Varsayılan günlük değişim. */
+const COLS=[["day","Günlük"],["total","Toplam"],["qty","Adet"],["share","Pay"]];
+const colMode=()=>COLS.some(c=>c[0]===S().col)?S().col:"day";
 const plMode=()=>S().plMode==="total"?"total":"day";
 /* Tutarın hemen altındaki iki rozet: Günlük ve Toplam kâr/zarar. Para birimi karttaki ₺/$ seçiciyle değişir.
    Rozete dokunmak, varlık tablosundaki K/Z sütununun günlük mü toplam mı olacağını seçer. */
@@ -1317,16 +1318,15 @@ function heat(x){
   return ` style="--heat:color-mix(in srgb,var(${p.pct>=0?"--pos":"--neg"}) ${a}%,transparent)" data-heat="1"`;
 }
 function vcell(x,h,n){
-  const m=colMode(),hide=S().hide,pn=v=>fmtN(v,Math.abs(v)<10?4:2).replace(/,?0+$/,z=>z.length>3?",00":z);
-  const plc=p=>p?[`<b class="num ${p.pl>=0?"pos-t":"neg-t"}">${hide?"••••":(p.pl>=0?"+":"−")+fmt(Math.abs(p.pl),x.cur,{dec:0})}</b>`,`<small class="num ${p.pl>=0?"pos-t":"neg-t"}">${fmtPct(p.pct)}</small>`]:[`<b class="sub">—</b>`,`<small>yarın</small>`];
-  let a,b;
-  if(m==="day")[a,b]=plc(x.day);
-  else if(m==="total")[a,b]=plc(x.tot);
-  else if(m==="qty"&&h){a=`<b class="num">${hide?"••••":fmtN(+h.qty,4)}</b>`;b=`<small class="num">ort. ${hide?"••":fmtN(+h.cost,+h.cost<10?4:2)} ${esc(h.cur)}</small>`}
-  else if(m==="qty"){a=`<b class="num">${n} varlık</b>`;b=`<small class="num">%${fmtN(x.share,0)}</small>`}
-  else if(m==="price"&&h){const ep=effPrice(h);a=`<b class="num">${fmtN(ep.p,ep.p<10?4:2)} <i>${esc(h.cur)}</i></b>`;b=x.day?`<small class="num ${x.day.pct>=0?"pos-t":"neg-t"}">${dayLabel()==="bugün"?"bugün ":""}${fmtPct(x.day.pct)}</small>`:`<small>${ep.auto?"otomatik":"elle girildi"}</small>`}
-  else{a=`<b class="num">${fmt(x.v,x.cur,{dec:0})}</b>`;b=`<small class="num">%${fmtN(x.share,x.share<10?1:0)}</small>`}
-  return `<button class="vcell" data-act="colnext" aria-label="${COLS.find(c=>c[0]===m)[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun">${a}${b}</button>`;
+  const m=colMode(),hide=S().hide;
+  const pl=p=>p?`<small class="num ${p.pl>=0?"pos-t":"neg-t"}">${hide?"••••":(p.pl>=0?"+":"−")+fmt(Math.abs(p.pl),x.cur,{dec:0})} (${fmtPct(p.pct)})</small>`:`<small>${m==="day"?"yarın":"—"}</small>`;
+  let b;
+  if(m==="day")b=pl(x.day);
+  else if(m==="total")b=pl(x.tot);
+  else if(m==="qty"&&h)b=`<small class="num">${hide?"••••":fmtN(+h.qty,4)} adet · ort. ${hide?"••":fmtN(+h.cost,+h.cost<10?4:2)}</small>`;
+  else if(m==="qty")b=`<small class="num">${n} varlık</small>`;
+  else b=`<small class="num">portföyün %${fmtN(x.share,x.share<10?1:0)}</small>`;
+  return `<button class="vcell" data-act="colnext" aria-label="${COLS.find(c=>c[0]===m)[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><b class="num">${fmt(x.v,x.cur,{dec:0})}</b>${b}</button>`;
 }
 /* Özet için kısa liste: yalnızca kategoriler, değer ve günlük değişim. Ayrıntı Portföy sayfasındadır. */
 function kindList(hs,total,pfId){
@@ -1343,7 +1343,7 @@ function vHead(hs,ctx){
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
-  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}${h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?`<small>${esc(h.symbol)}</small>`:""}</span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
+  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}<small class="num">${(()=>{const ep=effPrice(h);return(S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur)))+(h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?" · "+esc(h.symbol):"")})()}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
   const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;

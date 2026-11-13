@@ -1141,3 +1141,11 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .kr-list li.up .kr-i{color:var(--pos)}
 .kr-list li.down .kr-i{color:var(--neg)}
 .kr-note{font-size:.72rem;color:var(--muted);margin:10px 0 0;line-height:1.4}
+
+/* ================= 2.58: iki satırlı varlık satırları ================= */
+.atbl.compact .arow{min-height:52px;padding-block:6px}
+.atbl.compact .arow .t{flex-direction:column;align-items:flex-start;gap:1px}
+.atbl.compact .arow.sub .t small,.atbl.compact .arow.cat .t small{display:block;color:var(--muted)}
+.atbl.compact .vcell{flex-direction:column;align-items:flex-end;gap:1px;min-height:0;padding:2px 4px}
+.atbl.compact .vcell small{white-space:nowrap}
+.atbl.compact .arow.closed .vcell.static{flex-direction:column;align-items:flex-end}
