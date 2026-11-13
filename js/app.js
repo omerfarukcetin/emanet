@@ -2101,14 +2101,15 @@ function techKey(h){
 function karne(h,pf){
   const k=techKey(h),t=k&&tech&&tech.s&&tech.s[k];if(!t)return "";
   const P=v=>(v>=0?"+":"−")+"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0),A=v=>"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0),F=[];   // [yön, metin]: 1 olumlu, -1 olumsuz, 0 nötr
-  const last=t.last;
+  const last=t.last,calm=h.kind==="ppf"||(t.vol!=null&&t.vol<5);   // para piyasası fonu, dolar gibi düzenli ilerleyenlerde kısa vadeli göstergeler yanıltır
   if(t.ma200){const d=(last/t.ma200-1)*100;F.push([d>=0?1:-1,`Uzun vadeli eğilim ${d>=0?"yukarı":"aşağı"}: fiyat 200 günlük ortalamanın ${A(d)} ${d>=0?"üstünde":"altında"}.`])}
   else if(t.ma50){const d=(last/t.ma50-1)*100;F.push([d>=0?1:-1,`Orta vadeli eğilim ${d>=0?"yukarı":"aşağı"}: fiyat 50 günlük ortalamanın ${A(d)} ${d>=0?"üstünde":"altında"}.`])}
   if(t.ma50&&t.ma200)F.push(t.ma50>=t.ma200?[1,"50 günlük ortalama 200 günlüğün üstünde; son aylardaki hareket uzun vadeli eğilimi destekliyor."]:[-1,"50 günlük ortalama 200 günlüğün altında; son aylarda zayıflama var."]);
-  if(t.rsi!=null)F.push(t.rsi>=70?[0,`Kısa vadede aşırı alım bölgesinde (RSI ${fmtN(t.rsi,0)}): son günlerde hızlı yükseldi, geri çekilme görülebilir.`]:t.rsi<=30?[0,`Kısa vadede aşırı satım bölgesinde (RSI ${fmtN(t.rsi,0)}): son günlerde sert düştü, tepki yükselişi görülebilir.`]:[0,`Kısa vadeli ivme dengeli (RSI ${fmtN(t.rsi,0)}).`]);
-  if(t.hi&&t.lo){const fh=(last/t.hi-1)*100,fl=(last/t.lo-1)*100;F.push([fh>-5?1:fh<-25?-1:0,fh>-1?"Son bir yılın en yüksek seviyesinde.":`Son bir yılın en yükseğinin %${fmtN(-fh,0)} altında, en düşüğünün %${fmtN(fl,0)} üstünde.`])}
+  if(calm)F.push([0,"Fiyat her gün az ve düzenli ilerliyor; RSI ve zirveye uzaklık gibi kısa vadeli göstergeler bu varlıkta anlam taşımıyor."]);
+  if(t.rsi!=null&&!calm)F.push(t.rsi>=70?[0,`Kısa vadede aşırı alım bölgesinde (RSI ${fmtN(t.rsi,0)}): son günlerde hızlı yükseldi, geri çekilme görülebilir.`]:t.rsi<=30?[0,`Kısa vadede aşırı satım bölgesinde (RSI ${fmtN(t.rsi,0)}): son günlerde sert düştü, tepki yükselişi görülebilir.`]:[0,`Kısa vadeli ivme dengeli (RSI ${fmtN(t.rsi,0)}).`]);
+  if(t.hi&&t.lo&&!calm){const fh=(last/t.hi-1)*100,fl=(last/t.lo-1)*100;F.push([fh>-5?1:fh<-25?-1:0,fh>-1?"Son bir yılın en yüksek seviyesinde.":`Son bir yılın en yükseğinin %${fmtN(-fh,0)} altında, en düşüğünün %${fmtN(fl,0)} üstünde.`])}
   if(t.vol!=null)F.push([0,t.vol<15?`Oynaklık düşük (yıllık %${fmtN(t.vol,0)}): fiyat genelde sakin hareket ediyor.`:t.vol<35?`Oynaklık orta (yıllık %${fmtN(t.vol,0)}).`:`Oynaklık yüksek (yıllık %${fmtN(t.vol,0)}): fiyat kısa sürede sert değişebilir.`]);
-  if(t.mdd!=null&&t.mdd<-5)F.push([0,`Son bir yılda zirveden en fazla %${fmtN(-t.mdd,0)} düştü.`]);
+  if(t.mdd!=null&&t.mdd<-5&&!calm)F.push([0,`Son bir yılda zirveden en fazla %${fmtN(-t.mdd,0)} düştü.`]);
   const rets=[["1 ay",t.r1m],["3 ay",t.r3m],["1 yıl",t.r1y]].filter(x=>x[1]!=null);
   /* senin pozisyonun */
   const M=[],val=hVal(h),tot=pf?pf.holdings.reduce((a,x)=>a+hVal(x),0):0,share=tot?val/tot*100:0;
@@ -2116,7 +2117,7 @@ function karne(h,pf){
   const ep=effPrice(h);if(+h.cost>0&&ep.p>0){const d=(ep.p/ +h.cost-1)*100;M.push([d>=0?1:-1,`Ortalama maliyetin ${fmtN(+h.cost,4)} ${esc(h.cur)}; şu anki fiyat bunun ${A(d)} ${d>=0?"üstünde":"altında"}.`])}
   const b0=buysOf(h).map(x=>x.date).filter(Boolean).sort()[0]||h.buyDate;
   if(b0){const g=daysBetween(b0,todayISO());M.push([0,g<31?`${g} gündür elinde.`:g<365?`Yaklaşık ${Math.round(g/30)} aydır elinde.`:`Yaklaşık ${fmtN(g/365,1)} yıldır elinde.`])}
-  const sc=F.filter(f=>f[0]>0).length-F.filter(f=>f[0]<0).length,lab=sc>=2?["Güçlü","pos"]:sc<=-2?["Zayıf","neg"]:["Karışık","mid"];
+  const sc=F.filter(f=>f[0]>0).length-F.filter(f=>f[0]<0).length,lab=calm?["Sakin","mid"]:sc>=2?["Güçlü","pos"]:sc<=-2?["Zayıf","neg"]:["Karışık","mid"];
   /* bir yıllık çizgi, ortalama maliyet ve alım noktalarıyla */
   const sp=t.sp||[],W=300,H=70,vs=sp.map(x=>x[1]);
   const unit=k.startsWith("gold:")||k.startsWith("fx:")?null:+h.cost;   // altın ve dövizde maliyet birimi farklı olabilir; çizgiye yalnızca hisse/fonda konur

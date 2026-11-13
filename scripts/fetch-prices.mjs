@@ -330,8 +330,11 @@ if (errors.length) console.log("Notlar:\n- " + errors.join("\n- "));
     }
     return [];
   };
-  const stats = rows => {
-    rows = rows.slice(-260); const c = rows.map(r => r[1]), n = c.length, last = c[n - 1];
+  const stats = (rows, kind) => {
+    rows = rows.slice(-260).map(r => [r[0], r[1]]);
+    // BIST'te günlük düşüş sınırı %10: bir günde %12'den fazla düşüş bedelsiz sermaye artırımı / bölünmedir; önceki fiyatlar aynı oranla düzeltilir
+    if (kind === "hisse") for (let i = rows.length - 1; i > 0; i--) { const r = rows[i][1] / rows[i - 1][1]; if (r < 0.88) for (let j = 0; j < i; j++) rows[j][1] *= r; }
+    const c = rows.map(r => r[1]), n = c.length, last = c[n - 1];
     const ma = w => n >= w ? c.slice(-w).reduce((a, b) => a + b, 0) / w : null;
     let g = 0, l = 0; for (let i = 1; i < Math.min(15, n); i++) { const d = c[i] - c[i - 1]; d > 0 ? g += d : l -= d; }
     g /= 14; l /= 14; for (let i = 15; i < n; i++) { const d = c[i] - c[i - 1]; g = (g * 13 + Math.max(d, 0)) / 14; l = (l * 13 + Math.max(-d, 0)) / 14; }
@@ -341,14 +344,14 @@ if (errors.length) console.log("Notlar:\n- " + errors.join("\n- "));
     let peak = c[0], mdd = 0; for (const v of c) { peak = Math.max(peak, v); mdd = Math.min(mdd, v / peak - 1); }
     const back = k => n > k ? (last / c[n - 1 - k] - 1) * 100 : null, r4 = v => v == null ? null : +v.toPrecision(5);
     const step = Math.max(1, Math.ceil(n / 60)), sp = []; for (let i = 0; i < n; i += step) sp.push([rows[i][0], r4(c[i])]); if (sp[sp.length - 1][0] !== rows[n - 1][0]) sp.push([rows[n - 1][0], r4(last)]);
-    return { d: DAY, n, from: rows[0][0], last: r4(last), ma50: r4(ma(50)), ma200: r4(ma(200)), rsi: +rsi.toFixed(1), hi: r4(Math.max(...c)), lo: r4(Math.min(...c)),
+    return { v: 2, d: DAY, n, from: rows[0][0], last: r4(last), ma50: r4(ma(50)), ma200: r4(ma(200)), rsi: +rsi.toFixed(1), hi: r4(Math.max(...c)), lo: r4(Math.min(...c)),
       vol: +(sd * Math.sqrt(252) * 100).toFixed(1), mdd: +(mdd * 100).toFixed(1), r1m: r4(back(21)), r3m: r4(back(63)), r1y: r4((last / c[0] - 1) * 100), sp };
   };
   let done = 0, changed = false;
   for (const x of keys) {
-    if (out.s[x.k]?.d === DAY) continue;
+    if (out.s[x.k]?.d === DAY && out.s[x.k]?.v === 2) continue;
     if (x.it && ++done > 20) break;                 // bir turda en fazla 20 uzak istek; kalanlar sonraki turda
-    try { const rows = await closesOf(x); if (rows.length >= 30) { out.s[x.k] = stats(rows); changed = true; } else if (out.s[x.k]) out.s[x.k].d = DAY; }
+    try { const rows = await closesOf(x); if (rows.length >= 30) { out.s[x.k] = stats(rows, x.it?.kind); changed = true; } else if (out.s[x.k]) out.s[x.k].d = DAY; }
     catch (e) { console.log(`karne ${x.k}: ${e.message}`); }
     await sleep(300);
   }
