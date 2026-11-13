@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.68";
+const APP_VERSION="2.69";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -696,9 +696,37 @@ async function signOut(){
   sbUser=null;state=null;try{localStorage.removeItem(LS);localStorage.removeItem(OWN)}catch(e){}
   view.tab="ozet";showAuth();
 }
+/* ---------- günlük kullanım sınırı ----------
+   Uygulama ekranda açıkken geçen süre her cihazda ayrı sayılır. Sınır dolunca ekran ertesi gün 00:00'a kadar kilitlenir;
+   servis çalışanı ayrı çalıştığı için bildirimler etkilenmez. */
+const UK="emanet-usage";
+function usageRead(){let u={};try{u=JSON.parse(localStorage.getItem(UK)||"{}")||{}}catch(e){}return u.d===todayISO()?u:{d:todayISO(),s:0}}
+const usageToday=()=>usageRead().s||0;
+function usageCheck(){
+  const lim=state&&+S().useLimit,el=document.getElementById("uselock");
+  if(!lim||usageToday()<lim*60){if(el)el.remove();return false}
+  if(!el){closeSheet&&document.getElementById("sheet")&&closeSheet();
+    const d=document.createElement("div");d.id="uselock";d.setAttribute("role","dialog");d.setAttribute("aria-label","Günlük süre doldu");
+    d.innerHTML=`<div class="ul-in"><div class="ul-ic">${ic(I.clock,30)}</div><h2>Bugünkü süren doldu</h2><p>Günlük ${lim} dakikalık kullanım sınırına ulaştın. Emanet yarın 00:00'da yeniden açılır.</p><p class="ul-left" id="ulLeft"></p><p class="ul-sub">Bildirimler gelmeye devam ediyor.</p></div>`;
+    document.body.appendChild(d)}
+  const m=new Date(),mid=new Date(m.getFullYear(),m.getMonth(),m.getDate()+1),left=Math.max(0,mid-m),h=Math.floor(left/36e5),mi=Math.floor(left%36e5/6e4);
+  const l=document.getElementById("ulLeft");if(l)l.textContent=(h?h+" saat ":"")+mi+" dakika sonra";
+  return true;
+}
+setInterval(()=>{
+  if(!ready||!state||document.visibilityState!=="visible")return;
+  const lim=+S().useLimit;if(!lim){usageCheck();return}
+  if(document.getElementById("uselock")){usageCheck();return}
+  const u=usageRead();u.s=(u.s||0)+5;try{localStorage.setItem(UK,JSON.stringify(u))}catch(e){}
+  const left=lim*60-u.s;
+  if(left===120)toast("Bugünkü sürenden 2 dakika kaldı");
+  if(left<=0)usageCheck();
+},5000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&ready)usageCheck()});
 /* ana ekran kısayolları: ?go=out | in | save | buy | sell | <sekme> */
 let goDone=false;
 function handleGo(){
+  if(usageCheck())return;
   if(goDone)return;goDone=true;
   let g=null;try{g=new URLSearchParams(location.search).get("go");if(g)history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   if(!g||!state||!state.portfolios)return;
@@ -840,6 +868,7 @@ const I={
   coin:sv('<circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.300c-.5-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1 1.8 2.7 2.100c1.8.3 2.8.9 2.8 2.200s-1.2 2.1-2.8 2.100c-1.3 0-2.4-.6-2.9-1.600M12 6v1.900M12 16.300V18"/>'),
   hex:sv('<path d="M12 3.500l7.4 4.250v8.500L12 20.500l-7.4-4.250v-8.500z"/><path d="M12 8.500l3 1.750v3.500L12 15.500l-3-1.750v-3.500z"/>'),
   umbrella:sv('<path d="M3.5 12a8.5 8.5 0 0 1 17 0z"/><path d="M12 12v6.500a2 2 0 0 1-4 0M12 3.500v-1"/>'),
+  clock:sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
   bell:sv('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),
   user:sv('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
   search:sv('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
@@ -1820,6 +1849,7 @@ document.addEventListener("change",e=>{
   if(e.target.id==="txCat"){view.txCat=e.target.value;render()}
   if(e.target.dataset&&e.target.dataset.np==="tsAdd"){const v=e.target.value;if(v){const p=notifPrefs();notifPrefSet("ts",[...p.ts,v].sort())}return}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
+  if(e.target.id==="useLimit"){const v=+e.target.value;S().useLimit=v||undefined;commit(v?"Günlük sınır "+v+" dakika":"Kullanım sınırı kapatıldı");usageCheck();return}
   if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
   if(e.target.id==="notifTog"){e.target.disabled=true;notifSet(e.target.checked)}
@@ -1921,6 +1951,7 @@ function rAyarlar(){
       <div class="tones">${DARKS.map(([k,l,c])=>tile(k,l,c,"dark",fixedDark&&(tone===k||(k==="gri"&&!DARKS.some(d=>d[0]===tone))))).join("")}</div></div>
     <div class="set-row"><div class="lbl"><b>Gece otomatik koyulaş</b><small>Telefon ya da bilgisayar koyu moddayken seçtiğiniz temanın koyu hâli kullanılır</small></div><label class="toggle"><input type="checkbox" id="autoDark" ${s.theme==="system"?"checked":""} ${fixedDark?"disabled":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Özet kartları</b><small>Özet sayfasındaki kartların sırası ve hangilerinin görüneceği</small></div><button class="btn sm" data-act="ozcards">Düzenle</button></div>
+    <div class="set-row"><div class="lbl"><b>Günlük kullanım sınırı</b><small>Süre dolunca uygulama ertesi güne kadar kilitlenir; bildirimler gelmeye devam eder. Süre her cihazda ayrı sayılır.${+s.useLimit?` Bugün bu cihazda ${Math.floor(usageToday()/60)} dk kullandın.`:""}</small></div><select class="inline-in" style="width:auto;font-family:var(--f-body)" id="useLimit" aria-label="Günlük kullanım sınırı">${[[0,"Kapalı"],[5,"5 dk"],[10,"10 dk"],[15,"15 dk"],[20,"20 dk"],[30,"30 dk"],[45,"45 dk"],[60,"1 saat"]].map(([v,l])=>`<option value="${v}" ${(+s.useLimit||0)===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="set-row"><div class="lbl"><b>Sade görünüm</b><small>Yİ-ÜFE, getiri karşılaştırması, hedef dağılım ve vergi raporu gizlenir; tutarlar, varlıklar ve bütçe kalır</small></div><label class="toggle"><input type="checkbox" id="simpleView" ${s.simple?"checked":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}

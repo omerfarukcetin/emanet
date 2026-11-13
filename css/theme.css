@@ -1177,3 +1177,12 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .fam-tot b.num{font-size:1.05rem}
 /* 2.68: üst kartın gölgesi alttaki karta taşmasın */
 .hero.net{box-shadow:0 6px 14px -8px color-mix(in srgb,var(--acc-l) 55%,transparent),0 1px 2px rgba(0,0,0,.06)!important}
+
+/* ================= 2.69: günlük kullanım sınırı ================= */
+#uselock{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:24px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+#uselock .ul-in{max-width:340px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+#uselock .ul-ic{display:grid;place-items:center;width:64px;height:64px;border-radius:20px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--accent);margin-bottom:8px}
+#uselock h2{font-size:1.3rem;margin:0}
+#uselock p{margin:0;color:var(--muted);line-height:1.5}
+#uselock .ul-left{font-weight:800;color:var(--fg);font-size:1.05rem;margin-top:6px}
+#uselock .ul-sub{font-size:.8rem;margin-top:10px}
