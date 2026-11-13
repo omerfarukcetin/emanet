@@ -76,6 +76,16 @@ Kurulum (bir kez):
 Bildirimler "Fiyatları güncelle" işinin sonunda `scripts/send-push.mjs` ile gönderilir; bu yüzden zamanında gelmeleri
 o işin düzenli çalışmasına bağlıdır. "Bildirim denemesi" işi (Actions sekmesi) ayarlara bakmadan herkese bir bildirim yollar.
 
+## Canlı fiyat (isteğe bağlı)
+
+Fiyat dosyası 10 dakikada bir güncellenir. Uygulama açıkken 30 saniyede bir son fiyatları da almak için Supabase'e küçük bir Edge Function kurun:
+
+1. Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**.
+2. Adını `fiyat` yapın, `supabase/functions/fiyat/index.ts` dosyasının içeriğini yapıştırıp **Deploy** deyin.
+3. Fonksiyonun ayarlarında **Verify JWT** (JWT doğrulaması) seçeneğini kapatın.
+
+Kurulu değilse uygulama dosyadaki fiyatlarla çalışmaya devam eder. BIST fiyatları kaynağında yaklaşık 15 dakika gecikmelidir.
+
 ## Portföy paylaşımı
 
 Bir portföyü başka bir e-posta adresiyle paylaşabilirsiniz (Portföy → Düzenle → Paylaşım). Paylaşılan kişi o e-postayla giriş yaptığında portföyü kendi ekranında salt okunur görür; değişiklik yapamaz. Bütçe, borçlar ve zekât paylaşılmaz. Sahibi portföyü her güncellediğinde paylaşılan kopya da güncellenir.

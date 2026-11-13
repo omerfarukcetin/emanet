@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.69";
+const APP_VERSION="2.70";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -581,6 +581,36 @@ function fillFx(){
   if(merged)commit(merged+" tekrar eden varlık tek satırda birleştirildi");
   else if(n)commit(n+" varlığın alış günü kuru güncellendi");
 }
+/* ---------- canlı fiyat: uygulama açıkken 30 saniyede bir (Supabase Edge Function "fiyat") ----------
+   Fiyat dosyası 10 dakikada bir gelir; bunun üstüne açık ekranda son fiyatlar bindirilir. BIST kaynağında ~15 dk gecikmelidir.
+   Fonksiyon kurulu değilse sessizce dosyadaki fiyatlarla devam edilir. Reşat (nisap) fiyatına dokunulmaz. */
+let live=null,liveFail=0;
+const okNear=(n,o)=>n>0&&(!(o>0)||Math.abs(n/o-1)<.15);
+function liveApply(m){
+  if(!m||!live)return m;const r={...m,quotes:{...(m.quotes||{})},fx:{...(m.fx||{})},gold:{...(m.gold||{})}};
+  Object.entries(live.quotes||{}).forEach(([k,q])=>{const o=r.quotes[k];if(q&&okNear(+q.p,o&&+o.p)&&(!o||!o.cur||!q.cur||o.cur===q.cur))r.quotes[k]={...(o||{}),p:+q.p,cur:q.cur||(o&&o.cur),t:q.t}});
+  Object.entries(live.fx||{}).forEach(([c,v])=>{if(okNear(+v,+r.fx[c]))r.fx[c]=+v});
+  Object.entries(live.gold||{}).forEach(([k,v])=>{if(!/^resat/.test(k)&&okNear(+v,+r.gold[k]))r.gold[k]=+v});
+  r.liveAt=live.t;return r;
+}
+async function liveTick(){
+  if(!ready||!state||!CFG.supabaseUrl||!AUTO()||document.visibilityState!=="visible"||liveFail>=3)return;
+  const keys=watchItems().filter(i=>["hisse","abd","kripto"].includes(i.k)).map(i=>i.k+":"+i.s);
+  try{
+    const r=await fetch(CFG.supabaseUrl.replace(/\/$/,"")+"/functions/v1/fiyat?k="+encodeURIComponent(keys.join(",")),{headers:{apikey:CFG.supabaseKey},cache:"no-store"});
+    if(!r.ok){liveFail++;return}
+    const d=await r.json();if(!d||!d.t)return;liveFail=0;
+    const before=JSON.stringify([market&&market.quotes,market&&market.fx,market&&market.gold]);
+    live=d;let base=null;try{base=JSON.parse(localStorage.getItem(MK)||"null")}catch(e){}
+    market=liveApply(base&&base.updatedAt?base:market);
+    if(JSON.stringify([market.quotes,market.fx,market.gold])!==before)render();
+    else{const el=document.querySelector(".vh-t small");if(el)el.textContent=priceLabel()}
+  }catch(e){liveFail++}
+}
+setInterval(liveTick,30000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){liveFail=0;setTimeout(liveTick,500)}});
+setTimeout(liveTick,2500);
+function priceLabel(){if(!AUTO())return"Fiyatlar elle girilir";if(market&&market.liveAt&&Date.now()-Date.parse(market.liveAt)<5*60e3)return"Canlı · "+new Date(market.liveAt).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})+" · BIST ~15 dk gecikmeli";return"Fiyatlar "+marketWhen()}
 function marketWhen(){if(!market||!market.updatedAt)return"";const d=new Date(market.updatedAt);return d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}
 
 /* ---------- piyasa verisi ----------
@@ -604,7 +634,8 @@ async function loadMarket(announce){
   if(got&&market&&market.updatedAt&&got.updatedAt<market.updatedAt)got=market;   // yedek kopya elimizdekinden eskiyse kullanma
   if(!got){if(announce)toast("Fiyat dosyasına ulaşılamadı; internet bağlantınızı kontrol edin");return}
   const changed=!market||market.updatedAt!==got.updatedAt;
-  market=got;try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
+  try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
+  market=liveApply(got);
   if(changed&&ready){snapshotSave();render();fillFx()}
   if(changed||!closeD)loadClose();
   if(announce)toast(changed?"Fiyatlar güncellendi":"Fiyatlar güncel · "+marketWhen());
@@ -726,6 +757,7 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 /* ana ekran kısayolları: ?go=out | in | save | buy | sell | <sekme> */
 let goDone=false;
 function handleGo(){
+  setTimeout(liveTick,300);
   if(usageCheck())return;
   if(goDone)return;goDone=true;
   let g=null;try{g=new URLSearchParams(location.search).get("go");if(g)history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
@@ -1431,7 +1463,7 @@ function kindList(hs,total,pfId){
 /* Varlıklar kartının başlığı: fiyat saati, tabloda gösterilen bilgiyi değiştiren düğme, tümünü aç/kapat */
 function vHead(hs,ctx){
   const ks=[...new Set(hs.map(h=>h.kind))],allOpen=ks.every(k=>kIsOpen(ctx,k)),cm=COLS.find(c=>c[0]===colMode());
-  return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${AUTO()?"Fiyatlar "+marketWhen():"Fiyatlar elle girilir"}</small></div>
+  return `<div class="sec vhead"><div class="vh-t"><h2>Varlıklar</h2><small class="sub">${priceLabel()}</small></div>
     <div class="vh-a">${hs.length?`<button class="colchip" data-act="colnext" aria-label="${cm[1]} gösteriliyor. Sıradaki bilgiye geçmek için dokunun"><span>${cm[1]}</span>${ic(I.akis,13)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="korder" data-ks="${esc(ks.join(","))}" aria-label="Kategorilerin sırasını değiştir" title="Sırala">${ic(I.sort,16)}</button>`:""}${ks.length>1?`<button class="icon-btn sm" data-act="kall" data-ctx="${ctx}" data-ks="${esc(ks.join(","))}" data-o="${allOpen?0:1}" aria-label="${allOpen?"Tüm kategorileri daralt":"Tüm kategorileri genişlet"}" title="${allOpen?"Tümünü daralt":"Tümünü genişlet"}">${ic(allOpen?I.collapse:I.expand,16)}</button>`:""}</div></div>`;
 }
 function assetTable(hs,total,o){
