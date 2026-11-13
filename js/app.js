@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.60";
+const APP_VERSION="2.61";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1343,7 +1343,7 @@ function vHead(hs,ctx){
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
-  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.name)}<small class="num">${(()=>{const ep=effPrice(h);return(S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur)))+(h.symbol&&h.symbol.toUpperCase()!==h.name.toUpperCase()?" · "+esc(h.symbol):"")})()}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
+  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.symbol?h.symbol.toUpperCase():h.name)}<small class="num">${(()=>{const ep=effPrice(h);return S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur))})()}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
   const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
