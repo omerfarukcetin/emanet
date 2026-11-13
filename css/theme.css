@@ -1157,3 +1157,9 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .fam-tot .delta.up,.fam-tot .delta.up>span,.fam-tot .delta.up b{color:var(--pos)}
 .fam-tot .delta.down,.fam-tot .delta.down>span,.fam-tot .delta.down b{color:var(--neg)}
 .fam-tot .delta small{color:var(--muted)!important}
+
+/* ================= 2.62: portföy paylaşımı ================= */
+.shr{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
+.shr-r{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem;word-break:break-all}
+.shr-add{display:flex;gap:8px;margin-top:8px}
+.shr-add input{flex:1;min-width:0}

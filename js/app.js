@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.61";
+const APP_VERSION="2.62";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -232,7 +232,51 @@ const isMainPf=p=>!!p&&mainPf()===p;
 function pfTotals(p){let v=0,c=0;p.holdings.forEach(h=>{v+=hVal(h);c+=hCost(h)});return{v,c,pl:v-c,plp:c?(v-c)/c*100:0}}
 const MAIN=()=>S().mainOwner||"Ben";
 const ownerOf=p=>p.owner||MAIN();
-const mainPf=()=>state.portfolios.find(p=>p.id===S().mainPf)||state.portfolios[0]||null;
+const mainPf=()=>state.portfolios.find(p=>p.id===S().mainPf&&!p._shared)||state.portfolios.find(p=>!p._shared)||null;
+/* ---------- paylaşılan portföyler ----------
+   Sahibi bir portföyü e-postayla paylaşır (emanet_share tablosu); karşı taraf onu kendi hesabında salt okunur görür.
+   Gelen portföyler state.portfolios'a yalnızca ekranda eklenir (_shared); kaydedilen veriye hiç girmez (pure). */
+let sharedIn=[],myShares=[],shareErr="";
+const ownPfs=()=>state.portfolios.filter(p=>!p._shared);
+function pure(){return state&&state.portfolios&&state.portfolios.some(p=>p._shared)?{...state,portfolios:ownPfs()}:state}
+function injectShared(){if(!state||!state.portfolios)return;const own=ownPfs();if(own.length+sharedIn.length===state.portfolios.length&&sharedIn.every((x,i)=>state.portfolios[own.length+i]===x))return;state.portfolios=own.concat(sharedIn)}
+const pfSnap=p=>({name:p.name,color:p.color,owner:p.owner,holdings:p.holdings});
+async function loadShares(){
+  if(!cloudOn())return;const me=(sbUser.email||"").toLowerCase();
+  try{
+    const a=await sb.from("emanet_share").select("id,pf_id,email,updated_at").eq("owner",sbUser.id);
+    if(a.error){shareErr=/emanet_share|relation|schema cache|not exist/i.test(a.error.message||"")?"setup":"err";return}
+    shareErr="";myShares=a.data||[];
+    const b=await sb.from("emanet_share").select("id,owner_email,pf_id,data,updated_at").eq("email",me).neq("owner",sbUser.id);
+    if(!b.error){const old=new Map(sharedIn.map(x=>[x.id,x]));
+      sharedIn=(b.data||[]).filter(r=>r.data&&Array.isArray(r.data.holdings)).map(r=>{const id="sh_"+r.id,o=old.get(id),pf=normalize({portfolios:[{...r.data,id}]}).portfolios[0];pf._shared={from:r.owner_email||"",at:r.updated_at};if(o&&JSON.stringify(o.holdings)===JSON.stringify(pf.holdings)&&o.name===pf.name)return o;return pf});
+      if(ready)render()}
+  }catch(e){}
+}
+const shareSent={};
+async function pushShares(){
+  if(!cloudOn()||!myShares.length)return;
+  for(const r of myShares){const p=ownPfs().find(x=>x.id===r.pf_id);if(!p)continue;const j=JSON.stringify(pfSnap(p));if(shareSent[r.id]===j)continue;
+    try{const{error}=await sb.from("emanet_share").update({data:JSON.parse(j),updated_at:new Date().toISOString()}).eq("id",r.id);if(!error)shareSent[r.id]=j}catch(e){}}
+}
+setInterval(()=>{if(document.visibilityState==="visible")loadShares()},5*60e3);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")loadShares()});
+function shareBlock(p){
+  if(!cloudOn())return `<div class="note">Paylaşmak için e-postayla giriş yapmış olmalısınız.</div>`;
+  if(shareErr==="setup")return `<div class="note">Paylaşım için Supabase'de bir kez kurulum SQL'i çalıştırılmalı (README'deki "Portföy paylaşımı" bölümü).</div>`;
+  const rows=myShares.filter(r=>r.pf_id===p.id);
+  return `<div class="shr"><div class="label sh-sec" style="margin:0 0 6px">Paylaşım</div>
+    ${rows.map(r=>`<div class="shr-r"><span>${esc(r.email)}</span><button type="button" class="btn ghost sm" data-unshare="${r.id}">Kaldır</button></div>`).join("")}
+    <div class="shr-add"><input type="email" id="shrMail" placeholder="ornek@eposta.com" autocomplete="off" inputmode="email"><button type="button" class="btn sm" id="shrAdd">Paylaş</button></div>
+    <div class="sub" style="font-size:.76rem;margin-top:6px">Paylaştığın kişi bu e-postayla Emanet'e giriş yaptığında portföyü kendi ekranında görür; değiştiremez. Bütçe, borçlar ve zekât paylaşılmaz.</div></div>`;
+}
+function bindShare(sh,p){
+  const add=sh.querySelector("#shrAdd");if(add)add.onclick=async()=>{const m=sh.querySelector("#shrMail").value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m))return toast("Geçerli bir e-posta girin");if(m===(sbUser.email||"").toLowerCase())return toast("Kendi e-postanızla paylaşamazsınız");
+    add.disabled=true;const{error}=await sb.from("emanet_share").upsert({pf_id:p.id,email:m,owner_email:sbUser.email,data:pfSnap(p),updated_at:new Date().toISOString()},{onConflict:"owner,pf_id,email"});
+    add.disabled=false;if(error){toast("Paylaşılamadı: "+(error.message||""));return}await loadShares();toast(p.name+" "+m+" ile paylaşıldı");pfSheet(p)};
+  sh.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=async()=>{const{error}=await sb.from("emanet_share").delete().eq("id",b.dataset.unshare);if(error)return toast("Kaldırılamadı");await loadShares();toast("Paylaşım kaldırıldı");pfSheet(p)});
+}
 function owners(){const o=[MAIN()];state.portfolios.forEach(p=>{const x=ownerOf(p);if(!o.includes(x))o.push(x)});return o}
 const getHawl=id=>(S().hawlPf||{})[id]||null;
 function setHawl(id,v){S().hawlPf=S().hawlPf||{};if(v)S().hawlPf[id]=v;else delete S().hawlPf[id]}
@@ -289,7 +333,7 @@ function zakat(o){
 }
 
 /* ---------- persistence ---------- */
-function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}notifSnap()}
+function cacheLocal(){try{localStorage.setItem(LS,JSON.stringify(pure()))}catch(e){}notifSnap()}
 /* ---------- değer geçmişi: her portföy için günde bir kayıt [tarih, değer TL, maliyet TL, dolar kuru, gram altın] ---------- */
 /* Değer geçmişi ve getiri hesapları yatırımları izler: nakit ve mevduat hariç tutulur (para eklemek "değer arttı" gibi görünmesin).
    Yeni kayıtlar nakit tutarını ayrıca saklar; eski kayıtlarda, nakit varlığın alım tarihine bakılarak tahmin edilir.
@@ -584,9 +628,9 @@ async function flush(){
   if(saving){pendingSave=true;return}
   saving=true;setSync("cloud","Kaydediliyor…");
   let err=null;
-  try{const r=await sb.from("emanet_state").upsert({user_id:sbUser.id,data:state,updated_at:state.updatedAt});err=r.error}catch(e){err=e}
+  try{const r=await sb.from("emanet_state").upsert({user_id:sbUser.id,data:pure(),updated_at:state.updatedAt});err=r.error}catch(e){err=e}
   saving=false;
-  if(err)setSync("local","Kaydedilemedi · cihazda duruyor");else{setSync("cloud","Eşitlendi");backupNow()}
+  if(err)setSync("local","Kaydedilemedi · cihazda duruyor");else{setSync("cloud","Eşitlendi");backupNow();pushShares()}
   if(pendingSave){pendingSave=false;flush()}
 }
 /* Otomatik yedek: her günün son hâli ayrı bir kayıt olarak saklanır (35 gün). Boş veri yedeklenmez.
@@ -598,7 +642,7 @@ async function backupNow(){
   if(last.u===sbUser.id&&last.d===day&&now-last.t<30*60e3)return;
   try{
     const meta={pf:state.portfolios.length,h:state.portfolios.reduce((a,p)=>a+p.holdings.filter(h=>+h.qty>0).length,0),tx:state.tx.length,v:Math.round(state.portfolios.reduce((a,p)=>a+pfTotals(p).v,0)*rate(S().base))};
-    const {error}=await sb.from("emanet_backup").upsert({user_id:sbUser.id,day,data:state,meta,updated_at:new Date().toISOString()},{onConflict:"user_id,day"});
+    const {error}=await sb.from("emanet_backup").upsert({user_id:sbUser.id,day,data:pure(),meta,updated_at:new Date().toISOString()},{onConflict:"user_id,day"});
     if(error)return;
     localStorage.setItem(BK,JSON.stringify({u:sbUser.id,d:day,t:now}));
     if(last.d!==day)sb.from("emanet_backup").delete().eq("user_id",sbUser.id).lt("day",addDays(day,-35)).then(()=>{},()=>{});
@@ -618,7 +662,7 @@ async function backupSheet(){
     if(!b.dataset.c){body.querySelectorAll("[data-bk]").forEach(x=>{delete x.dataset.c;x.textContent="Geri yükle";x.classList.remove("primary")});b.dataset.c="1";b.textContent="Evet, yükle";b.classList.add("primary");return}
     b.disabled=true;b.textContent="Yükleniyor…";
     try{const r=await sb.from("emanet_backup").select("data").eq("user_id",sbUser.id).eq("day",b.dataset.bk).single();if(r.error||!r.data||!r.data.data)throw new Error("yok");
-      const snap=JSON.stringify(state);state=normalize(r.data.data);closeSheet();commit();toast(fmtDate(b.dataset.bk)+" yedeği yüklendi",snap)}
+      const snap=JSON.stringify(pure());state=normalize(r.data.data);closeSheet();commit();toast(fmtDate(b.dataset.bk)+" yedeği yüklendi",snap)}
     catch(e){b.disabled=false;b.textContent="Geri yükle";delete b.dataset.c;const er=document.getElementById("bkErr");if(er)er.textContent="Yedek yüklenemedi; yeniden deneyin."}
   });
 }
@@ -644,7 +688,7 @@ async function onLogin(user){
   hideAuth();mode="cloud";setSync("cloud","Eşitleniyor…");
   if(!state)skeleton();
   await pull(true);
-  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();handleGo();setTimeout(()=>{fillFx();syncWatch()},0);
+  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();handleGo();loadShares();setTimeout(()=>{fillFx();syncWatch()},0);
 }
 async function signOut(){
   try{clearTimeout(saveTimer);await flush()}catch(e){}
@@ -846,6 +890,7 @@ function li(o){
 }
 const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Bütçe"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
+  injectShared();
   /* telefonda 5 öğe: Özet, Portföy, +, Bütçe, Zekât. Borç, Bütçe ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
   const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())));
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
@@ -916,7 +961,7 @@ function swipeTo(el,dir){
   document.addEventListener("touchcancel",()=>{if(el)el.style.transform="";x0=null;el=null});
 })();
 function setPf(id){view.pf=id;view.ozPf=id;try{localStorage.setItem("emanet-ozpf",id)}catch(e){}}
-const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf();
+const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf()||state.portfolios[0]||null;
 function rOzet(){
   const mp=ozPf(),onMain=!mp||isMainPf(mp);
   const t=mp?pfTotals(mp):{v:0,c:0,pl:0,plp:0};
@@ -933,7 +978,7 @@ function rOzet(){
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}</div>`:""}
   <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}">
     <div class="hero-top"><div style="min-width:0">
-      <span class="label">${mp?esc(mp.name)+(state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
+      <span class="label">${mp?esc(mp.name)+(mp._shared?" · "+esc(mp._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div></div>
     ${mp?plChips(hs,t.v,t.c)+heroStats(hs,t.v,t.c):""}
@@ -1194,7 +1239,7 @@ function rPortfoy(){
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
   <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="portfoy" data-pfid="${cur?cur.id:"all"}">
-    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
+    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(cur._shared?" · "+esc(cur._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
     ${plChips(hs,v,c)}${heroStats(hs,v,c)}
     <div class="subrow">${eqvChips(v)}${pfDots(cur?cur.id:"all",state.portfolios.length>1)}</div>
@@ -1991,6 +2036,7 @@ function pfSheet(p){
     {id:"isMain",label:"Ana portföy (bütçe ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
     {id:"color",label:"Renk",type:"select",value:p?p.color:colors[state.portfolios.length%6],options:[["--c1","Altın sarısı"],["--c2","Mavi"],["--c3","Yeşil"],["--c4","Gül"],["--c5","Mor"],["--c6","Kiremit"]]}],
     onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1";if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
+    extra:p?shareBlock(p):"",onOpen:p?(form,sh)=>bindShare(sh,p):undefined,
     onDelete:p?()=>{state.portfolios=state.portfolios.filter(x=>x!==p);view.pf="all";commit("Portföy silindi")}:null});
 }
 /* ---------- BES: ana para dışındaki her şey (fon getirisi + devlet katkısı + DK getirisi) kâr sayılır ---------- */
@@ -1999,7 +2045,7 @@ function besApply(h){const b=h.bes;h.kind="bes";h.cur="TRY";h.qty=1;h.cost=+b.pr
 function besSheet(pfId,h){
   const b=h&&h.bes||{};const pid=pfId||(h?null:(view.pf&&view.pf!=="all"?view.pf:(mainPf()||state.portfolios[0]).id));
   formSheet({title:h?"BES sözleşmesini düzenle":"BES ekle",fields:[
-    {id:"pf",label:"Portföy",type:"select",value:pid||(state.portfolios.find(p=>p.holdings.includes(h))||{}).id,options:state.portfolios.map(p=>[p.id,pfName(p.id)])},
+    {id:"pf",label:"Portföy",type:"select",value:pid||(state.portfolios.find(p=>p.holdings.includes(h))||{}).id,options:ownPfs().map(p=>[p.id,pfName(p.id)])},
     [{id:"name",label:"Sözleşme / şirket",value:h?h.name:"",ph:"Örn. Anadolu Hayat BES"},{id:"buyDate",label:"Başlangıç tarihi",type:"date",value:h?(h.buyDate||""):""}],
     [{id:"principal",label:"Ana para (yatırdığınız toplam)",type:"number",value:h?b.principal:"",ph:"0"},{id:"gain",label:"Fon getirisi (kâr)",type:"number",value:h?b.gain:"",ph:"0"}],
     [{id:"state",label:"Devlet katkısı",type:"number",value:h?b.state:"",ph:"0"},{id:"stateGain",label:"Devlet katkısı getirisi",type:"number",value:h?(b.stateGain||""):"",ph:"0"}]],
@@ -2023,7 +2069,7 @@ function holdingSheet(pfId,h){
   const multiT=!!(h&&(h.trades||[]).length>1);
   const PH={hisse:["Örn. Türk Hava Yolları","THYAO"],abd:["Örn. Apple","AAPL"],fon:["Fon adı","TEFAS kodu, örn. TTE"],ppf:["Örn. ... Para Piyasası Fonu","TEFAS kodu"],kripto:["Örn. Bitcoin","BTC"]};
   formSheet({title:h?"Varlığı düzenle":"Varlık ekle",fields:[
-    {id:"pf",label:"Portföy",type:"select",value:pid,options:state.portfolios.map(p=>[p.id,p.name+(owners().length>1?" ("+ownerOf(p)+")":"")])},
+    {id:"pf",label:"Portföy",type:"select",value:pid,options:ownPfs().map(p=>[p.id,p.name+(owners().length>1?" ("+ownerOf(p)+")":"")])},
     [{id:"kind",label:"Tür",type:"select",value:k0,options:Object.entries(KINDS)},{id:"cur",label:"Para birimi",type:"select",value:h?h.cur:"TRY",options:CURS}],
     {id:"preset",label:"Ürün",type:"select",value:curPreset,options:presetOpts(k0),hidden:!PRESETS[k0]},
     {id:"name",label:"Varlık adı",value:h?h.name:"",ph:"Adını veya kodunu yazmaya başlayın"},
@@ -2167,7 +2213,8 @@ function holdingDetail(pfId,h){
     ${karne(h,pf)}
     <div class="sec sh-sec2"><div class="label sh-sec" style="margin:0">İşlem geçmişi</div>${h.kind!=="bes"&&!CASH_KINDS.includes(h.kind)?`<button class="btn ghost sm" id="hDiv">${ic(I.plus,14)}Temettü ekle</button>`:""}</div>
     ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:4px 0 8px">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}
-    <div class="actions eq"><button class="btn primary" id="hBuy">${ic(I.buy)}Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">${ic(I.sell)}Satış yap</button>`:""}<button class="btn" id="hEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
+    ${pf&&pf._shared?`<div class="note">${esc(pf._shared.from)} bu portföyü sizinle paylaştı; yalnızca görüntüleyebilirsiniz.</div>`:`<div class="actions eq"><button class="btn primary" id="hBuy">${ic(I.buy)}Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">${ic(I.sell)}Satış yap</button>`:""}<button class="btn" id="hEdit">${ic(I.edit)}Düzenle</button></div>`}`,sh=>{
+      if(pf&&pf._shared){sh.querySelectorAll('#hDiv').forEach(x=>x.remove());sh.querySelectorAll('[data-act="edit-tr"]').forEach(x=>{x.removeAttribute('data-act');x.removeAttribute('role');x.removeAttribute('tabindex')});return}
       sh.querySelector("#hEdit").onclick=()=>{closeSheet();holdingSheet(pfId,h)};
       sh.querySelector("#hBuy").onclick=()=>{closeSheet();tradeSheet(pfId,h,"buy")};
       const sb=sh.querySelector("#hSell");if(sb)sb.onclick=()=>{closeSheet();tradeSheet(pfId,h,"sell")};
@@ -2285,7 +2332,7 @@ function quickTx(){
   return freq.concat(rec).slice(0,6);
 }
 /* ---------- tek + menüsü: her sekmede aynı ---------- */
-function curPfId(){const v=view.pf;return v&&v!=="all"&&state.portfolios.some(p=>p.id===v)?v:(mainPf()||state.portfolios[0]||{}).id}
+function curPfId(){const v=view.pf;return v&&v!=="all"&&ownPfs().some(p=>p.id===v)?v:(mainPf()||ownPfs()[0]||{}).id}
 function addMenu(){
   const it=[
     ["out","Harcama",I.cart,"--neg","Market, fatura, kira…"],
@@ -2307,7 +2354,7 @@ function addMenu(){
 function pickHolding(type,pid0){
   const pid=pid0||curPfId(),pf=state.portfolios.find(p=>p.id===pid);if(!pf)return holdingSheet();
   const hs=pf.holdings.filter(h=>type==="buy"||+h.qty>0).slice().sort((a,b)=>hVal(b)-hVal(a));
-  const others=state.portfolios.length>1?`<div class="chips am-pf" role="group" aria-label="Portföy">${state.portfolios.map(p=>`<button class="chip" data-pp="${p.id}" aria-pressed="${p.id===pid}">${esc(p.name)}</button>`).join("")}</div>`:"";
+  const others=ownPfs().length>1?`<div class="chips am-pf" role="group" aria-label="Portföy">${ownPfs().map(p=>`<button class="chip" data-pp="${p.id}" aria-pressed="${p.id===pid}">${esc(p.name)}</button>`).join("")}</div>`:"";
   openSheet(`<h3>${type==="buy"?"Hangi varlığı aldın?":"Hangi varlığı sattın?"}</h3>${others}
     ${type==="buy"?`<button type="button" class="am-new" data-new="1">${ic(I.plus,18)}<span><b>Yeni varlık ekle</b><small>Listede olmayan bir hisse, fon, altın ya da döviz</small></span></button>`:""}
     <div class="list">${hs.length?hs.map(h=>`<div class="row li" role="button" tabindex="0" data-ph="${h.id}">${kindBadge(h.kind)}<div class="main"><div class="t">${esc(h.name)}</div><div class="s">${esc((KINDS[h.kind]||h.kind).replace(/\s*\(.*\)/,""))} · ${fmtN(+h.qty||0,4)} adet</div></div><div class="end"><span class="num">${fmt(hVal(h),null,{dec:0})}</span></div></div>`).join(""):`<div class="sub" style="padding:12px 0">${type==="buy"?"Bu portföyde henüz varlık yok.":"Bu portföyde satılacak varlık yok."}</div>`}</div>`,sh=>{
@@ -2478,7 +2525,7 @@ function goalSheet(g){
     [{id:"target",label:"Hedef tutar",type:"number",value:g?g.target:"",ph:"0"},{id:"unit",label:"Birim",type:"select",value:g?g.unit:"TRY",options:GUNITS}],
     {id:"due",label:"Hedef tarih (isteğe bağlı)",type:"date",value:g?(g.due||""):""},
     {id:"src",label:"İlerleme nereden hesaplansın",type:"seg",value:g?g.src:"hs",options:[["hs","Seçtiğim varlıklar"],["manual","Ayırdığım tutarlar"],["pf","Bir portföy"]]},
-    {id:"pf",label:"Portföy",type:"select",value:g&&g.pf||(state.portfolios[0]||{}).id||"",options:state.portfolios.map(p=>[p.id,pfName(p.id)])}],
+    {id:"pf",label:"Portföy",type:"select",value:g&&g.pf||(state.portfolios[0]||{}).id||"",options:ownPfs().map(p=>[p.id,pfName(p.id)])}],
     extra:`<div class="field" id="w_hsel"><label>Hedefe ait varlıklar</label><div class="hsel">${state.portfolios.flatMap(p=>p.holdings.filter(h=>+h.qty>0).map(h=>`<label class="hck"><input type="checkbox" name="hsel" value="${h.id}" ${g&&(g.hs||[]).includes(h.id)?"checked":""}><span><b>${esc(h.name)}</b><small>${esc(h.symbol||KINDS[h.kind]||"")} · ${esc(p.name)} · ${fmt(hVal(h),null,{dec:0})}</small></span></label>`)).join("")||`<div class="sub">Önce portföye varlık ekleyin.</div>`}</div></div>
     <div class="note">"Seçtiğim varlıklar": örneğin KLU fonu ve para piyasası fonunuzu işaretlerseniz, bu varlıkların güncel değeri hedefe ilerleme sayılır; alım yaptıkça hedef de kendiliğinden ilerler. "Ayırdığım tutarlar" seçilirse hedefe her para ayırdığınızda kaydedersiniz. "Bir portföyün değeri" seçilirse, örneğin hedef için açtığınız ayrı bir portföyün güncel değeri ilerleme sayılır.</div>`,
     onOpen:(form,sh)=>{const upd=()=>{if(!sh.querySelector("#w_pf"))return;const v=form.elements.src.value;sh.querySelector("#w_pf").hidden=v!=="pf";sh.querySelector("#w_hsel").hidden=v!=="hs"};form.addEventListener("click",()=>setTimeout(upd,0));upd()},
@@ -2578,7 +2625,7 @@ function debtSheet(d){
   formSheet({title:d?"Kaydı düzenle":"Borç / alacak ekle",fields:[
     {id:"dir",label:"Yön",type:"seg",value:d?d.dir:view.debtDir,options:[["lent","Borç verdim"],["borrowed","Borç aldım"]]},
     {id:"person",label:"Kişi / kurum",value:d?d.person:"",ph:"Örn. Ahmet, Banka kredisi"},
-    ...(state.portfolios.length?[{id:"pf",label:"Hangi portföye ait (zekât hesabı için)",type:"select",value:d?(d.pf||(mainPf()||{}).id):(view.debtPf&&view.debtPf!=="all"?view.debtPf:(mainPf()||{}).id),options:state.portfolios.map(p=>[p.id,pfName(p.id)])}]:[]),
+    ...(state.portfolios.length?[{id:"pf",label:"Hangi portföye ait (zekât hesabı için)",type:"select",value:d?(d.pf||(mainPf()||{}).id):(view.debtPf&&view.debtPf!=="all"?view.debtPf:(mainPf()||{}).id),options:ownPfs().map(p=>[p.id,pfName(p.id)])}]:[]),
     [{id:"amount",label:"Tutar / miktar",type:"number",value:d?d.amount:"",ph:"0"},{id:"cur",label:"Birim",type:"select",value:d?d.cur:"TRY",options:DEBT_UNITS}],
     [{id:"date",label:"Tarih",type:"date",value:d?d.date:todayISO()},{id:"due",label:"Vade (isteğe bağlı)",type:"date",value:d?d.due:""}],
     {id:"note",label:"Not",value:d?d.note:"",ph:"İsteğe bağlı"}],
@@ -2656,7 +2703,7 @@ document.addEventListener("click",e=>{
   if(a==="start-empty"){state=state||emptyState();state.updatedAt=Date.now();commit();pfSheet();return}
   if(a==="start-sample"){state=normalize(sample());commit("Örnek veriler yüklendi");return}
   if(a==="new-pf")return pfSheet();
-  if(a==="edit-pf")return pfSheet(state.portfolios.find(p=>p.id===id));
+  if(a==="edit-pf"){const p=state.portfolios.find(p=>p.id===id);if(p&&p._shared)return toast(p._shared.from+" bu portföyü sizinle paylaştı; yalnızca görüntüleyebilirsiniz");return pfSheet(p)}
   if(a==="pf-all"){view.pf="all";view.tab="portfoy";render();window.scrollTo({top:0});return}
   if(a==="open-pf"){setPf(id);view.tab="portfoy";render();window.scrollTo({top:0});return}
   if(a==="ozpf"){setPf(id);render();return}
@@ -2757,7 +2804,7 @@ $("#eyeBtn").onclick=()=>{if(!state)return;S().hide=!S().hide;commit()};
 
 function exportData(){
   const name="emanet-yedek-"+todayISO()+".json";
-  try{const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));
+  try{const url=URL.createObjectURL(new Blob([JSON.stringify(pure(),null,2)],{type:"application/json"}));
     const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast("Yedek indirildi")}
   catch(e){toast("Yedek indirilemedi")}
 }
@@ -2790,7 +2837,7 @@ function toast(m,undoSnap){
   t.hidden=false;toastT=setTimeout(()=>t.hidden=true,undoSnap?7000:2400);
 }
 /* silme işlemlerinden sonra birkaç saniye "Geri al" sunar */
-function withUndo(fn){const snap=JSON.stringify(state);fn();const t=$("#toast");toast(t.hidden?"Silindi":t.textContent,snap)}
+function withUndo(fn){const snap=JSON.stringify(pure());fn();const t=$("#toast");toast(t.hidden?"Silindi":t.textContent,snap)}
 
 applyPrefs();render();boot();
 })();

@@ -76,6 +76,12 @@ Kurulum (bir kez):
 Bildirimler "Fiyatları güncelle" işinin sonunda `scripts/send-push.mjs` ile gönderilir; bu yüzden zamanında gelmeleri
 o işin düzenli çalışmasına bağlıdır. "Bildirim denemesi" işi (Actions sekmesi) ayarlara bakmadan herkese bir bildirim yollar.
 
+## Portföy paylaşımı
+
+Bir portföyü başka bir e-posta adresiyle paylaşabilirsiniz (Portföy → Düzenle → Paylaşım). Paylaşılan kişi o e-postayla giriş yaptığında portföyü kendi ekranında salt okunur görür; değişiklik yapamaz. Bütçe, borçlar ve zekât paylaşılmaz. Sahibi portföyü her güncellediğinde paylaşılan kopya da güncellenir.
+
+Kurulum için Supabase → SQL Editor'de `supabase/schema.sql` dosyasının "Portföy paylaşımı" bölümünü bir kez çalıştırın.
+
 ## Getiri karşılaştırması
 
 Portföy sayfasındaki kart, portföyün getirisini aynı dönemde gram altın, dolar, BIST 100 ve enflasyonla (Yİ-ÜFE) karşılaştırır.

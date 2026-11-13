@@ -104,3 +104,29 @@ drop policy if exists "yedek_sahibi" on public.emanet_backup;
 create policy "yedek_sahibi" on public.emanet_backup for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 revoke all on public.emanet_backup from anon;
 grant select, insert, update, delete on public.emanet_backup to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Portföy paylaşımı: sahibi bir portföyü e-postayla paylaşır, karşı taraf salt okunur görür.
+-- Satırda portföyün kopyası (ad ve varlıklar) durur; sahibi her kayıtta günceller.
+-- Sahibi kendi satırlarını yönetir; paylaşılan kişi yalnızca kendi e-postasına açılmış satırları okur.
+-- Bu bölüm birden çok kez çalıştırılabilir.
+-- ---------------------------------------------------------------------------
+create table if not exists public.emanet_share (
+  id          uuid primary key default gen_random_uuid(),
+  owner       uuid not null default auth.uid() references auth.users on delete cascade,
+  owner_email text,
+  pf_id       text not null,
+  email       text not null check (email = lower(email)),
+  data        jsonb,
+  updated_at  timestamptz not null default now(),
+  unique (owner, pf_id, email)
+);
+alter table public.emanet_share enable row level security;
+
+drop policy if exists "emanet_share_sahip" on public.emanet_share;
+create policy "emanet_share_sahip" on public.emanet_share for all to authenticated
+  using (owner = auth.uid()) with check (owner = auth.uid());
+
+drop policy if exists "emanet_share_okuyan" on public.emanet_share;
+create policy "emanet_share_okuyan" on public.emanet_share for select to authenticated
+  using (email = lower(coalesce(auth.jwt() ->> 'email', '')));
