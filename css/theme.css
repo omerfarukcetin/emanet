@@ -1152,3 +1152,8 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 /* 2.59: varlık tablosunda biraz daha küçük yazı */
 .atbl{--fs-row:.86rem;--fs-sub:.72rem}
 .atbl.compact .arow{min-height:48px;padding-block:5px}
+/* 2.60: aile özeti günlük rozeti açık temada okunur */
+.fam-tot .delta>span{color:inherit;opacity:1;font-weight:700}
+.fam-tot .delta.up,.fam-tot .delta.up>span,.fam-tot .delta.up b{color:var(--pos)}
+.fam-tot .delta.down,.fam-tot .delta.down>span,.fam-tot .delta.down b{color:var(--neg)}
+.fam-tot .delta small{color:var(--muted)!important}
