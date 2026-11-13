@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.51";
+const APP_VERSION="2.52";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -635,13 +635,22 @@ async function onLogin(user){
   hideAuth();mode="cloud";setSync("cloud","Eşitleniyor…");
   if(!state)skeleton();
   await pull(true);
-  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(()=>{fillFx();syncWatch()},0);
+  ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();handleGo();setTimeout(()=>{fillFx();syncWatch()},0);
 }
 async function signOut(){
   try{clearTimeout(saveTimer);await flush()}catch(e){}
   try{await sb.auth.signOut()}catch(e){}
   sbUser=null;state=null;try{localStorage.removeItem(LS);localStorage.removeItem(OWN)}catch(e){}
   view.tab="ozet";showAuth();
+}
+/* ana ekran kısayolları: ?go=out | in | save | buy | sell | <sekme> */
+let goDone=false;
+function handleGo(){
+  if(goDone)return;goDone=true;
+  let g=null;try{g=new URLSearchParams(location.search).get("go");if(g)history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
+  if(!g||!state||!state.portfolios)return;
+  if(TABS.some(t=>t[0]===g)){view.tab=g;render();return}
+  setTimeout(()=>{if(g==="out"||g==="in"||g==="save")txSheet(null,{type:g});else if(g==="buy"||g==="sell")pickHolding(g);else if(g==="add")addMenu()},60);
 }
 /* bildirimden gelen bağlantı (#zekat gibi) ilgili sekmeyi açar */
 function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)){view.tab=h;try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}return true}return false}
@@ -664,7 +673,7 @@ async function boot(){
   if(session){if(!sbUser)await onLogin(session.user)}
   else{let g=null;try{g=localStorage.getItem(GUEST)}catch(e){}if(g)goLocal("Girişsiz · bu cihazda");else showAuth()}
 }
-function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();if(state&&state.updatedAt)snapshotSave();render();setTimeout(fillFx,0)}
+function goLocal(msg){mode="local";ready=true;hideAuth();setSync("local",msg||"Bu cihazda tutuluyor");applyPrefs();if(state&&state.updatedAt)snapshotSave();render();handleGo();setTimeout(fillFx,0)}
 
 /* ---------- giriş ekranı ---------- */
 const AUTH_ERR={"Invalid login credentials":"E-posta veya şifre hatalı.","Email not confirmed":"E-posta adresiniz henüz onaylanmamış. Gelen kutunuzdaki bağlantıya tıklayın.","User already registered":"Bu e-posta ile zaten bir hesap var. Giriş yapın."};
@@ -1879,7 +1888,32 @@ function field(f){
   if(f.type==="select")return `<div class="field" id="w_${f.id}" ${f.hidden?"hidden":""}><label for="${id}">${f.label}</label><select id="${id}" name="${f.id}">${f.options.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(f.value)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
   if(f.type==="seg")return `<div class="field"><label>${f.label}</label><div class="seg full" role="group" data-seg="${f.id}">${f.options.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${f.value===v}">${l}</button>`).join("")}</div><input type="hidden" name="${f.id}" value="${esc(f.value)}"></div>`;
   const dl=f.list?`<datalist id="${id}_dl">${f.list.map(o=>`<option value="${esc(o)}">`).join("")}</datalist>`:"";
-  return `<div class="field${f.big?" big":""}" id="w_${f.id}"><label for="${id}">${f.label}</label>${dl}<input ${f.list?`list="${id}_dl"`:""} id="${id}" name="${f.id}" type="${f.type==="number"?"text":f.type||"text"}" ${f.type==="number"?'inputmode="decimal"':""} value="${esc(f.type==="number"&&f.value!==""&&f.value!=null?String(f.value).replace(".",","):f.value??"")}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`;
+  const dq=f.type==="date"?`<span class="dq"><button type="button" data-dq="0">Bugün</button><button type="button" data-dq="-1">Dün</button></span>`:"";
+  return `<div class="field${f.big?" big":""}${f.type==="date"?" has-dq":""}" id="w_${f.id}"><label for="${id}">${f.label}</label>${dq}${dl}<input ${f.list?`list="${id}_dl"`:""} id="${id}" name="${f.id}" type="${f.type==="number"?"text":f.type||"text"}" ${f.type==="number"?'inputmode="decimal" data-calc="1"':""} value="${esc(f.type==="number"&&f.value!==""&&f.value!=null?String(f.value).replace(".",","):f.value??"")}" ${f.ph?`placeholder="${esc(f.ph)}"`:""} autocomplete="off"></div>`;
+}
+/* Tutar kutularında basit hesap: "450+120+85", "3x250", "1.200/4". Kutudan çıkınca ya da kaydederken sonuç yazılır. */
+function calcEval(str){
+  const s=String(str||"").replace(/\s/g,"").replace(/[x×]/gi,"*").replace(/÷/g,"/").replace(/−/g,"-");
+  if(!/[+\-*/]/.test(s.replace(/^-/,""))||!/^[-+*/().,\d]+$/.test(s))return null;
+  const tk=s.match(/\d[\d.,]*|[-+*/()]/g);if(!tk||tk.join("")!==s)return null;let i=0;
+  const num=()=>{const t=tk[i];if(t==="("){i++;const v=add();if(tk[i]!==")")throw 0;i++;return v}if(t==="-"){i++;return -num()}if(t==="+"){i++;return num()}const v=/^\d{1,3}(\.\d{3})+$/.test(t)?+t.replace(/\./g,""):parseNum(t);if(isNaN(v))throw 0;i++;return v};
+  const mul=()=>{let v=num();while(tk[i]==="*"||tk[i]==="/"){const o=tk[i++],r=num();v=o==="*"?v*r:v/r}return v};
+  const add=()=>{let v=mul();while(tk[i]==="+"||tk[i]==="-"){const o=tk[i++],r=mul();v=o==="+"?v+r:v-r}return v};
+  try{const v=add();return i===tk.length&&isFinite(v)?Math.round(v*100)/100:null}catch(e){return null}
+}
+const calcOut=v=>String(v).replace(".",",");
+function calcAll(form){form.querySelectorAll("[data-calc]").forEach(inp=>{const v=calcEval(inp.value);if(v!=null)inp.value=calcOut(v)})}
+function calcBind(form){
+  form.querySelectorAll("[data-calc]").forEach(inp=>{
+    const fld=inp.closest(".field");let pv=null;
+    const upd=()=>{const v=calcEval(inp.value);if(v==null){if(pv){pv.remove();pv=null}return}if(!pv){pv=document.createElement("div");pv.className="calc-pv";fld.appendChild(pv)}pv.textContent="= "+fmtN(v,2)};
+    inp.addEventListener("input",upd);
+    inp.addEventListener("blur",()=>{const v=calcEval(inp.value);if(v!=null){inp.value=calcOut(v);if(pv){pv.remove();pv=null}inp.dispatchEvent(new Event("change",{bubbles:true}))}});
+    if(fld.classList.contains("big")){const k=document.createElement("div");k.className="calc-keys";k.innerHTML=["+","−","×","÷"].map(o=>`<button type="button" tabindex="-1" aria-label="${o}">${o}</button>`).join("");
+      k.addEventListener("pointerdown",e=>e.preventDefault());
+      k.onclick=e=>{const b=e.target.closest("button");if(!b)return;const o=b.textContent,p=inp.selectionStart??inp.value.length;inp.value=inp.value.slice(0,p)+o+inp.value.slice(inp.selectionEnd??p);inp.focus();inp.setSelectionRange(p+1,p+1);upd()};
+      fld.appendChild(k)}
+  });
 }
 /* yazdıkça öneri: kod başlangıcına veya adın içine göre eşleşir */
 function attachSugg(inp,getList,onPick){
@@ -1908,9 +1942,11 @@ function formSheet({title,fields,onSave,onDelete,extra="",onChange,onOpen}){
   const rows=fields.map(f=>Array.isArray(f)?`<div class="frow">${f.map(field).join("")}</div>`:field(f)).join("");
   openSheet(`<h3>${title}</h3><form class="form" id="sf" novalidate>${rows}${extra}<div class="err" id="sfErr"></div><div class="actions">${onDelete?`<button type="button" class="btn danger" id="sfDel">${ic(I.trash,18)}<span>Sil</span></button>`:""}<button type="submit" class="btn primary grow">Kaydet</button></div></form>`,sh=>{
     const form=sh.querySelector("#sf");
+    calcBind(form);
+    form.querySelectorAll("[data-dq]").forEach(b=>b.onclick=()=>{const inp=b.closest(".field").querySelector("input");inp.value=addDays(todayISO(),+b.dataset.dq);inp.dispatchEvent(new Event("input",{bubbles:true}));inp.dispatchEvent(new Event("change",{bubbles:true}))});
     sh.querySelectorAll("[data-seg]").forEach(g=>g.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;g.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));form.elements[g.dataset.seg].value=b.dataset.v;onChange&&onChange(form,g.dataset.seg)}));
     form.addEventListener("change",e=>onChange&&onChange(form,e.target.name));
-    form.addEventListener("submit",e=>{e.preventDefault();const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const err=onSave(vals);if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()});
+    form.addEventListener("submit",e=>{e.preventDefault();calcAll(form);const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const err=onSave(vals);if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()});
     if(onDelete){const d=sh.querySelector("#sfDel");d.onclick=()=>{if(d.dataset.c){withUndo(onDelete);closeSheet()}else{d.dataset.c="1";d.textContent="Evet, sil";d.classList.add("solid")}}}
     onOpen&&onOpen(form,sh);
   });
