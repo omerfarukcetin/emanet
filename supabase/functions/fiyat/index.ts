@@ -39,7 +39,7 @@ async function quote(kind: string, s: string) {
     try {
       const d = await (await get(`https://${h}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym(kind, s))}?interval=1d&range=1d`)).json();
       const m = d?.chart?.result?.[0]?.meta;
-      if (m && m.regularMarketPrice > 0) return { p: +m.regularMarketPrice, cur: m.currency || (kind === "hisse" ? "TRY" : "USD"), t: new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString() };
+      if (m && m.regularMarketPrice > 0) return { p: +m.regularMarketPrice, pc: +(m.chartPreviousClose || m.previousClose) || 0, cur: m.currency || (kind === "hisse" ? "TRY" : "USD"), t: new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString() };
     } catch { /* diğer sunucu */ }
   }
   return null;

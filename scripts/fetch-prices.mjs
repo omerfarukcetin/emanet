@@ -158,7 +158,7 @@ async function yahoo(it) {
     try {
       const d = await (await get(`https://${host}.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&range=1d`)).json();
       const m = d?.chart?.result?.[0]?.meta;
-      if (m && m.regularMarketPrice > 0) return { p: +m.regularMarketPrice, cur: m.currency || it.cur, t: new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString() };
+      if (m && m.regularMarketPrice > 0) return { p: +m.regularMarketPrice, pc: +(m.chartPreviousClose || m.previousClose) || 0, cur: m.currency || it.cur, t: new Date((m.regularMarketTime || Date.now() / 1000) * 1000).toISOString() };
       last = new Error("fiyat yok");
     } catch (e) { last = e; }
     await sleep(400);
@@ -201,8 +201,8 @@ async function tefas(code) {
   const rows = rowsOf(d).map((r, i) => ({ p: num(field(r, /^fiyat$/i) ?? field(r, /fiyat|price/i)), d: parseDay(field(r, /tarih|date/i)), i })).filter(r => r.p > 0);
   if (rows.length) {
     const dated = rows.filter(r => r.d).sort((a, b) => b.d - a.d);
-    const best = dated[0] || rows[rows.length - 1];
-    return { p: best.p, cur: "TRY", t: (best.d || new Date()).toISOString().slice(0, 10) };
+    const best = dated[0] || rows[rows.length - 1], prevRow = dated[1];
+    return { p: best.p, pc: prevRow ? prevRow.p : 0, cur: "TRY", t: (best.d || new Date()).toISOString().slice(0, 10) };
   }
   // yedek: fon özet bilgisi içindeki son fiyat
   await sleep(1100);
@@ -225,7 +225,7 @@ for (const it of market) {
     const q = await yahoo(it);
     // kripto TL olarak izleniyorsa dolar fiyatını kurla çevir
     if (it.kind === "kripto" && it.cur === "TRY" && q.cur === "USD" && fx.USD > 0) { q.p = q.p * fx.USD; q.cur = "TRY"; }
-    if (sane(q.p, quotes[key]?.cur === q.cur ? quotes[key].p : 0)) { quotes[key] = { p: +q.p.toFixed(q.p < 10 ? 4 : 2), cur: q.cur, t: q.t }; sources.add("Yahoo Finance"); }
+    if (sane(q.p, quotes[key]?.cur === q.cur ? quotes[key].p : 0)) { quotes[key] = { p: +q.p.toFixed(q.p < 10 ? 4 : 2), cur: q.cur, t: q.t, ...(q.pc > 0 ? { pc: +q.pc.toFixed(q.pc < 10 ? 4 : 2) } : {}) }; sources.add("Yahoo Finance"); }
     else errors.push(`${it.symbol}: fiyat önceki değerden çok farklı (${q.p}), kaydedilmedi`);
   } catch (e) { errors.push(`${it.symbol}: fiyat alınamadı (${e.message})`); }
   await sleep(350);
@@ -236,7 +236,7 @@ if (funds.length) {
     const key = it.kind + ":" + it.symbol;
     try {
       const q = await tefas(it.symbol);
-      if (sane(q.p, quotes[key]?.p)) { quotes[key] = { p: +q.p.toFixed(6), cur: "TRY", t: q.t }; sources.add("TEFAS"); }
+      if (sane(q.p, quotes[key]?.p)) { quotes[key] = { p: +q.p.toFixed(6), cur: "TRY", t: q.t, ...(q.pc > 0 ? { pc: +q.pc.toFixed(6) } : {}) }; sources.add("TEFAS"); }
       else errors.push(`${it.symbol}: fon fiyatı önceki değerden çok farklı (${q.p}), kaydedilmedi`);
       row = 0;
     } catch (e) {

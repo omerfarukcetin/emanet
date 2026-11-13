@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.71";
+const APP_VERSION="2.72";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -175,9 +175,13 @@ function dayPL(h){
   else if(k){u0=+cp.p[k]*fx0(h.cur);s0=fx0("USD")}
   else if(cp&&!ep.auto&&fx0(h.cur)>0&&fx0("USD")>0){u0=ep.p*fx0(h.cur);s0=fx0("USD")}   // elle girilen fiyat (BES gibi): gün içinde fiyat değişmez, yalnızca kur etkisi
   else{
-    const ref=dayRef();if(!ref)return null;const r=ref.h[h.id];
-    if(r&&!(r.a===0&&ep.auto)){u0=r.u;s0=r.s}                                         // elle girilen fiyattan otomatiğe geçtiyse karşılaştırılmaz
-    else if(h.buyDate&&h.buyDate>ref.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}
+    /* kaynağın kendi "önceki kapanış" fiyatı (Yahoo, TEFAS): sunucunun dünkü kaydında olmayan yeni varlıklar için */
+    const qk=ep.auto&&market&&market.quotes?[...closeKey(h).map(x=>x.slice(2))].map(x=>market.quotes[x]).find(x=>x&&+x.pc>0):null;
+    const ref=dayRef(),r=ref&&ref.h[h.id];
+    if(qk){u0=+qk.pc*(cp&&fx0(h.cur)>0?fx0(h.cur):rate(h.cur));s0=cp&&fx0("USD")>0?fx0("USD"):usd}
+    else if(r&&!(r.a===0&&ep.auto)){u0=r.u;s0=r.s}                                    // elle girilen fiyattan otomatiğe geçtiyse karşılaştırılmaz
+    else if(ref&&h.buyDate&&h.buyDate>ref.d){u0=costIn(h,"TRY")/q;s0=fxOf(h,"USD")}
+    else if(!ep.auto){u0=uNow;s0=usd}                                                 // elle fiyat: gün içinde değişmez
     else return null;
   }
   if(!(u0>0)||!(s0>0)||!(usd>0))return null;
@@ -203,7 +207,7 @@ function plChips(hs,v,c){
   const d=daySum(hs),dd=d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null;
   // tek rozet: dokununca Günlük ↔ Toplam arasında değişir
   const dl=d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük",x=day?dd:tot,label=day?dl:"Toplam",other=day?"toplam":"günlük";
-  return `<div class="plchips"><button class="delta one ${x?(x.pl>=0?"up":"down"):""}" data-act="plmode" aria-label="${label} kâr/zarar. ${other[0].toLocaleUpperCase("tr")+other.slice(1)} değişimi görmek için dokunun"><small>${label}</small>${x?`<b>${x.pl>=0?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span>%${fmtN(Math.abs(x.pct),day?2:1)}</span>`:`<b>—</b><span>yarın</span>`}<i class="swap" aria-hidden="true">${ic(I.akis,13)}</i></button></div>`;
+  return `<div class="plchips"><button class="delta one ${x?(x.pl>=0?"up":"down"):""}" data-act="plmode" aria-label="${label} kâr/zarar. ${other[0].toLocaleUpperCase("tr")+other.slice(1)} değişimi görmek için dokunun"><small>${label}</small>${x?`<b>${x.pl>=0?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span>%${fmtN(Math.abs(x.pct),day?2:1)}</span>`:`<b>—</b>`}<i class="swap" aria-hidden="true">${ic(I.akis,13)}</i></button></div>`;
 }
 /* Geniş ekranda üst kartın sağında: günlük, toplam kâr/zarar ve maliyet yan yana (telefonda tek rozet yeterli) */
 function heroStats(hs,v,c){
@@ -213,7 +217,7 @@ function heroStats(hs,v,c){
   const dv=divOf(hs),dvU=rate("USD")?dv*rate(S().base)/rate("USD"):0;
   const tot=usd?{pl:vU-cU+dvU,pct:cU?(vU-cU+dvU)/cU*100:0}:{pl:v-c+dv,pct:c?(v-c+dv)/c*100:0};
   const d=daySum(hs),dd=d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null;
-  const t=(l,x,dec)=>`<div class="hs ${x?(x.pl>=0?"up":"down"):""}"><small>${l}</small>${x?`<b class="num">${x.pl>=0?"+":"−"}${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span class="num">${x.pl>=0?"▲":"▼"} %${fmtN(Math.abs(x.pct),dec)}</span>`:`<b>—</b><span>${dayLabel()||"yarın"}</span>`}</div>`;
+  const t=(l,x,dec)=>`<div class="hs ${x?(x.pl>=0?"up":"down"):""}"><small>${l}</small>${x?`<b class="num">${x.pl>=0?"+":"−"}${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span class="num">${x.pl>=0?"▲":"▼"} %${fmtN(Math.abs(x.pct),dec)}</span>`:`<b>—</b><span>${dayLabel()||"—"}</span>`}</div>`;
   return `<div class="hstats">${t(d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük",dd,2)}${t("Toplam kâr/zarar",tot,1)}<div class="hs"><small>Maliyet</small><b class="num">${S().hide?"••••":fmt(usd?cU:c,cur,{dec:0})}</b><span>${hs.length} varlık</span></div></div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
@@ -1446,7 +1450,7 @@ function heat(x){
 }
 function vcell(x,h,n){
   const m=colMode(),hide=S().hide;
-  const pl=p=>p?`<small class="num ${p.pl>=0?"pos-t":"neg-t"}">${hide?"••••":(p.pl>=0?"+":"−")+fmt(Math.abs(p.pl),x.cur,{dec:0})} (${fmtPct(p.pct)})</small>`:`<small>${m==="day"?"yarın":"—"}</small>`;
+  const pl=p=>p?`<small class="num ${p.pl>=0?"pos-t":"neg-t"}">${hide?"••••":(p.pl>=0?"+":"−")+fmt(Math.abs(p.pl),x.cur,{dec:0})} (${fmtPct(p.pct)})</small>`:`<small>—</small>`;
   let b;
   if(m==="day")b=pl(x.day);
   else if(m==="total")b=pl(x.tot);
