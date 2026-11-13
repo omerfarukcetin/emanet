@@ -1024,3 +1024,10 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
   .arow[role=button]:hover,.row.li[role=button]:hover,.fam-r:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
   .fab{right:max(28px,calc((100vw - 248px - 1240px)/2 + 20px))}
 }
+
+/* ================= 2.48: borç ve alacak: portföy rengiyle ayrışır ================= */
+.row.li.d-row{--dc:var(--pos);--pc:var(--line);background:color-mix(in srgb,var(--pc) 8%,var(--surface));border-radius:14px;padding-left:12px;padding-right:10px;margin-block:5px;border:0;box-shadow:inset 4px 0 0 var(--pc)}
+.row.li.d-owe{--dc:var(--neg)}
+.row.li.d-row:not([style]){background:var(--surface);box-shadow:none;padding-inline:0;margin-block:0;border-radius:0}
+.dtag{display:inline-block;padding:0 7px;border-radius:99px;font-size:.72rem;font-weight:700;color:var(--dc);background:color-mix(in srgb,var(--dc) 14%,transparent)}
+.ptag{display:inline-block;padding:0 7px;border-radius:99px;font-size:.72rem;font-weight:700;color:var(--pc);background:color-mix(in srgb,var(--pc) 15%,transparent)}
