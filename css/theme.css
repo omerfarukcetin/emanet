@@ -1093,3 +1093,19 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .row.li[data-act="edit-tx"] .mk{width:30px;height:30px;border-radius:9px}
 .row.li[data-act="edit-tx"] .mk svg{width:16px;height:16px}
 .row.li[data-act="edit-tx"] .s{margin-top:0}
+
+/* ================= 2.55: kaydırarak portföy değiştirme ================= */
+.hero[data-swipe]{touch-action:pan-y}
+.hdots{display:inline-flex;gap:5px;margin-left:auto;align-self:center;padding-left:8px}
+.hdots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35);transition:width .2s}
+.hdots i.on{width:16px;border-radius:99px;background:#fff}
+.hdots i.all{border-radius:2px}
+.hero.net .subrow{display:flex;align-items:center;flex-wrap:wrap}
+@keyframes swL{from{transform:translateX(36px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes swR{from{transform:translateX(-36px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes swEdge{0%,100%{transform:none}30%{transform:translateX(-10px)}60%{transform:translateX(6px)}}
+.hero.sw-l{animation:swL .28s cubic-bezier(.2,.7,.2,1)}
+.hero.sw-r{animation:swR .28s cubic-bezier(.2,.7,.2,1)}
+.hero.sw-edge{animation:swEdge .3s ease}
+@media (prefers-reduced-motion:reduce){.hero.sw-l,.hero.sw-r,.hero.sw-edge{animation:none}}
+@media (min-width:1160px){.hdots{display:none}}

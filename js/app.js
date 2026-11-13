@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.54";
+const APP_VERSION="2.55";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -896,6 +896,23 @@ function onboarding(){
 /* Özet'te görüntülenen portföy: yalnızca bu cihazdaki görünümü değiştirir, ana portföyü değiştirmez.
    Gelir-gider, nakit bakiyesi, hedefler ve vadeler her zaman ana portföye bağlıdır. */
 /* Özet ve Portföy aynı portföy seçimini paylaşır; seçim bu cihazda hatırlanır. Portföy'deki "Tümü" yalnızca o sayfaya özgüdür. */
+/* Üst kartı sağa/sola kaydırarak portföy değiştirme; kartın altındaki noktalar sırayı gösterir */
+function swipeList(withAll){return(withAll?["all"]:[]).concat(state.portfolios.map(p=>p.id))}
+function pfDots(id,withAll){const L=swipeList(withAll);if(L.length<2)return"";return `<span class="hdots" aria-hidden="true">${L.map(x=>`<i class="${x===id?"on":""}${x==="all"?" all":""}"></i>`).join("")}</span>`}
+function swipeTo(el,dir){
+  const withAll=el.dataset.swipe==="portfoy"&&state.portfolios.length>1,L=swipeList(withAll),i=L.indexOf(el.dataset.pfid||(withAll?"all":L[0])),j=i+dir;
+  if(j<0||j>=L.length){el.classList.remove("sw-edge");void el.offsetWidth;el.classList.add("sw-edge");return}
+  const id=L[j];if(id==="all")view.pf="all";else setPf(id);
+  view.swipe=dir>0?"l":"r";render();view.swipe=null;
+  const ch=document.querySelector("main .chips [aria-pressed=true]");if(ch){const r=ch.parentElement;r.scrollTo({left:ch.offsetLeft-(r.clientWidth-ch.offsetWidth)/2,behavior:"smooth"})}
+}
+(()=>{let x0=null,y0=0,el=null,t0=0;
+  document.addEventListener("touchstart",e=>{const h=e.target.closest(".hero[data-swipe]");if(!h||e.touches.length!==1||e.target.closest("button,a,input"))return;el=h;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
+  document.addEventListener("touchmove",e=>{if(x0==null||!el)return;const dx=e.touches[0].clientX-x0,dy=e.touches[0].clientY-y0;if(Math.abs(dx)>Math.abs(dy)*1.3)el.style.transform=`translateX(${Math.max(-60,Math.min(60,dx*.35))}px)`},{passive:true});
+  document.addEventListener("touchend",e=>{if(x0==null||!el)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0,h=el;el.style.transform="";x0=null;el=null;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5&&Date.now()-t0<900)swipeTo(h,dx<0?1:-1)});
+  document.addEventListener("touchcancel",()=>{if(el)el.style.transform="";x0=null;el=null});
+})();
 function setPf(id){view.pf=id;view.ozPf=id;try{localStorage.setItem("emanet-ozpf",id)}catch(e){}}
 const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf();
 function rOzet(){
@@ -912,13 +929,13 @@ function rOzet(){
   const P={};
   const top=`
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}</div>`:""}
-  <section class="hero net">
+  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}">
     <div class="hero-top"><div style="min-width:0">
       <span class="label">${mp?esc(mp.name)+(state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div></div>
     ${mp?plChips(hs,t.v,t.c)+heroStats(hs,t.v,t.c):""}
-    <div class="subrow">${eqvChips(t.v)}</div>
+    <div class="subrow">${eqvChips(t.v)}${pfDots(mp?mp.id:"",false)}</div>
   </section>
   `;
   P.attn=`${onMain?attnCard():""}`;
@@ -1174,11 +1191,11 @@ function rPortfoy(){
     ${cur?`<button class="chip add" data-act="edit-pf" data-id="${cur.id}" aria-label="${esc(cur.name)} portföyünü düzenle">${ic(I.edit,14)} Düzenle</button>`:""}
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
-  <section class="hero net">
+  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="portfoy" data-pfid="${cur?cur.id:"all"}">
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
     ${plChips(hs,v,c)}${heroStats(hs,v,c)}
-    <div class="subrow">${eqvChips(v)}</div>
+    <div class="subrow">${eqvChips(v)}${pfDots(cur?cur.id:"all",state.portfolios.length>1)}</div>
   </section>
   ${(()=>{const u=ufeSum(hs);
     const parts=[u.c?`<div class="ufe-line"><div><span class="label">Yİ-ÜFE maliyeti</span><div class="v num">${fmt(u.c)}</div></div><div><span class="label">Reel kâr / zarar</span><div class="v num ${u.pl>=0?"pos-t":"neg-t"}">${fmt(u.pl)} <small>${fmtPct(u.plp)}</small></div></div></div><div class="sub">TL maliyet, alış ayından önceki aydan ${fmtYM(ufeEnd().ym)}'a kadar Yİ-ÜFE artışıyla güncellendi${u.n?`; alış tarihi olmayan ${u.n} varlık hariç`:""}.</div>`:"",
