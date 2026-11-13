@@ -2,7 +2,7 @@
 const V = "emanet-v42";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
-  "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "manifest.webmanifest", "data/ufe.json", "data/market.json"];
+  "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== NC).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

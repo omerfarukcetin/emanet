@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.48";
+const APP_VERSION="2.49";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -59,7 +59,7 @@ const fmtH=iso=>{if(!iso)return"";const h=toH(iso);return h.d+" "+HM[h.m-1]+" "+
 const defaultSettings=()=>({theme:"system",accent:"kobalt",fontSize:"m",compact:false,base:"TRY",rates:{USD:44,EUR:51},goldGram:0,coins:{cumhuriyet:0,hamit:0,aziz:0,resat:0},ratesUpdated:null,autoPrices:true,feeRate:0,tone:"gri",nisabGram:96,hawlH:null,hawlStart:"",hawlSet:true,zakatRecv:true,zakatDebt:true,zakatKinds:{hisse:true,abd:true,fon:true,ppf:true,altin:true,gumus:true,doviz:true,kripto:true,nakit:true,mevduat:true,bes:false,emlak:false,diger:true},hide:false,start:"ozet"});
 const emptyState=()=>({v:1,updatedAt:0,settings:defaultSettings(),portfolios:[],tx:[],debts:[],zakatPaid:[],cards:[],recurring:[],goals:[],alerts:[],budgets:{}});
 
-let ufe=null;
+let ufe=null,tufe=null;
 let fxhist={}, market=null, lastWatch="[]", fxBusy=false;
 let sb=null, sbUser=null;
 try{fxhist=JSON.parse(localStorage.getItem(FXK)||"{}")||{}}catch(e){}
@@ -560,6 +560,7 @@ async function loadMarket(announce){
 let bench=null;
 async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
 async function loadBench(){for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){bench=d;if(ready&&view.tab==="portfoy")render();return}}catch(e){}}}
+async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
 
@@ -647,7 +648,7 @@ function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)){vie
 window.addEventListener("hashchange",()=>{if(hashTab()&&ready)render()});
 async function boot(){
   hashTab();
-  loadMarket();loadUfe();loadBench();
+  loadMarket();loadUfe();loadTufe();loadBench();
   setInterval(()=>{if(!document.hidden)loadMarket()},3*6e4);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadMarket();pull()}});
   const net=()=>{if(!navigator.onLine)setSync("local","Çevrimdışı · değişiklikler cihazda");else if(cloudOn()){pull()}else if(ready)setSync("local",sb?"Girişsiz · bu cihazda":"Bu cihazda tutuluyor")};
@@ -1554,37 +1555,72 @@ function ufeLevel(d){
   const ym=d.slice(0,7),v0=at(prevMonth(d)),v1=at(ym);if(!v0||!v1)return null;
   return{v:v0*Math.pow(v1/v0,(+d.slice(8))/dim(+ym.slice(0,4),+ym.slice(5,7))),est:ym>L};
 }
+/* TÜFE düzeyi: aylık değişimler zincirlenir; ay içinde gün oranında ilerler. Açıklanmamış aylar son ayın hızıyla tahmin edilir. */
+function tufeLevel(d){
+  if(!tufe||!tufe.m)return null;
+  const ks=Object.keys(tufe.m).sort(),L=tufe.latest||ks[ks.length-1],first=ks[0];
+  const ym=d.slice(0,7);if(ym<first)return null;
+  const rate=k=>k<=L?(tufe.m[k]!=null?+tufe.m[k]:null):+tufe.m[L];
+  let lv=100,k=first;while(k<ym){const r=rate(k);if(r==null)return null;lv*=1+r/100;k=nextMonth(k)}
+  const r=rate(ym);if(r==null)return null;
+  return{v:lv*Math.pow(1+r/100,(+d.slice(8))/dim(+ym.slice(0,4),+ym.slice(5,7))),est:ym>L};
+}
+const nextMonth=ym=>{let y=+ym.slice(0,4),m=+ym.slice(5,7)+1;if(m>12){m=1;y++}return y+"-"+String(m).padStart(2,"0")};
+function bAt(key,d){const x=bench&&bench[key];if(!x)return 0;for(let i=0;i<8;i++){const v=+x[addDays(d,-i)];if(v>0)return v}return 0}
+/* Karşılaştırılan her seçeneğin bir gündeki TL değeri */
+const BENCH=[
+  {k:"g",n:"Gram altın",c:"--c1",at:(d,r)=>{const o=bAt("xau",d),u=bAt("usd",d);return o&&u?o*u/31.1035:(r&&r.g)||0}},
+  {k:"usd",n:"Dolar",c:"--c3",at:(d,r)=>bAt("usd",d)||(r&&r.usd)||0},
+  {k:"eur",n:"Euro",c:"--c10",at:d=>bAt("eur",d)},
+  {k:"xag",n:"Gram gümüş",c:"--c7",at:d=>{const o=bAt("xag",d),u=bAt("usd",d);return o&&u?o*u/31.1035:0}},
+  {k:"xu",n:"BIST 100",c:"--c2",at:d=>bAt("xu100",d)},
+  {k:"spx",n:"S&P 500 (TL)",c:"--c8",at:d=>{const o=bAt("spx",d),u=bAt("usd",d);return o&&u?o*u:0}},
+  {k:"tufe",n:"Enflasyon",c:"--c4",at:d=>{const t=tufeLevel(d);return t?t.v:0},infl:true}
+];
 function benchCalc(ids,range){
   const rows=histRows(ids,range);if(rows.length<2)return null;
   const a=rows[0],z=rows[rows.length-1];
   const sellPL={};state.portfolios.filter(p=>ids.includes(p.id)).forEach(p=>p.holdings.forEach(h=>(h.trades||[]).forEach(t=>{if(t.type==="sell"&&t.date&&t.pl!=null)sellPL[t.date]=(sellPL[t.date]||0)+(+t.pl||0)*rate(h.cur)})));
   const sd=Object.keys(sellPL);
-  let idx=1;
-  for(let i=1;i<rows.length;i++){const p=rows[i-1],r=rows[i];if(!(p.v>0))continue;
+  let idx=1;const pfLine=[{d:a.d,v:0}];
+  for(let i=1;i<rows.length;i++){const p=rows[i-1],r=rows[i];if(p.v>0){
     let F=r.c-p.c;sd.forEach(d=>{if(d>p.d&&d<=r.d)F-=sellPL[d]});
     const g=(r.v-F)/p.v;if(g>0&&isFinite(g))idx*=g}
-  const items=[{k:"pf",n:"Portföy",v:(idx-1)*100}];
-  if(a.g>0&&z.g>0)items.push({k:"g",n:"Gram altın",v:(z.g/a.g-1)*100});
-  if(a.usd>0&&z.usd>0)items.push({k:"usd",n:"Dolar",v:(z.usd/a.usd-1)*100});
-  const x0=benchAt(a.d),x1=benchAt(z.d);if(x0>0&&x1>0)items.push({k:"xu",n:"BIST 100",v:(x1/x0-1)*100});
-  const u0=ufeLevel(a.d),u1=ufeLevel(z.d);let est=false;
-  if(u0&&u1){items.push({k:"ufe",n:"Enflasyon (Yİ-ÜFE)",v:(u1.v/u0.v-1)*100});est=u0.est||u1.est}
-  return{from:a.d,to:z.d,days:daysBetween(a.d,z.d),items,est};
+    pfLine.push({d:r.d,v:(idx-1)*100})}
+  const items=[{k:"pf",n:"Portföy",c:"--accent",v:(idx-1)*100,line:pfLine}];
+  BENCH.forEach(B=>{const x0=B.at(a.d,a),x1=B.at(z.d,z);if(!(x0>0&&x1>0))return;
+    items.push({k:B.k,n:B.n,c:B.c,infl:B.infl,v:(x1/x0-1)*100,line:rows.map(r=>{const x=B.at(r.d,r);return{d:r.d,v:x>0?(x/x0-1)*100:null}})})});
+  const t0=tufeLevel(a.d),t1=tufeLevel(z.d);
+  return{from:a.d,to:z.d,days:daysBetween(a.d,z.d),items,est:!!((t0&&t0.est)||(t1&&t1.est)),start:a.v};
+}
+/* Çizgi grafik: her seçeneğin dönem başından bu yana % değişimi; seçili olan öne çıkar */
+function benchChart(b,sel){
+  const W=320,H=130,P=6,all=b.items.flatMap(i=>i.line.map(p=>p.v).filter(v=>v!=null));
+  let lo=Math.min(0,...all),hi=Math.max(0,...all);if(hi-lo<1){hi+=.5;lo-=.5}
+  const n=b.items[0].line.length,x=i=>P+(W-2*P)*(n>1?i/(n-1):0),y=v=>P+(H-2*P)*(1-(v-lo)/(hi-lo));
+  const path=it=>{let d="",pen=false;it.line.forEach((p,i)=>{if(p.v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+y(p.v).toFixed(1);pen=true});return d};
+  const order=b.items.slice().sort((p,q)=>(p.k===sel)-(q.k===sel)||(p.k==="pf")-(q.k==="pf"));
+  return `<svg class="bn-ch" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Dönem boyunca getiri çizgileri">
+    <line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" class="bn-0"/>
+    ${order.map(it=>`<path d="${path(it)}" fill="none" stroke="var(${it.c})" class="${it.k==="pf"?"pf ":""}${sel&&it.k===sel?"on":sel&&it.k!=="pf"?"dim":""}" vector-effect="non-scaling-stroke"/>`).join("")}
+  </svg><div class="bn-ax"><span>${fmtDate(b.from)}</span><span>${fmtDate(b.to)}</span></div>`;
 }
 function benchCard(ids){
   const range=view.hRange||90,b=benchCalc(ids,range);
   const segR=`<div class="seg" role="group" aria-label="Dönem">${[[30,"1A"],[90,"3A"],[365,"1Y"],["all","Tümü"]].map(([k,l])=>`<button data-act="hrange" data-k="${k}" aria-pressed="${String(range)===String(k)}">${l}</button>`).join("")}</div>`;
   if(!b)return `<section class="card side"><div class="sec"><h2>Getiri karşılaştırması</h2></div><div class="sub" style="margin-top:6px">Karşılaştırma için en az iki ayrı günün kaydı gerekir. Uygulamayı açtığınız her gün portföy değeri kaydedilir; ${histRows(ids,"all").length>=2?"daha uzun bir dönem seçerseniz görünür.":"yarından itibaren burada görünür."}</div>${histRows(ids,"all").length>=2?`<div style="margin-top:10px">${segR}</div>`:""}</section>`;
+  const sel=b.items.some(i=>i.k===view.bnSel)?view.bnSel:null;
   const it=b.items.slice().sort((x,y)=>y.v-x.v),mx=Math.max(...it.map(i=>Math.abs(i.v)),.01);
-  const pf=b.items[0],ufeI=b.items.find(i=>i.k==="ufe"),alt=it.filter(i=>i.k!=="pf"&&i.k!=="ufe"),best=alt[0];
-  const pts=v=>fmtN(Math.abs(v),1)+" puan";
+  const pf=b.items[0],inf=b.items.find(i=>i.infl),alt=it.filter(i=>i.k!=="pf"&&!i.infl),best=alt[0],S0=b.start;
+  const pts=v=>fmtN(Math.abs(v),1)+" puan",amt=v=>S().hide?"••••":fmt(S0*(1+v/100),null,{dec:0});
   let verdict="";
-  if(best)verdict=pf.v>=best.v?`Portföyünüz bu dönemde altın, dolar ve borsanın hepsinden iyi getirdi; en yakını ${best.n} (${pts(pf.v-best.v)} geride).`:`Bu dönemin en iyisi ${best.n} oldu; portföyünüz ondan ${pts(best.v-pf.v)} geride kaldı.`;
-  const real=ufeI?((1+pf.v/100)/(1+ufeI.v/100)-1)*100:null;
+  if(best)verdict=pf.v>=best.v?`Portföyünüz bu dönemde karşılaştırılan seçeneklerin hepsinden iyi getirdi; en yakını ${best.n} (${pts(pf.v-best.v)} geride).`:`Bu dönemin en iyisi ${best.n} oldu; portföyünüz ondan ${pts(best.v-pf.v)} geride kaldı. Dönem başındaki ${amt(0)} ${best.n} olarak dursaydı bugün ${amt(best.v)} olurdu, portföyde ${amt(pf.v)} oldu.`;
+  const real=inf?((1+pf.v/100)/(1+inf.v/100)-1)*100:null;
   return `<section class="card side"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Getiri karşılaştırması</h2>${segR}</div>
-    <div class="bn" role="list">${it.map(i=>`<div class="bn-row ${i.k==="pf"?"me":""}" role="listitem"><span class="bn-n">${i.n}</span><span class="bn-bar" aria-hidden="true"><i class="${i.v<0?"neg":""}" style="width:${Math.max(2,Math.abs(i.v)/mx*100).toFixed(1)}%"></i></span><b class="num ${i.v>=0?"pos-t":"neg-t"}">${fmtPct(i.v)}</b></div>`).join("")}</div>
-    ${verdict?`<p class="bn-v">${verdict}${real!=null?` Enflasyondan arındırılmış getiriniz <b class="${real>=0?"pos-t":"neg-t"}">${fmtPct(real)}</b>.`:""}</p>`:""}
-    <div class="sub">${fmtDate(b.from)} – ${fmtDate(b.to)} · ${b.days} gün. Para ekleyip çekmeniz getiriyi değiştirmez; yalnızca fiyat hareketi ölçülür.${b.est?" Son ayın enflasyonu henüz açıklanmadığı için tahminidir.":""}${b.items.some(i=>i.k==="xu")?"":" BIST 100 verisi birkaç saat içinde eklenecek."}</div></section>`;
+    ${b.items[0].line.length>=3?benchChart(b,sel):""}
+    <div class="bn" role="list">${it.map(i=>`<button class="bn-row ${i.k==="pf"?"me":""} ${sel===i.k?"on":""}" role="listitem" data-act="bnsel" data-k="${i.k}" style="--bc:var(${i.c})" aria-pressed="${sel===i.k}"><span class="bn-n"><i class="bn-dot"></i>${i.n}</span><span class="bn-bar" aria-hidden="true"><i class="${i.v<0?"neg":""}" style="width:${Math.max(2,Math.abs(i.v)/mx*100).toFixed(1)}%"></i></span><b class="num ${i.v>=0?"pos-t":"neg-t"}">${fmtPct(i.v)}</b><small class="bn-a num">${amt(i.v)}</small></button>`).join("")}</div>
+    ${verdict?`<p class="bn-v">${verdict}${real!=null?` Enflasyondan (TÜFE) arındırılmış getiriniz <b class="${real>=0?"pos-t":"neg-t"}">${fmtPct(real)}</b>.`:""}</p>`:""}
+    <div class="sub">${fmtDate(b.from)} – ${fmtDate(b.to)} · ${b.days} gün. Sağdaki tutarlar, dönem başındaki ${amt(0)} o seçenekte dursaydı bugün ne olacağını gösterir. Para ekleyip çekmeniz getiriyi değiştirmez; yalnızca fiyat hareketi ölçülür.${b.est?" Son ayların enflasyonu henüz açıklanmadığı için tahminidir.":""} Bir satıra dokunarak çizgisini öne çıkarın.</div></section>`;
 }
 
 /* ---------- gelir-gider: arama ve süzme ---------- */
@@ -2507,6 +2543,7 @@ document.addEventListener("click",e=>{
   if(a==="histtoggle"){view.histOpen=!view.histOpen;render();return}
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
+  if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");
   if(a==="csv-t")return exportCSV("islemler");

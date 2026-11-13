@@ -257,30 +257,35 @@ else {
 }
 if (errors.length) console.log("Notlar:\n- " + errors.join("\n- "));
 
-// ---------- karşılaştırma: BIST 100 günlük kapanışları (data/bench.json) ----------
-// Uygulamadaki "getiri karşılaştırması" bu dosyayı okur. İlk çalışmada iki yıllık geçmiş alınır,
-// sonraki çalışmalarda yalnızca son günler eklenir. Alınamazsa dosyaya dokunulmaz.
-try {
-  const BF = "data/bench.json", B = await readJSON(BF, {}), xu = { ...(B.xu100 || {}) };
-  const range = Object.keys(xu).length < 200 ? "2y" : "5d";
-  let d = null;
-  for (const host of ["query1", "query2"]) {
-    try { d = (await (await get(`https://${host}.finance.yahoo.com/v8/finance/chart/XU100.IS?interval=1d&range=${range}`)).json())?.chart?.result?.[0]; if (d) break; } catch { /* diğer sunucuyu dene */ }
-    await sleep(400);
+// ---------- karşılaştırma serileri: günlük kapanışlar (data/bench.json) ----------
+// Uygulamadaki "getiri karşılaştırması" bu dosyayı okur: BIST 100, dolar, euro, ons altın ve gümüş (USD), S&P 500 (USD).
+// Her seri için ilk çalışmada iki yıllık geçmiş alınır, sonra yalnızca son günler eklenir. Alınamayan seriye dokunulmaz.
+{
+  const BF = "data/bench.json", B = await readJSON(BF, {}), out = { ...B };
+  const SERIES = [["xu100", "XU100.IS"], ["usd", "USDTRY=X"], ["eur", "EURTRY=X"], ["xau", "GC=F"], ["xag", "SI=F"], ["spx", "^GSPC"]];
+  let changed = false;
+  for (const [key, sym] of SERIES) {
+    try {
+      const cur = { ...(B[key] || {}) }, range = Object.keys(cur).length < 200 ? "2y" : "5d";
+      let d = null;
+      for (const host of ["query1", "query2"]) {
+        try { d = (await (await get(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=${range}`)).json())?.chart?.result?.[0]; if (d) break; } catch { /* diğer sunucuyu dene */ }
+        await sleep(400);
+      }
+      const ts = d?.timestamp || [], cl = d?.indicators?.quote?.[0]?.close || [];
+      let n = 0;
+      ts.forEach((t, i) => { const v = +cl[i]; if (v > 0) { cur[new Date((t + 3 * 3600) * 1000).toISOString().slice(0, 10)] = +v.toFixed(4); n++; } });
+      const m = d?.meta;
+      if (m && m.regularMarketPrice > 0) { cur[new Date(((m.regularMarketTime || Date.now() / 1000) + 3 * 3600) * 1000).toISOString().slice(0, 10)] = +(+m.regularMarketPrice).toFixed(4); n++; }
+      if (!n) throw new Error("veri yok");
+      const keys = Object.keys(cur).sort().slice(-1600), o = {};
+      for (const k of keys) o[k] = cur[k];
+      if (JSON.stringify(o) !== JSON.stringify(B[key] || {})) { out[key] = o; changed = true; console.log(`${key}: ${keys.length} gün (son ${keys[keys.length - 1]}: ${o[keys[keys.length - 1]]})`); }
+    } catch (e) { console.log(`${key} alınamadı: ${e.message}`); }
+    await sleep(300);
   }
-  const ts = d?.timestamp || [], cl = d?.indicators?.quote?.[0]?.close || [];
-  let n = 0;
-  ts.forEach((t, i) => { const v = +cl[i]; if (v > 0) { xu[new Date((t + 3 * 3600) * 1000).toISOString().slice(0, 10)] = +v.toFixed(2); n++; } });
-  const m = d?.meta;
-  if (m && m.regularMarketPrice > 0) { xu[new Date(((m.regularMarketTime || Date.now() / 1000) + 3 * 3600) * 1000).toISOString().slice(0, 10)] = +(+m.regularMarketPrice).toFixed(2); n++; }
-  if (!n) throw new Error("veri yok");
-  const keys = Object.keys(xu).sort().slice(-1600), out = {};
-  for (const k of keys) out[k] = xu[k];
-  if (JSON.stringify(out) !== JSON.stringify(B.xu100 || {})) {
-    await fs.writeFile(BF, JSON.stringify({ updatedAt: new Date().toISOString(), xu100: out }) + "\n");
-    console.log(`BIST 100: ${keys.length} günlük kayıt (son ${keys[keys.length - 1]}: ${out[keys[keys.length - 1]]})`);
-  }
-} catch (e) { console.log("BIST 100 alınamadı: " + e.message); }
+  if (changed) { out.updatedAt = new Date().toISOString(); await fs.writeFile(BF, JSON.stringify(out) + "\n"); }
+}
 
 // ---------- gün içi değişim için: bugünün ve bir önceki günün fiyatları (data/close.json) ----------
 // Büyük hareket uyarısı bu dosyadan hesaplanır. Gün (Türkiye saatiyle) değişince bugünün son fiyatları "önceki gün" olur.
