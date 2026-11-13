@@ -1195,3 +1195,11 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .row[data-act="edit-tr"]{min-height:0;padding-block:7px}
 .row[data-act="edit-tr"] .mk{width:30px;height:30px;border-radius:9px}
 .row[data-act="edit-tr"] .mk svg{width:16px;height:16px}
+
+/* ================= 2.76: Özet ve Bütçe'de aynı rakam ölçüleri =================
+   1. düzey: üst kartın ana tutarı (Özet'te portföy, Bütçe'de bu ay kalan)
+   2. düzey: kart içi önemli tutarlar (Aile toplamı, gelir/gider/tasarruf, günlük limit, ay sonu, tasarruf, nakit bakiyesi) */
+:root{--fs-h1:1.95rem;--fs-h2:1.05rem}
+.hero .big,.hero.flat .big,.hero.net .big{font-size:var(--fs-h1)!important}
+.hero .big .cur,.hero .cur{font-size:.56em}
+.fam-tot b.num,.trio .v,.trio.tint .v,.hero.flat .v.num,.fc b.num,.dv.num,.card .dv{font-size:var(--fs-h2)!important;font-weight:800}
