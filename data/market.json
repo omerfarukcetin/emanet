@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-13T11:30:25.728Z",
+ "updatedAt": "2026-11-13T11:40:36.777Z",
  "fx": {
   "EUR": 55.7217,
   "USD": 50.3764
@@ -13,8 +13,8 @@
   "gumus": 80.75,
   "hamit": 42354,
   "resat": 42354,
-  "resatAlis": 41344.58,
-  "resatSatis": 42009.61,
+  "resatAlis": 41363.18,
+  "resatSatis": 42028.21,
   "tam": 41252,
   "yarim": 20702,
   "resatKaynak": "altin.in"
@@ -26,14 +26,14 @@
    "t": "2026-11-12T21:00:01.000Z"
   },
   "hisse:SOKE": {
-   "p": 7.4,
+   "p": 7.47,
    "cur": "TRY",
-   "t": "2026-11-13T11:15:11.000Z"
+   "t": "2026-11-13T11:25:21.000Z"
   },
   "hisse:BALSU": {
-   "p": 6.96,
+   "p": 6.95,
    "cur": "TRY",
-   "t": "2026-11-13T11:14:40.000Z"
+   "t": "2026-11-13T11:25:11.000Z"
   },
   "ppf:KLU": {
    "p": 5.246403,
@@ -76,7 +76,7 @@
    "t": "2026-11-13"
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
