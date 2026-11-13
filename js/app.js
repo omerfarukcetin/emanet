@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.64";
+const APP_VERSION="2.65";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1203,6 +1203,13 @@ function flowChart(compact){
   return `<div class="chart-wrap flow-box"><svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:520px;display:block" role="img" aria-label="Son altı ay gelir ve gider">${[.33,.66].map(f=>`<line x1="0" x2="${W}" y1="${(8+(H-pb-8)*f).toFixed(1)}" y2="${(8+(H-pb-8)*f).toFixed(1)}" stroke="var(--line)" stroke-dasharray="2 4"/>`).join("")}<line x1="0" x2="${W}" y1="${H-pb}" y2="${H-pb}" stroke="var(--line)"/>${bars}</svg><div class="flow-tip" aria-live="polite"></div></div><div class="sub" style="display:flex;gap:14px"><span><span class="dot" style="display:inline-block;background:var(--pos)"></span> Gelir</span><span><span class="dot" style="display:inline-block;background:var(--neg)"></span> Gider</span></div>`;
 }
 
+/* Varlık bazında dağılım: aynı kod farklı portföylerde birleştirilir; ilk 9'dan sonrası "Diğer" */
+function itemParts(hs){
+  const pal=["--c2","--c4","--c3","--c9","--c5","--c8","--c1","--c10","--c6"],by=new Map();
+  hs.forEach(h=>{const k=(h.symbol||h.name||"?").toUpperCase(),v=hVal(h);if(!(v>0))return;const o=by.get(k)||{n:h.symbol?h.symbol.toUpperCase():h.name,v:0};o.v+=v;by.set(k,o)});
+  const L=[...by.values()].sort((a,b)=>b.v-a.v),top=L.slice(0,9).map((o,i)=>({...o,c:pal[i]})),rest=L.slice(9).reduce((a,o)=>a+o.v,0);
+  return rest>0?top.concat([{n:"Diğer ("+(L.length-9)+")",v:rest,c:"--c7"}]):top;
+}
 function donut(parts){
   const total=parts.reduce((s,p)=>s+p.v,0);if(!total)return"";
   const R=56,W=16,C=2*Math.PI*R,gap=parts.length>1?2.2:0;let off=0;
@@ -1258,7 +1265,7 @@ function rPortfoy(){
     ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
   ${cur&&hs.length?foldCard("hedef",targetCard(cur,hs),cur.target&&Object.keys(cur.target).length?(x=>`<span class="sub">sapma ${fmtN(x,1)} puan</span>`)(targetPlan(cur,hs,0).rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2):""):""}
-  ${parts.length?foldCard("dagilim",`<section class="card"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
+  ${parts.length?foldCard("dagilim",`<section class="card"><div class="sec" style="margin-bottom:12px"><h2>Dağılım</h2><div class="seg" role="group" aria-label="Dağılım türü">${[["kind","Kategori"],["item","Varlık"]].map(([k,l])=>`<button data-act="dgmode" data-k="${k}" aria-pressed="${(view.dgMode||"kind")===k}">${l}</button>`).join("")}</div></div>${donut(view.dgMode==="item"?itemParts(hs):parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
   ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
   ${hs.length?foldCard("bench",benchCard((cur?[cur]:vis).map(p=>p.id)),(b=>b?`<span class="num ${b.items[0].v>=0?"pos-t":"neg-t"}">${fmtPct(b.items[0].v)}</span>`:"")(benchCalc((cur?[cur]:vis).map(p=>p.id),view.hRange||90))):""}
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
@@ -2771,6 +2778,7 @@ document.addEventListener("click",e=>{
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
   if(a==="ozcards"){ozCardsSheet();return}
+  if(a==="dgmode"){view.dgMode=t.dataset.k;render();return}
   if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");
