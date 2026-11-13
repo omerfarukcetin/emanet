@@ -1186,3 +1186,12 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 #uselock p{margin:0;color:var(--muted);line-height:1.5}
 #uselock .ul-left{font-weight:800;color:var(--fg);font-size:1.05rem;margin-top:6px}
 #uselock .ul-sub{font-size:.8rem;margin-top:10px}
+/* 2.71: dağılım açıklaması da liste ölçüsünde */
+.legend .n{font-size:var(--fs-row)!important}
+.legend .p{font-size:var(--fs-row)!important;font-weight:700}
+.legend .a{font-size:var(--fs-sub)!important}
+.legend .li{padding:6px 0}
+.row .s .num,.row .t .num{font-size:inherit!important}
+.row[data-act="edit-tr"]{min-height:0;padding-block:7px}
+.row[data-act="edit-tr"] .mk{width:30px;height:30px;border-radius:9px}
+.row[data-act="edit-tr"] .mk svg{width:16px;height:16px}
