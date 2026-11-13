@@ -978,3 +978,49 @@ main>.card,main>section.card,.cols .card{padding:13px 15px 11px}
 :root[data-tone="fume"]{--bg:#e3e5e9;--surface:#f6f7f9;--surface-2:#d8dbe1;--line:#c9ced7}
 @media (prefers-color-scheme:dark){:root[data-tone="fume"]:not([data-app-theme="light"]){--bg:#383b41;--surface:#44484f;--surface-2:#4f545b;--line:#60656d}}
 :root[data-app-theme="dark"][data-tone="fume"]{--bg:#383b41;--surface:#44484f;--surface-2:#4f545b;--line:#60656d}
+
+/* ================= 2.46: masaüstü görünüm ================= */
+.hstats{display:none}
+@media (min-width:900px){
+  /* kenar çubuğu */
+  .nav{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 7%,var(--surface)),var(--surface) 38%);border-right:1px solid color-mix(in srgb,var(--line) 70%,transparent);padding:24px 14px 18px}
+  .nav-brand{padding:0 8px}
+  .nav-brand svg{box-sizing:content-box;padding:7px;border-radius:12px;background:var(--accent);color:#fff;width:20px;height:20px}
+  .nav-in{flex:1}
+  .nav button{position:relative;color:color-mix(in srgb,var(--fg) 66%,var(--surface))}
+  .nav button svg{box-sizing:content-box;padding:6px;margin:-6px 0;border-radius:10px;transition:background .18s,color .18s}
+  .nav button:hover svg{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+  .nav button[aria-current="page"]{background:color-mix(in srgb,var(--accent) 11%,var(--surface));color:var(--accent)}
+  .nav button[aria-current="page"] svg{background:var(--accent);color:#fff}
+  .nav .nav-add{margin-bottom:10px}
+  .nav .nav-set{margin-top:auto}
+  .nav .only-wide.nav-set{display:flex}
+}
+@media (min-width:1160px){
+  .top-in,main{max-width:1240px}
+  main{gap:16px}
+  .cols{gap:16px}
+  .col{gap:16px}
+  .card{border-radius:22px;padding:18px 20px}
+  .card h2{font-size:1.05rem}
+  /* üst kart: solda tutar, sağda günlük / toplam / maliyet (yer yetmeyen genişlikte tek rozet kalır) */
+}
+@media (min-width:1360px){
+  .hero.net{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"top top" "big stats" "pl stats" "sub stats";column-gap:24px;row-gap:6px;padding:20px 22px;border-radius:26px}
+  .hero.net .hero-top{grid-area:top}
+  .hero.net .bigrow{grid-area:big}
+  .hero.net .plchips{display:none}
+  .hero.net .subrow{grid-area:sub;margin-top:0}
+  .hero.net .hstats{grid-area:stats;align-self:end;display:grid;grid-template-columns:repeat(3,minmax(118px,auto));gap:8px}
+  .hs{display:flex;flex-direction:column;gap:3px;padding:11px 14px;border-radius:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:#fff;min-width:0}
+  .hs small{font-size:.74rem;color:rgba(255,255,255,.72)}
+  .hs b{font-size:1.02rem;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+  .hs span{font-size:.76rem;color:rgba(255,255,255,.75)}
+  .hs.up span{color:#8ef0bf}.hs.down span{color:#ffb3a8}
+  .hero .big{font-size:2.9rem}
+}
+@media (min-width:1160px){
+  /* satırlar: imleçle üzerine gelince hafif vurgu */
+  .arow[role=button]:hover,.row.li[role=button]:hover,.fam-r:hover{background:color-mix(in srgb,var(--fg) 4%,transparent)}
+  .fab{right:max(28px,calc((100vw - 248px - 1240px)/2 + 20px))}
+}

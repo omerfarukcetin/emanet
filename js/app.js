@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.45";
+const APP_VERSION="2.46";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -202,6 +202,17 @@ function plChips(hs,v,c){
   // tek rozet: dokununca Günlük ↔ Toplam arasında değişir
   const dl=d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük",x=day?dd:tot,label=day?dl:"Toplam",other=day?"toplam":"günlük";
   return `<div class="plchips"><button class="delta one ${x?(x.pl>=0?"up":"down"):""}" data-act="plmode" aria-label="${label} kâr/zarar. ${other[0].toLocaleUpperCase("tr")+other.slice(1)} değişimi görmek için dokunun"><small>${label}</small>${x?`<b>${x.pl>=0?"▲":"▼"} ${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span>%${fmtN(Math.abs(x.pct),day?2:1)}</span>`:`<b>—</b><span>yarın</span>`}<i class="swap" aria-hidden="true">${ic(I.akis,13)}</i></button></div>`;
+}
+/* Geniş ekranda üst kartın sağında: günlük, toplam kâr/zarar ve maliyet yan yana (telefonda tek rozet yeterli) */
+function heroStats(hs,v,c){
+  if(!hs.length)return"";
+  const usd=plCur()==="USD",cur=usd?"USD":S().base;
+  const vU=rate("USD")?v*rate(S().base)/rate("USD"):0,cU=hs.reduce((a,h)=>a+costIn(h,"USD"),0);
+  const dv=divOf(hs),dvU=rate("USD")?dv*rate(S().base)/rate("USD"):0;
+  const tot=usd?{pl:vU-cU+dvU,pct:cU?(vU-cU+dvU)/cU*100:0}:{pl:v-c+dv,pct:c?(v-c+dv)/c*100:0};
+  const d=daySum(hs),dd=d?(usd?{pl:d.plU,pct:d.pctU}:{pl:d.pl,pct:d.pct}):null;
+  const t=(l,x,dec)=>`<div class="hs ${x?(x.pl>=0?"up":"down"):""}"><small>${l}</small>${x?`<b class="num">${x.pl>=0?"+":"−"}${S().hide?"••••":fmt(Math.abs(x.pl),cur,{dec:0})}</b><span class="num">${x.pl>=0?"▲":"▼"} %${fmtN(Math.abs(x.pct),dec)}</span>`:`<b>—</b><span>${dayLabel()||"yarın"}</span>`}</div>`;
+  return `<div class="hstats">${t(d&&dayLabel()!=="bugün"?"Son "+dayLabel().replace(/^son /,""):"Günlük",dd,2)}${t("Toplam kâr/zarar",tot,1)}<div class="hs"><small>Maliyet</small><b class="num">${S().hide?"••••":fmt(usd?cU:c,cur,{dec:0})}</b><span>${hs.length} varlık</span></div></div>`;
 }
 function eqvChips(baseVal){const e=eqv(baseVal);if(S().hide)return`<div class="eqv"><span>≈ ••••</span></div>`;return `<div class="eqv"><span>${fmt(e.USD,"USD",{dec:0})}</span><span>${fmt(e.EUR,"EUR",{dec:0})}</span>${e.g?`<span>${fmtN(e.g,1)} g altın</span>`:""}</div>`}
 const eyeBtn=()=>`<button class="icon-btn" data-act="hide" aria-label="${S().hide?"Tutarları göster":"Tutarları gizle"}" aria-pressed="${S().hide}">${S().hide?I.eyeOff:I.eye}</button>`;
@@ -747,6 +758,7 @@ const I={
   heart:sv('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>'),
   bank:sv('<path d="M4 9.5 12 4l8 5.500z"/><path d="M6.5 12.500v5M10.2 12.500v5M13.8 12.500v5M17.5 12.500v5M4 20h16"/>'),
   brief:sv('<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3.5 13h17"/>'),
+  sliders:sv('<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>'),
   expand:sv('<path d="M7 9l5-5 5 5M7 15l5 5 5-5"/>'),
   collapse:sv('<path d="M7 4l5 5 5-5M7 20l5-5 5 5"/>'),
   spark:sv('<path d="M12 4l1.9 5.100L19 11l-5.1 1.900L12 18l-1.9-5.100L5 11l5.1-1.900z"/>'),
@@ -815,7 +827,7 @@ function render(){
   /* telefonda 5 öğe: Özet, Portföy, +, Bütçe, Zekât. Borç, Bütçe ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
   const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())));
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
-  $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}<span>Ekle</span></button>`+TABS.slice(2).map(tabBtn).join("");
+  $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}<span>Ekle</span></button>`+TABS.slice(2).map(tabBtn).join("")+`<button data-tab="ayarlar" class="only-wide nav-set" ${view.tab==="ayarlar"?'aria-current="page"':""}>${ic(I.sliders,20)}<span>Ayarlar</span></button>`;
   $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":view.tab==="rapor"?"Rapor":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
   if(!ready&&!state){m.innerHTML='<div class="skel" aria-label="Verileriniz yükleniyor" role="status"><i class="sk-hero"></i><i></i><i></i></div>';fab.hidden=true;return}
@@ -882,7 +894,7 @@ function rOzet(){
       <span class="label">${mp?esc(mp.name)+(state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div></div>
-    ${mp?plChips(hs,t.v,t.c):""}
+    ${mp?plChips(hs,t.v,t.c)+heroStats(hs,t.v,t.c):""}
     <div class="subrow">${eqvChips(t.v)}</div>
   </section>
   ${onMain?attnCard():""}
@@ -1122,7 +1134,7 @@ function rPortfoy(){
   <section class="hero net">
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
-    ${plChips(hs,v,c)}
+    ${plChips(hs,v,c)}${heroStats(hs,v,c)}
     <div class="subrow">${eqvChips(v)}</div>
   </section>
   ${(()=>{const u=ufeSum(hs);
@@ -1139,8 +1151,8 @@ function rPortfoy(){
     ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
   ${cur&&hs.length?foldCard("hedef",targetCard(cur,hs),cur.target&&Object.keys(cur.target).length?(x=>`<span class="sub">sapma ${fmtN(x,1)} puan</span>`)(targetPlan(cur,hs,0).rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2):""):""}
-  ${parts.length?foldCard("dagilim",`<section class="card side"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
-  ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi").replace(/^(\s*<(?:section|details)\b[^>]*class=")/,"$1side "):""}
+  ${parts.length?foldCard("dagilim",`<section class="card"><h2 style="margin-bottom:12px">Dağılım</h2>${donut(parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
+  ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
   ${hs.length?foldCard("bench",benchCard((cur?[cur]:vis).map(p=>p.id)),(b=>b?`<span class="num ${b.items[0].v>=0?"pos-t":"neg-t"}">${fmtPct(b.items[0].v)}</span>`:"")(benchCalc((cur?[cur]:vis).map(p=>p.id),view.hRange||90))):""}
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
     if(!all.length)return"";all.sort((a,b)=>(b.t.date||"").localeCompare(a.t.date||""));const N=view.trN||15;
