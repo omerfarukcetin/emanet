@@ -50,7 +50,8 @@ async function watchlist() {
 
 // ---------- altın ve döviz ----------
 const GOLD_NAMES = { gram: ["GRA", "gram-altin", "Gram Altın"], ceyrek: ["CEYREKALTIN", "ceyrek-altin", "Çeyrek Altın"], yarim: ["YARIMALTIN", "yarim-altin", "Yarım Altın"], tam: ["TAMALTIN", "tam-altin", "Tam Altın"],
-  cumhuriyet: ["CUMHURIYETALTINI", "cumhuriyet-altini", "Cumhuriyet Altını"], ata: ["ATAALTIN", "ata-altin", "Ata Altın"], resat: ["RESATALTIN", "resat-altin", "Reşat Altın"], hamit: ["HAMITALTIN", "hamit-altin", "Hamit Altın"], gumus: ["GUMUS", "gumus", "Gümüş"] };
+  cumhuriyet: ["CUMHURIYETALTINI", "cumhuriyet-altini", "Cumhuriyet Altını"], ata: ["ATAALTIN", "ata-altin", "Ata Altın"], resat: ["RESATALTIN", "resat-altin", "Reşat Altın"], hamit: ["HAMITALTIN", "hamit-altin", "Hamit Altın"], gumus: ["GUMUS", "gumus", "Gümüş"],
+  ayar22: ["YIA", "22-ayar-bilezik", "22 Ayar Bilezik"], ayar18: ["ONSEKIZAYARALTIN", "18-ayar-altin", "18 Ayar Altın"], ayar14: ["ONDORTAYARALTIN", "14-ayar-altin", "14 Ayar Altın"] };
 const fold = s => String(s || "").toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]/g, "");
 
 /** Yanıt yarıda kesilmiş olsa bile ("Unterminated string") tamamlanmış nesneleri kurtarır. */

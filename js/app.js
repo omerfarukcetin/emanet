@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.73";
+const APP_VERSION="2.74";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -16,7 +16,7 @@ const PRICED=["hisse","abd","fon","ppf","kripto","diger"];
 const FUNDS=["fon","ppf"];
 /* açılır listeden seçilen hazır ürünler: [kod, ad, market.gold anahtarı] */
 const PRESETS={
-  altin:[["GAU","Gram altın","gram"],["CEYREK","Çeyrek altın","ceyrek"],["YARIM","Yarım altın","yarim"],["TAM","Tam altın","tam"],["CUM","Cumhuriyet altını","cumhuriyet"],["RESAT","Reşat altın","resat"],["HAMIT","Hamit altın","hamit"],["ATA","Ata altın","ata"],["AZIZ","Aziz altın","aziz"]],
+  altin:[["GAU","Gram altın","gram"],["CEYREK","Çeyrek altın","ceyrek"],["YARIM","Yarım altın","yarim"],["TAM","Tam altın","tam"],["CUM","Cumhuriyet altını","cumhuriyet"],["RESAT","Reşat altın","resat"],["HAMIT","Hamit altın","hamit"],["ATA","Ata altın","ata"],["AZIZ","Aziz altın","aziz"],["22AYAR","22 ayar altın / bilezik (gram)","ayar22"],["18AYAR","18 ayar altın (gram)","ayar18"],["14AYAR","14 ayar altın (gram)","ayar14"]],
   gumus:[["GUMUS","Gram gümüş","gumus"]],
   doviz:[["USD","Amerikan doları",null],["EUR","Euro",null]]
 };
@@ -37,7 +37,7 @@ const CAT_MAP={"Kira":"Kira & aidat","Market":"Market & mutfak","Ulaşım":"Ula�
 
 const CURS=["TRY","USD","EUR"];
 /* Borç/alacak için ek birimler: altın ve gümüş adet/gram olarak tutulur, TL karşılığı güncel fiyattan hesaplanır */
-const DUNITS={gram:["Gram altın","gr altın"],ceyrek:["Çeyrek altın","çeyrek"],yarim:["Yarım altın","yarım"],tam:["Tam altın","tam"],cumhuriyet:["Cumhuriyet altını","cumhuriyet"],ata:["Ata altın","ata"],resat:["Reşat altın","reşat"],hamit:["Hamit altın","hamit"],gumus:["Gram gümüş","gr gümüş"]};
+const DUNITS={gram:["Gram altın","gr altın"],ayar22:["22 ayar altın (gram)","gr 22 ayar"],ceyrek:["Çeyrek altın","çeyrek"],yarim:["Yarım altın","yarım"],tam:["Tam altın","tam"],cumhuriyet:["Cumhuriyet altını","cumhuriyet"],ata:["Ata altın","ata"],resat:["Reşat altın","reşat"],hamit:["Hamit altın","hamit"],gumus:["Gram gümüş","gr gümüş"]};
 const DEBT_UNITS=[["TRY","TL"],["USD","Dolar"],["EUR","Euro"],...Object.entries(DUNITS).map(([k,v])=>["G:"+k,v[0]])];
 const isG=c=>typeof c==="string"&&c.slice(0,2)==="G:";
 const unitName=c=>isG(c)?(DUNITS[c.slice(2)]||[c])[0]:c;
@@ -63,7 +63,7 @@ let ufe=null,tufe=null;
 let fxhist={}, market=null, lastWatch="[]", fxBusy=false;
 let sb=null, sbUser=null;
 try{fxhist=JSON.parse(localStorage.getItem(FXK)||"{}")||{}}catch(e){}
-try{market=JSON.parse(localStorage.getItem(MK)||"null")}catch(e){}
+try{market=JSON.parse(localStorage.getItem(MK)||"null");if(market&&market.gold)goldDerive(market.gold)}catch(e){}
 try{lastWatch=localStorage.getItem(WK)||"[]"}catch(e){}
 let state=null, ready=false, mode="pending", saving=false, pendingSave=false, saveTimer=null, lastLocalWrite=0;
 let view={ozPf:(()=>{try{return localStorage.getItem("emanet-ozpf")}catch(e){return null}})(),tab:"ozet",pf:null,owner:"all",zOwner:null,month:todayISO().slice(0,7),txType:"all",debtDir:"lent"};
@@ -104,9 +104,12 @@ try{const c=localStorage.getItem(LS);if(c){state=normalize(JSON.parse(c));view.t
 const S=()=>state.settings;
 const AUTO=()=>S().autoPrices!==false&&!!market;
 const rate=c=>{if(c==="TRY")return 1;if(isG(c)){const v=market&&market.gold&&+market.gold[c.slice(2)];return v>0?v:+S().rates[c]||0}if(AUTO()&&market.fx&&+market.fx[c]>0)return +market.fx[c];return +S().rates[c]||0};
-const GOLDMAP=[["GAU","gram"],["GRAM","gram"],["CUM","cumhuriyet"],["CUMHURIYET","cumhuriyet"],["RESAT","resat"],["REŞAT","resat"],["HAMIT","hamit"],["AZIZ","aziz"],["ATA","ata"],["CEYREK","ceyrek"],["ÇEYREK","ceyrek"],["YARIM","yarim"],["TAM","tam"]];
+const GOLDMAP=[["GAU","gram"],["GRAM","gram"],["CUM","cumhuriyet"],["CUMHURIYET","cumhuriyet"],["RESAT","resat"],["REŞAT","resat"],["HAMIT","hamit"],["AZIZ","aziz"],["ATA","ata"],["CEYREK","ceyrek"],["ÇEYREK","ceyrek"],["YARIM","yarim"],["TAM","tam"],["22AYAR","ayar22"],["BILEZIK","ayar22"],["18AYAR","ayar18"],["14AYAR","ayar14"]];
+/* ayar altın: kaynakta fiyatı yoksa gram (24 ayar) fiyatı ve milyemden hesaplanır */
+const AYAR={ayar22:.916,ayar18:.750,ayar14:.585};
+function goldDerive(g){if(g&&+g.gram>0)for(const[k,f]of Object.entries(AYAR))if(!(+g[k]>0)||g["_"+k])g[k]=+(g.gram*f).toFixed(2),g["_"+k]=1;return g}
 function goldKey(h){const sy=(h.symbol||"").toUpperCase().trim();const f=GOLDMAP.find(([k])=>k===sy);if(f)return f[1];
-  const n=(h.name||"").toLocaleLowerCase("tr");if(n.includes("gram"))return"gram";if(n.includes("çeyrek"))return"ceyrek";if(n.includes("yarım"))return"yarim";if(n.includes("cumhuriyet"))return"cumhuriyet";if(n.includes("reşat"))return"resat";if(n.includes("hamit"))return"hamit";if(n.includes("aziz"))return"aziz";if(n.includes("ata"))return"ata";if(n.includes("tam"))return"tam";return null}
+  const n=(h.name||"").toLocaleLowerCase("tr");if(/22\s*ayar|bilezik/.test(n))return"ayar22";if(/18\s*ayar/.test(n))return"ayar18";if(/14\s*ayar/.test(n))return"ayar14";if(n.includes("gram"))return"gram";if(n.includes("çeyrek"))return"ceyrek";if(n.includes("yarım"))return"yarim";if(n.includes("cumhuriyet"))return"cumhuriyet";if(n.includes("reşat"))return"resat";if(n.includes("hamit"))return"hamit";if(n.includes("aziz"))return"aziz";if(n.includes("ata"))return"ata";if(n.includes("tam"))return"tam";return null}
 function effPrice(h){
   if(AUTO()){
     if(h.kind==="altin"){const k=goldKey(h);const v=k&&market.gold&&+market.gold[k];if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
@@ -606,7 +609,7 @@ async function liveTick(){
     const d=await r.json();if(!d||!d.t)return;liveFail=0;
     const before=JSON.stringify([market&&market.quotes,market&&market.fx,market&&market.gold]);
     live=d;let base=null;try{base=JSON.parse(localStorage.getItem(MK)||"null")}catch(e){}
-    market=liveApply(base&&base.updatedAt?base:market);
+    market=liveApply(base&&base.updatedAt?base:market);if(market&&market.gold)market.gold=goldDerive({...market.gold});
     if(JSON.stringify([market.quotes,market.fx,market.gold])!==before)render();
     else{const el=document.querySelector(".vh-t small");if(el)el.textContent=priceLabel()}
   }catch(e){liveFail++}
@@ -639,14 +642,14 @@ async function loadMarket(announce){
   if(!got){if(announce)toast("Fiyat dosyasına ulaşılamadı; internet bağlantınızı kontrol edin");return}
   const changed=!market||market.updatedAt!==got.updatedAt;
   try{localStorage.setItem(MK,JSON.stringify(got))}catch(e){}
-  market=liveApply(got);
+  market=liveApply(got);if(market&&market.gold)market.gold=goldDerive({...market.gold});
   if(changed&&ready){snapshotSave();render();fillFx()}
   if(changed||!closeD)loadClose();
   if(announce)toast(changed?"Fiyatlar güncellendi":"Fiyatlar güncel · "+marketWhen());
 }
 let bench=null,tech=null;
 async function loadTech(){for(const u of marketUrls().map(x=>x.replace("market.json","tech.json"))){try{const d=await getJSON(u);if(d&&d.s){tech=d;return}}catch(e){}}}
-async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
+async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){if(d.prev&&d.prev.p&&+d.prev.p["gold:gram"]>0)for(const[k,f]of Object.entries(AYAR))if(!(+d.prev.p["gold:"+k]>0))d.prev.p["gold:"+k]=d.prev.p["gold:gram"]*f;const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
 async function loadBench(){for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){bench=d;if(ready&&view.tab==="portfoy")render();return}}catch(e){}}}
 async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
