@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.72";
+const APP_VERSION="2.73";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1041,7 +1041,7 @@ function rOzet(){
   const others=state.portfolios.length-(mp?1:0);
   const P={};
   const top=`
-  ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}</div>`:""}
+  ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}${ownPfs().length>1?`<button class="chip add" data-act="pforder" aria-label="Portföylerin sırasını değiştir">${ic(I.sort,15)}</button>`:""}</div>`:""}
   <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}">
     <div class="hero-top"><div style="min-width:0">
       <span class="label">${mp?esc(mp.name)+(mp._shared?" · "+esc(mp._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
@@ -1078,6 +1078,19 @@ function rOzet(){
   return top+ord.filter(k=>!hide.has(k)).map(k=>P[k]+(k==="assets"?P.note:"")).join("")+`<div class="oz-edit"><button class="btn ghost sm" data-act="ozcards">${ic(I.sliders,14)}Özet kartlarını düzenle</button></div>`;
 }
 
+/* Portföylerin sırası: üstteki düğmeler, kaydırma ve Aile özeti bu sırayı izler */
+function pfOrderSheet(){
+  const own=ownPfs();
+  openSheet(`<h3>Portföy sırası</h3><div class="sub" style="margin-bottom:10px">Okları kullanarak sırayı değiştirin. Üstteki düğmeler, kartı kaydırma sırası ve Aile özeti bu sırayı izler.</div>
+    <div class="ozc">${own.map((p,i)=>`<div class="ozc-r"><span class="fam-av" style="color:var(${pfColor(p)});width:30px;height:30px;font-size:.85rem">${esc((p.name||"?").trim().slice(0,1).toLocaleUpperCase("tr"))}</span><b>${esc(p.name)}${isMainPf(p)?` <small class="sub">· ana</small>`:""}</b>
+      <button type="button" class="icon-btn sm" data-mv="${p.id}" data-d="-1" aria-label="Yukarı taşı" ${i===0?"disabled":""}>${ic(I.up,16)}</button>
+      <button type="button" class="icon-btn sm" data-mv="${p.id}" data-d="1" aria-label="Aşağı taşı" ${i===own.length-1?"disabled":""}>${ic(I.down,16)}</button></div>`).join("")}</div>
+    <div class="actions"><button type="button" class="btn ghost" data-reset="1">Aile özetinde değere göre</button><button type="button" class="btn primary" data-done="1">Tamam</button></div>`,sh=>{
+    sh.querySelectorAll("[data-mv]").forEach(b=>b.onclick=()=>{ownPfs().forEach(p=>{if(!p.color)p.color=pfColor(p)});const o=ownPfs(),i=o.findIndex(p=>p.id===b.dataset.mv),j=i+ +b.dataset.d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];
+      state.portfolios=o.concat(state.portfolios.filter(p=>p._shared));S().pfManual=true;commit();pfOrderSheet()});
+    sh.querySelector("[data-reset]").onclick=()=>{delete S().pfManual;commit("Aile özeti değere göre sıralanıyor");closeSheet()};
+    sh.querySelector("[data-done]").onclick=closeSheet});
+}
 /* Varlıklar tablosunda kategori sırası: ayarlanmadıysa değere göre; ayarlandıysa seçilen sıra (Özet ve Portföy için ortak) */
 function kindOrderSheet(present){
   const ko=(S().kindOrder||[]).filter(k=>KINDS[k]),order=[...ko.filter(k=>present.includes(k)),...present.filter(k=>!ko.includes(k))];
@@ -1111,7 +1124,7 @@ function ozCardsSheet(){
 const PF_COLORS=["--c2","--c4","--c3","--c9","--c5","--c8","--c1","--c10"];
 const pfColor=p=>p.color||PF_COLORS[Math.max(0,state.portfolios.indexOf(p))%PF_COLORS.length];
 function familyCard(cur){
-  const rows=state.portfolios.map(p=>{const hs=p.holdings.filter(h=>+h.qty>0);return{p,hs,v:hs.reduce((a,h)=>a+hVal(h),0)}}).sort((a,b)=>b.v-a.v);
+  const rows=state.portfolios.map(p=>{const hs=p.holdings.filter(h=>+h.qty>0);return{p,hs,v:hs.reduce((a,h)=>a+hVal(h),0)}});if(!S().pfManual)rows.sort((a,b)=>b.v-a.v);
   const all=rows.flatMap(r=>r.hs),T=rows.reduce((a,r)=>a+r.v,0),xt=cellData(all,T),dt=xt.day;
   const ows=owners().length>1;
   return `<section class="card fam"><div class="sec" style="margin-bottom:6px"><h2>Aile özeti</h2><button class="btn ghost sm" data-act="pf-all">Tümü${ic(I.right,14)}</button></div>
@@ -2860,6 +2873,7 @@ document.addEventListener("click",e=>{
   if(a==="plcol"){S().plCol=plCol()==="pct"?"amt":"pct";commit();return}
   if(a==="hunit"){view.hUnit=t.dataset.k;render();return}
   if(a==="ozcards"){ozCardsSheet();return}
+  if(a==="pforder"){pfOrderSheet();return}
   if(a==="korder"){kindOrderSheet(t.dataset.ks.split(","));return}
   if(a==="dgmode"){view.dgMode=t.dataset.k;render();return}
   if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
