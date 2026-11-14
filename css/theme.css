@@ -1207,3 +1207,17 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 /* 2.77 · tekrar ekle */
 .again{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin-bottom:4px;border-radius:12px;background:var(--surface-2)}
 .again .sub{font-size:var(--fs-sub);color:var(--muted)}
+
+/* 2.78 · portföy rengi düğmeleri */
+.swr{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 4px}
+.swb{width:30px;height:30px;min-height:30px;border-radius:50%;padding:0;background:var(--x);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer}
+.swb[aria-checked="true"]{box-shadow:0 0 0 2px var(--fg)}
+.swb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.swn{display:block;color:var(--muted)}
+
+/* 2.78 · portföy rengi düğmeleri */
+.swr{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 4px}
+.swb{width:30px;height:30px;min-height:30px;border-radius:50%;padding:0;background:var(--x);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--line);cursor:pointer}
+.swb[aria-checked="true"]{box-shadow:0 0 0 2px var(--fg)}
+.swb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.swn{display:block;color:var(--muted)}

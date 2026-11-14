@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.77";
+const APP_VERSION="2.78";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1357,7 +1357,7 @@ function rPortfoy(){
     return `<section class="card pf-extra adv">${parts.join("")}</section>`})()}
   ${multi?pfListCard(vis,v):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
-    return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${p.color||"--c1"})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
+    return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${pfColor(p)})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
       ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:pc}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
   :hs.length||closed.length?"":`<section class="card">
     ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
@@ -1504,7 +1504,7 @@ function assetTable(hs,total,o){
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
 function pfListCard(vis,total){
   const tots=vis.map(p=>({p,t:pfTotals(p)})).sort((a,b)=>b.t.v-a.t.v);
-  return `<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Portföyler</h2><button class="btn ghost sm" data-act="new-pf">${ic(I.plus,14)}Yeni portföy</button></div><div class="list">${tots.map(({p,t})=>{const sh=total?t.v/total*100:0;return `<button class="row" data-act="pf" data-id="${p.id}"><span class="dot" style="background:var(${p.color||"--c1"})"></span><div class="main"><div class="t">${esc(p.name)}${mainPf()===p?` <span class="pill">Ana</span>`:""}</div><div class="s">${owners().length>1?esc(ownerOf(p))+" · ":""}${p.holdings.filter(h=>+h.qty>0).length} varlık · %${fmtN(sh,0)}</div><div class="share"><i style="width:${sh}%;background:var(${p.color||"--c1"})"></i></div></div><div class="end"><div class="num">${fmt(t.v)}</div><span class="pill ${t.pl>=0?"pos":"neg"}">${fmtPct(t.plp)}</span></div></button>`}).join("")}</div></section>`;
+  return `<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Portföyler</h2><button class="btn ghost sm" data-act="new-pf">${ic(I.plus,14)}Yeni portföy</button></div><div class="list">${tots.map(({p,t})=>{const sh=total?t.v/total*100:0;return `<button class="row" data-act="pf" data-id="${p.id}"><span class="dot" style="background:var(${pfColor(p)})"></span><div class="main"><div class="t">${esc(p.name)}${mainPf()===p?` <span class="pill">Ana</span>`:""}</div><div class="s">${owners().length>1?esc(ownerOf(p))+" · ":""}${p.holdings.filter(h=>+h.qty>0).length} varlık · %${fmtN(sh,0)}</div><div class="share"><i style="width:${sh}%;background:var(${pfColor(p)})"></i></div></div><div class="end"><div class="num">${fmt(t.v)}</div><span class="pill ${t.pl>=0?"pos":"neg"}">${fmtPct(t.plp)}</span></div></button>`}).join("")}</div></section>`;
 }
 
 function eqvCard(v,hs){
@@ -2157,13 +2157,18 @@ function formSheet({title,fields,onSave,onDelete,extra="",onChange,onOpen}){
 }
 
 function pfSheet(p){
-  const colors=["--c1","--c2","--c3","--c4","--c5","--c6"];
+  const colors=["--c1","--c2","--c3","--c4","--c5","--c6"],CN=[["--c2","Mavi"],["--c10","Gök mavisi"],["--c8","Turkuaz"],["--c3","Yeşil"],["--c1","Altın sarısı"],["--c9","Turuncu"],["--c6","Kiremit"],["--c4","Gül"],["--c5","Mor"],["--c7","Arduvaz"]];
   formSheet({title:p?"Portföyü düzenle":"Yeni portföy",fields:[{id:"name",label:"Portföy adı",value:p?p.name:"",ph:"Örn. Uzun vade, Çocuk için, BES"},
     {id:"owner",label:"Kimin portföyü",value:p?ownerOf(p):(view.owner!=="all"?view.owner:MAIN()),list:[...new Set([...owners(),"Eşim","Oğlum","Kızım"])],ph:"Örn. Ben, Eşim"},
     {id:"isMain",label:"Ana portföy (bütçe ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
-    {id:"color",label:"Renk",type:"select",value:p?p.color:colors[state.portfolios.length%6],options:[["--c1","Altın sarısı"],["--c2","Mavi"],["--c3","Yeşil"],["--c4","Gül"],["--c5","Mor"],["--c6","Kiremit"]]}],
+    {id:"color",label:"Renk",type:"select",value:p?pfColor(p):colors[state.portfolios.length%6],options:CN}],
     onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1";if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
-    extra:p?shareBlock(p):"",onOpen:p?(form,sh)=>bindShare(sh,p):undefined,
+    extra:p?shareBlock(p):"",onOpen:(form,sh)=>{
+      // renk: açılır liste yerine renk düğmeleri; seçim gizli listeye yazılır
+      const sel=form.elements.color,box=sel.closest(".field");sel.hidden=true;
+      sel.insertAdjacentHTML("afterend",`<div class="swr" role="radiogroup" aria-label="Portföy rengi">${CN.map(([k,n])=>`<button type="button" class="swb" role="radio" data-c="${k}" aria-checked="${sel.value===k}" aria-label="${n}" title="${n}" style="--x:var(${k})"></button>`).join("")}</div><small class="sub swn">${(CN.find(c=>c[0]===sel.value)||["",""])[1]}</small>`);
+      box.querySelectorAll(".swb").forEach(b=>b.onclick=()=>{sel.value=b.dataset.c;box.querySelectorAll(".swb").forEach(x=>x.setAttribute("aria-checked",x===b));box.querySelector(".swn").textContent=b.getAttribute("aria-label")});
+      if(p)bindShare(sh,p)},
     onDelete:p?()=>{state.portfolios=state.portfolios.filter(x=>x!==p);view.pf="all";commit("Portföy silindi")}:null});
 }
 /* ---------- BES: ana para dışındaki her şey (fon getirisi + devlet katkısı + DK getirisi) kâr sayılır ---------- */
