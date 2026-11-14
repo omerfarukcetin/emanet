@@ -49,7 +49,11 @@ export function decide(row, nowMs) {
   const lastDay = new Date(L.getTime() + 864e5).getUTCMonth() !== L.getUTCMonth();
   const t = /^\d\d:\d\d$/.test(p.t) ? p.t : "18:30", daily = p.d !== false;
   const zkGap = p.zk !== false && /^\d{4}-\d\d-\d\d$/.test(p.zd || "") ? Math.round((Date.parse(p.zd + "T00:00:00Z") - Date.parse(D + "T00:00:00Z")) / 864e5) : null;
-  const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap));
+  const gapTo = x => /^\d{4}-\d\d-\d\d$/.test(x || "") ? Math.round((Date.parse(x + "T00:00:00Z") - Date.parse(D + "T00:00:00Z")) / 864e5) : null;
+  // borç/alacak vadesi (3 gün, 1 gün kala ve günü) ve bugün geçilen bütçe eşiği: sunucuya yalnızca tarih gelir
+  const dueSoon = p.dv !== false && Array.isArray(p.dd) && p.dd.some(x => [3, 1, 0].includes(gapTo(x)));
+  const budToday = p.bu !== false && p.bw === D;
+  const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap) || dueSoon || budToday);
   // gün içi özet saatleri: saati gelmiş, en fazla 2 saat geçmiş ve bugün gönderilmemiş olanlar (kayıt "fired" alanında ts:SS:DD olarak tutulur)
   const mins = x => +x.slice(0, 2) * 60 + +x.slice(3);
   const ts = Array.isArray(p.ts) && row.fired && (p.we || (dow >= 1 && dow <= 5)) ? p.ts.filter(x => /^\d\d:\d\d$/.test(x) && hm >= x && mins(hm) - mins(x) <= 120 && row.fired["ts:" + x] !== D) : [];

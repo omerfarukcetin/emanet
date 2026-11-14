@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v42";
+const V = "emanet-v43";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
@@ -86,6 +86,11 @@ async function notify(kindForced, test) {
     for (const id of Object.keys(fired)) if (!alerts.some(a => a.id === id)) delete fired[id];
     const alertNote = (a, p) => show("alarm-" + a.id, a.n + " " + pn(a.v) + " " + a.cur + (a.op === "gte" ? " üstüne çıktı" : " altına indi"), "Şu an " + pn(p) + " " + a.cur, open);
     const due = t => T.hm >= P.t && st[t] !== today;
+    // bütçe: ayda her kategori için %80 ve %100 eşiğinde birer kez
+    const ym = today.slice(0, 7), bst = st.bud && st.bud.ym === ym ? st.bud : { ym, lv: {} };
+    const bstep = p => p >= 100 ? 100 : p >= 80 ? 80 : 0;
+    const budNew = () => (snap.bud || []).filter(x => bstep(x.p) > (bst.lv[x.c] || 0));
+    const when = g => g <= 0 ? "bugün" : g === 1 ? "yarın" : g + " gün sonra";
     let kinds = kindForced ? [kindForced] : [];
     if (!kindForced) {
       if (P.d && due("daily") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("daily");
@@ -95,6 +100,8 @@ async function notify(kindForced, test) {
       if (P.w && due("weekly") && T.dow === 5) kinds.push("weekly");
       if (P.m && due("monthly") && T.lastDay) kinds.push("monthly");
       if (P.zk !== false && snap.zk && snap.zk.d && due("zakat") && [7, 1, 0].includes(dayGap(today, snap.zk.d))) kinds.push("zakat");
+      if (P.dv !== false && (snap.dues || []).some(x => [3, 1, 0].includes(dayGap(today, x.d))) && due("vade")) kinds.push("vade");
+      if (P.bu !== false && T.hm >= "08:00" && T.hm <= "23:30" && budNew().length) kinds.push("butce");
       if (hit.length) { hit.slice(0, 3).forEach(([a, p]) => { alertNote(a, p); fired[a.id] = today; }); }
       else if (!kinds.length && alerts.length && !(+P.bm > 0)) {
         // sunucu bir alarm için uyandırdı ama burada fiyat henüz sınırı göstermiyor: sınıra en yakın alarmı bildir
@@ -155,6 +162,20 @@ async function notify(kindForced, test) {
         const title = g <= 0 ? "Bugün zekât günü" : g === 1 ? "Yarın zekât günü" : "Zekât gününe " + g + " gün kaldı";
         const body = !z ? "Örnek bildirim. Zekât tarihiniz ayarlıysa gerçek tutar yazar." : z.reached ? (snap.hide ? "Hesaplanan zekâtı görmek için dokunun." : "Hesaplanan zekât: " + tl(z.left)) + "\nÖdediğinizde Zekât sekmesinden kaydedin." : "Varlıklarınız şu an nisabın altında; zekât düşmüyor.";
         show("zekat", title, body, open.replace(/#.*$/, "") + "#zekat");
+      }
+      if (kind === "vade") {
+        let ls = (snap.dues || []).filter(x => [3, 1, 0].includes(dayGap(today, x.d)));
+        if (kindForced) ls = (snap.dues || []).slice(0, 3);
+        const tx = x => x.n + " · " + (x.dir === "lent" ? "alacak" : "borç") + (snap.hide ? "" : " " + x.a) + " · " + when(dayGap(today, x.d));
+        if (!ls.length) show("vade", "Vade yarın: Mehmet", "Örnek bildirim. Vadesi yaklaşan borç ya da alacak olunca gerçek kayıt yazar.", open.replace(/#.*$/, "") + "#borc");
+        else show("vade", ls.length === 1 ? "Vade " + when(dayGap(today, ls[0].d)) + ": " + ls[0].n : "Yaklaşan vadeler · " + ls.length + " kayıt", ls.map(tx).join("\n"), open.replace(/#.*$/, "") + "#borc");
+      }
+      if (kind === "butce") {
+        const ls = kindForced ? (snap.bud || []).slice(0, 3) : budNew();
+        const tx = x => x.c + ": %" + x.p + (snap.hide ? "" : " · " + tl(x.s) + " / " + tl(x.b));
+        if (!ls.length) show("butce", "Market bütçesi %85 doldu", "Örnek bildirim. Bir kategori bütçenin %80’ine ulaşınca gerçek tutar yazar.", open.replace(/#.*$/, "") + "#akis");
+        else show("butce", ls.length === 1 ? (ls[0].p >= 100 ? ls[0].c + " bütçesi aşıldı" : ls[0].c + " bütçesi %" + ls[0].p + " doldu") : "Bütçe uyarısı · " + ls.length + " kategori", ls.map(tx).join("\n") + ((r => r > 0 ? "\nAyın bitmesine " + r + " gün var." : "\nBugün ayın son günü.")(new Date(+ym.slice(0, 4), +ym.slice(5), 0).getDate() - +today.slice(8))), open.replace(/#.*$/, "") + "#akis");
+        if (!test) { (snap.bud || []).forEach(x => { bst.lv[x.c] = Math.max(bst.lv[x.c] || 0, bstep(x.p)); }); st.bud = bst; }
       }
       if (!test && kind !== "big" && kind !== "pulse") st[kind] = today;
     }

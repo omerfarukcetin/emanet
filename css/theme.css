@@ -1203,3 +1203,7 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .hero .big,.hero.flat .big,.hero.net .big{font-size:var(--fs-h1)!important}
 .hero .big .cur,.hero .cur{font-size:.56em}
 .fam-tot b.num,.trio .v,.trio.tint .v,.hero.flat .v.num,.fc b.num,.dv.num,.card .dv{font-size:var(--fs-h2)!important;font-weight:800}
+
+/* 2.77 · tekrar ekle */
+.again{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin-bottom:4px;border-radius:12px;background:var(--surface-2)}
+.again .sub{font-size:var(--fs-sub);color:var(--muted)}

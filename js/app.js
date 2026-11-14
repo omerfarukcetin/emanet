@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.76";
+const APP_VERSION="2.77";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1045,7 +1045,7 @@ function rOzet(){
   const P={};
   const top=`
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}${ownPfs().length>1?`<button class="chip add" data-act="pforder" aria-label="Portföylerin sırasını değiştir">${ic(I.sort,15)}</button>`:""}</div>`:""}
-  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}">
+  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}"${heroTint(mp)}>
     <div class="hero-top"><div style="min-width:0">
       <span class="label">${mp?esc(mp.name)+(mp._shared?" · "+esc(mp._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
@@ -1125,6 +1125,9 @@ function ozCardsSheet(){
 }
 /* Aile özeti: tüm portföylerin toplamı, her birinin değeri, payı ve günlük değişimi. Satıra dokunmak Özet'i o portföye geçirir. */
 const PF_COLORS=["--c2","--c4","--c3","--c9","--c5","--c8","--c1","--c10"];
+const PF_HEX={"--c1":"#c08a16","--c2":"#2e5fd0","--c3":"#15775a","--c4":"#c2476b","--c5":"#6f55c7","--c6":"#c8572d","--c7":"#59627a","--c8":"#0e8a9a","--c9":"#d9731a","--c10":"#2a86d6"};
+/* birden çok portföy varsa üstteki kart, portföyün (kişinin) kendi renginde */
+const heroTint=p=>{if(!p||state.portfolios.length<2||S().pfTint===false)return"";const h=PF_HEX[pfColor(p)];return h?` style="--acc-l:color-mix(in srgb,${h} 84%,#0a1024)"`:""};
 const pfColor=p=>p.color||PF_COLORS[Math.max(0,state.portfolios.indexOf(p))%PF_COLORS.length];
 function familyCard(cur){
   const rows=state.portfolios.map(p=>{const hs=p.holdings.filter(h=>+h.qty>0);return{p,hs,v:hs.reduce((a,h)=>a+hVal(h),0)}});if(!S().pfManual)rows.sort((a,b)=>b.v-a.v);
@@ -1340,7 +1343,7 @@ function rPortfoy(){
     ${cur?`<button class="chip add" data-act="edit-pf" data-id="${cur.id}" aria-label="${esc(cur.name)} portföyünü düzenle">${ic(I.edit,14)} Düzenle</button>`:""}
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
-  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="portfoy" data-pfid="${cur?cur.id:"all"}">
+  <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="portfoy" data-pfid="${cur?cur.id:"all"}"${heroTint(cur)}>
     <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(cur._shared?" · "+esc(cur._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
     ${plChips(hs,v,c)}${heroStats(hs,v,c)}
@@ -1610,6 +1613,19 @@ const notifOnLocal=()=>{try{return localStorage.getItem(NK)==="1"}catch(e){retur
 const notifKey=()=>new URL("__notif/snap",location.href).href;
 /* zekât hatırlatması için: ana portföyün bir sonraki zekât günü ve hesaplanan tutar (tutar yalnızca cihazda kalır) */
 function zakatNote(){try{const mp=mainPf();if(!mp)return null;const z=zakat(mp.id);if(!z.hawl||!z.hawl.next)return null;return{d:z.hawl.next,left:Math.round(z.left*rate(S().base)),reached:!!z.reached}}catch(e){return null}}
+/* bütçe: kategorinin bu ayki harcaması bütçeye oranla (%). 80 ve 100 eşikleri bildirim ve uyarı için */
+function budLevel(cat,ym){const b=+(state.budgets||{})[cat];if(!(b>0))return null;const s=monthAgg(ym).co[cat]||0;return{s,b,p:s/b*100}}
+const budStep=p=>p>=100?100:p>=80?80:0;
+function budNote(cat,ym,b0){const b1=budLevel(cat,ym);if(!b1)return"";const a=budStep(b0?b0.p:0),c=budStep(b1.p);if(c<=a)return"";
+  return c>=100?" · "+cat+" bütçesi aşıldı (%"+fmtN(b1.p,0)+")":" · "+cat+" bütçesi %"+fmtN(b1.p,0)+" doldu"}
+function budOut(){const ym=todayISO().slice(0,7);return Object.keys(state.budgets||{}).map(c=>{const l=budLevel(c,ym);return l&&l.p>=80?{c,p:Math.round(l.p),s:Math.round(l.s*rate(S().base)),b:Math.round(l.b*rate(S().base))}:null}).filter(Boolean)}
+/* vade hatırlatması: kalan tutarı olan ve vadesi önümüzdeki 30 gün içindeki borç ve alacaklar */
+function duesOut(){const t=todayISO();return state.debts.filter(d=>d.due&&d.due>=t&&daysBetween(t,d.due)<=30&&debtLeft(d)>0).sort((a,b)=>a.due.localeCompare(b.due)).slice(0,8).map(d=>({d:d.due,n:d.person,dir:d.dir,a:fmt(debtLeft(d),d.cur)}))}
+/* bütçe eşiği bugün yeni geçildiyse sunucuya o günün tarihi bildirilir (tutar gitmez); günlük özet kapalı olsa da o akşam uyandırır */
+function budWake(){try{const ym=todayISO().slice(0,7),cur={};budOut().forEach(x=>cur[x.c]=budStep(x.p));
+  let o={};try{o=JSON.parse(localStorage.getItem("emanet-bud-lv")||"{}")||{}}catch(e){}
+  if(o.ym!==ym)o={ym,lv:{},d:o.d};const up=Object.keys(cur).some(c=>cur[c]>(o.lv[c]||0));o.lv=cur;if(up)o.d=todayISO();
+  localStorage.setItem("emanet-bud-lv",JSON.stringify(o));return o.d||undefined}catch(e){return undefined}}
 async function notifSnap(){
   if(!notifOnLocal()||!state||!("caches" in window))return;
   try{
@@ -1617,7 +1633,7 @@ async function notifSnap(){
     const ref=D?(D.d===t?D.ref:(D.cur&&Object.keys(D.cur).length?{d:D.d,h:D.cur}:D.ref)):null;
     const per=n=>{try{const b=mp&&benchCalc([mp.id],n);return b&&b.days>=Math.min(n,3)?{from:b.from,pct:+b.items[0].v.toFixed(2)}:null}catch(e){return null}};
     const ma=monthAgg(t.slice(0,7));
-    const snap={zk:zakatNote(),alerts:alertsOut(),prefs:notifPrefs(),per:{w:per(7),m:per(31)},mon:{ym:t.slice(0,7),n:MONTHS[+t.slice(5,7)-1],i:Math.round(ma.i*rate(S().base)),o:Math.round(ma.o*rate(S().base))},at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
+    const snap={zk:zakatNote(),bud:budOut(),dues:duesOut(),alerts:alertsOut(),prefs:notifPrefs(),per:{w:per(7),m:per(31)},mon:{ym:t.slice(0,7),n:MONTHS[+t.slice(5,7)-1],i:Math.round(ma.i*rate(S().base)),o:Math.round(ma.o*rate(S().base))},at:Date.now(),hide:!!S().hide,auto:S().autoPrices!==false,rates:S().rates,urls:marketUrls().map(u=>new URL(u,location.href).href),open:location.href.split("#")[0],
       ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
       pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0).map(h=>{
         const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
@@ -1629,7 +1645,7 @@ async function notifSnap(){
 /* cihazın bildirim ayarları (yalnızca bu cihazda): d günlük özet, t saat, we hafta sonu, w haftalık, m aylık, bm büyük hareket eşiği (%) */
 const NP="emanet-notif-prefs";
 function notifPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(NP)||"{}")||{}}catch(e){}
-  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
+  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,dv:p.dv!==false,bu:p.bu!==false,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
 function notifPrefSet(k,v){const p=notifPrefs();p[k]=v;try{localStorage.setItem(NP,JSON.stringify(p))}catch(e){}notifSnap();notifSync(true);render()}
 /* büyük hareket uyarısı için: ana portföyün hangi fiyata yüzde kaç bağlı olduğu (tutar yok) */
 function notifWeights(){
@@ -1648,7 +1664,7 @@ function notifSync(now){
   if(!notifOnLocal()||!cloudOn())return;
   clearTimeout(nsT);nsT=setTimeout(async()=>{try{
     const reg=await swReady(),sub=await reg.pushManager.getSubscription();if(!sub)return;
-    const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,zd:pr.zk?((zakatNote()||{}).d||undefined):undefined,off:-new Date().getTimezoneOffset(),al:alertsOut().map(a=>({id:a.id,k:a.k,op:a.op,v:a.v}))},weights:pr.bm?notifWeights():{}};
+    const pr=notifPrefs(),row={endpoint:sub.endpoint,user_id:sbUser.id,prefs:{...pr,zd:pr.zk?((zakatNote()||{}).d||undefined):undefined,dd:pr.dv?[...new Set(duesOut().map(x=>x.d))].slice(0,6):undefined,bw:pr.bu?budWake():undefined,off:-new Date().getTimezoneOffset(),al:alertsOut().map(a=>({id:a.id,k:a.k,op:a.op,v:a.v}))},weights:pr.bm?notifWeights():{}};
     const sig=JSON.stringify(row);if(sig===localStorage.getItem("emanet-notif-sent"))return;
     const {error}=await sb.from("emanet_push").upsert(row,{onConflict:"endpoint"});
     if(!error)localStorage.setItem("emanet-notif-sent",sig);
@@ -1740,10 +1756,12 @@ function notifCard(){
     <div class="set-row"><div class="lbl"><b>Büyük hareket uyarısı</b><small>Ana portföy gün içinde bu oranda yükselir ya da düşerse akşamı beklemeden haber verir (günde en çok bir kez, 08:00–23:00 arası)</small></div>${sel("bm",[[0,"Kapalı"],[1,"%1"],[1.5,"%1,5"],[2,"%2"],[3,"%3"],[5,"%5"]],p.bm)}</div>
     ${p.bm?`<div class="note">Bu uyarı için portföyünüzün yalnızca yüzde dağılımı (örneğin “%57 gram altın”) hesabınızda saklanır; tutarlar saklanmaz.</div>`:""}
     ${tg("zk","Zekât hatırlatması","Zekât gününden 7 gün ve 1 gün önce, bir de gününde, özet saatinde haber verir. Sunucuya yalnızca tarih gider, tutar gitmez.")}
+    ${tg("dv","Borç ve alacak vadesi","Vadeye 3 gün ve 1 gün kala, bir de vade günü, özet saatinde haber verir. Sunucuya yalnızca tarih gider.")}
+    ${tg("bu","Bütçe uyarısı","Bir kategoride harcama bütçenin %80’ine ulaşınca ve bütçeyi aşınca, özet saatinde haber verir (ayda her eşik için bir kez).")}
   </div></section>
   ${alertsCard(true)}
   <section class="card"><h2 style="margin-bottom:4px">Deneme</h2><div class="set-group">
-    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["pulse","Gün içi"],["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
+    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["pulse","Gün içi"],["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"],["vade","Vade"],["butce","Bütçe"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
     <div class="note">Tutarlarınız sunucuya gönderilmez; bildirimin metni bu cihazda hesaplanır. “Tutarları gizle” açıksa yalnızca yüzdeler yazar. Telefon pil tasarrufundaysa bildirim gecikebilir.</div>
   </div></section>`:alertsCard(false)}`;
 }
@@ -1902,6 +1920,7 @@ document.addEventListener("change",e=>{
   if(e.target.dataset&&e.target.dataset.np==="tsAdd"){const v=e.target.value;if(v){const p=notifPrefs();notifPrefSet("ts",[...p.ts,v].sort())}return}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
   if(e.target.id==="useLimit"){const v=+e.target.value;S().useLimit=v||undefined;commit(v?"Günlük sınır "+v+" dakika":"Kullanım sınırı kapatıldı");usageCheck();return}
+  if(e.target.id==="pfTint"){S().pfTint=e.target.checked;commit(e.target.checked?"Kart rengi kişiye göre":"Kart rengi tek renk");return}
   if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
   if(e.target.id==="notifTog"){e.target.disabled=true;notifSet(e.target.checked)}
@@ -2004,6 +2023,7 @@ function rAyarlar(){
     <div class="set-row"><div class="lbl"><b>Gece otomatik koyulaş</b><small>Telefon ya da bilgisayar koyu moddayken seçtiğiniz temanın koyu hâli kullanılır</small></div><label class="toggle"><input type="checkbox" id="autoDark" ${s.theme==="system"?"checked":""} ${fixedDark?"disabled":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Özet kartları</b><small>Özet sayfasındaki kartların sırası ve hangilerinin görüneceği</small></div><button class="btn sm" data-act="ozcards">Düzenle</button></div>
     <div class="set-row"><div class="lbl"><b>Günlük kullanım sınırı</b><small>Süre dolunca uygulama ertesi güne kadar kilitlenir; bildirimler gelmeye devam eder. Süre her cihazda ayrı sayılır.${+s.useLimit?` Bugün bu cihazda ${Math.floor(usageToday()/60)} dk kullandın.`:""}</small></div><select class="inline-in" style="width:auto;font-family:var(--f-body)" id="useLimit" aria-label="Günlük kullanım sınırı">${[[0,"Kapalı"],[5,"5 dk"],[10,"10 dk"],[15,"15 dk"],[20,"20 dk"],[30,"30 dk"],[45,"45 dk"],[60,"1 saat"]].map(([v,l])=>`<option value="${v}" ${(+s.useLimit||0)===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    ${state.portfolios.length>1?`<div class="set-row"><div class="lbl"><b>Kart rengi kişiye göre</b><small>Üstteki büyük kart, seçili portföyün renginde olur (Aile özetindeki renk)</small></div><label class="toggle"><input type="checkbox" id="pfTint" ${s.pfTint!==false?"checked":""}><span></span></label></div>`:""}
     <div class="set-row"><div class="lbl"><b>Sade görünüm</b><small>Yİ-ÜFE, getiri karşılaştırması, hedef dağılım ve vergi raporu gizlenir; tutarlar, varlıklar ve bütçe kalır</small></div><label class="toggle"><input type="checkbox" id="simpleView" ${s.simple?"checked":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}
@@ -2487,6 +2507,9 @@ function txSheet(t,preset){
     extra:`<div class="note" id="txHint"></div>`,
     onChange:(form)=>sync(form),
     onOpen:(form,sh)=>{form.addEventListener("input",e=>{if(e.target.name==="buyQty")e.target.dataset.auto="0";else if(e.target.name==="amount"||e.target.name==="buyPrice")sync(form)});
+      if(t){form.insertAdjacentHTML("afterbegin",`<div class="again"><button type="button" class="btn sm" id="txAgain">${ic(I.repeat,16)}Bugüne tekrar ekle</button><span class="sub">Aynı kayıt, bugünün tarihiyle</span></div>`);
+        sh.querySelector("#txAgain").onclick=()=>{const ym=todayISO().slice(0,7),b0=t.type==="out"?budLevel(t.cat,ym):null,c={...t,id:uid(),date:todayISO()};["grp","inst","buy","rid"].forEach(k=>delete c[k]);
+          state.tx.push(c);view.month=ym;closeSheet();commit((t.type==="in"?"Gelir":t.type==="save"?"Tasarruf":t.type==="card"?"Kart ödemesi":"Gider")+" bugüne tekrar eklendi"+(t.type==="out"?budNote(t.cat,ym,b0):""))}}
       if(!t){const q=quickTx();if(q.length){
         form.insertAdjacentHTML("afterbegin",`<div class="quick"><span class="label">Sık kullanılanlar</span><div class="quick-row">${q.map((x,i)=>`<button type="button" class="qchip" data-q="${i}" style="--qc:var(${x.type==="in"?"--pos":x.type==="save"?"--c5":catColor(x.cat)})">${ic(catIcon(x.cat),15)}<span>${esc(x.cat)}</span><b class="num">${fmt(x.amount,x.cur,{dec:x.amount%1?2:0,show:true})}</b></button>`).join("")}</div></div>`);
         sh.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{const x=q[+b.dataset.q],el=form.elements;
@@ -2519,6 +2542,7 @@ function txSheet(t,preset){
         btn.disabled=false};
     },
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";if(!v.date)return"Tarih seçin.";
+      const bym=v.date.slice(0,7),b0=v.type==="out"&&v.cat!=="__new"?budLevel(v.cat,bym):null,bn=()=>v.type==="out"?budNote(v.cat,bym,b0):"";
       if(v.type!=="card"&&v.cat==="__new"){const n=(v.newCat||"").trim().replace(/\s+/g," ");if(!n)return"Yeni kategorinin adını yazın.";if(n.length>40)return"Ad en çok 40 karakter olabilir.";
         const ex=catOpts(v.type).find(c=>trLow(c)===trLow(n));if(ex)v.cat=ex;else{catsMut(v.type,l=>l.concat([n]));v.cat=n}}
       if(v.type==="card"){const d={type:"card",card:v.card,amount:a,cur:v.cur,date:v.date,note:v.note.trim(),cat:"Kart ödemesi"};
@@ -2540,7 +2564,7 @@ function txSheet(t,preset){
         for(let k=0;k<n;k++){const[y,m]=v.date.slice(0,7).split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
           state.tx.push({id:uid(),type:"out",amount:k===n-1?Math.round((a-per*(n-1))*100)/100:per,cur:v.cur,cat:v.cat,date:dayIn(mm,+v.date.slice(8)),note:v.note.trim(),method,inst:(k+1)+"/"+n,grp:g})}}
       else state.tx.push({id:uid(),type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method,...(preset&&preset.rid?{rid:preset.rid}:{})});
-      view.month=v.date.slice(0,7);commit(t?"İşlem güncellendi":(v.type==="in"?"Gelir eklendi":n>1?n+" taksit aylara bölündü":"Gider eklendi"))},
+      view.month=v.date.slice(0,7);commit((t?"İşlem güncellendi":(v.type==="in"?"Gelir eklendi":n>1?n+" taksit aylara bölündü":"Gider eklendi"))+bn())},
     onDelete:t?()=>{if(t.grp&&state.tx.filter(x=>x.grp===t.grp).length>1){state.tx=state.tx.filter(x=>x.grp!==t.grp||x.date<t.date);commit("Bu ve sonraki taksitler silindi")}else{state.tx=state.tx.filter(x=>x!==t);commit("İşlem silindi")}}:null});
   function sync(form){
     const ty=form.elements.type.value,el=form.elements;
