@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v44";
+const V = "emanet-v45";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
@@ -37,6 +37,9 @@ const tl = v => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "T
 const pct = v => "%" + new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
 const dm = d => new Date(d + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const arrow = v => v >= 0 ? "▲ " : "▼ ";
+const sg = v => v >= 0 ? "+" : "−";
+const sp = v => sg(v) + pct(v);                       // +%0,52
+const dot = (v, has) => !has || Math.abs(v) < 0.005 ? "⚪" : v > 0 ? "🟢" : "🔴";
 /* bildirimin büyük görseli (Android'de bildirim açılınca görünür): en çok yükselen ve düşenler, yeşil/kırmızı çubuklarla.
    Tutar yazmaz, yalnızca yüzde. Çizilemezse bildirim görselsiz gider. */
 async function chartImg(head, sub, items, up) {
@@ -48,11 +51,11 @@ async function chartImg(head, sub, items, up) {
     x.textBaseline = "alphabetic"; x.textAlign = "left";
     x.fillStyle = up == null ? "#ffffff" : up ? G : R; x.font = "800 54px " + F; x.fillText(head, 32, 82);
     x.fillStyle = M; x.font = "500 23px " + F; x.fillText(sub, 32, 118, W - 64);
-    const ls = items.slice(0, 5), top = 146, rh = (H - top - 16) / ls.length, mx = Math.max(...ls.map(i => Math.abs(i.p)), 0.01);
+    const ls = items.slice(0, 6), top = 146, rh = (H - top - 16) / ls.length, mx = Math.max(...ls.map(i => Math.abs(i.p)), 0.01);
     const L0 = 200, L1 = W - 150, bh = Math.min(26, rh * 0.56);
     ls.forEach((it, i) => {
       const y = top + i * rh + rh / 2, w = Math.max(6, (L1 - L0) * Math.abs(it.p) / mx), col = it.p >= 0 ? G : R;
-      x.fillStyle = "#ffffff"; x.font = "700 24px " + F; x.textBaseline = "middle"; x.fillText(String(it.n).slice(0, 11), 32, y, L0 - 44);
+      x.fillStyle = "#ffffff"; x.font = "700 24px " + F; x.textBaseline = "middle"; x.fillText(String(it.n).slice(0, 16), 32, y, L0 - 44);
       x.fillStyle = "rgba(255,255,255,.07)"; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, L1 - L0, bh, bh / 2) : x.rect(L0, y - bh / 2, L1 - L0, bh); x.fill();
       x.fillStyle = col; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, w, bh, bh / 2) : x.rect(L0, y - bh / 2, w, bh); x.fill();
       x.textAlign = "right"; x.font = "800 24px " + F; x.fillText((it.p >= 0 ? "+" : "−") + pct(it.p), W - 32, y); x.textAlign = "left";
@@ -97,7 +100,7 @@ async function notify(kindForced, test) {
         if (u0 > 0 && u > 0) { const d = h.q * (u - u0); pl += d; b += h.q * u0; if (!top || Math.abs(d) > Math.abs(top.d)) top = { d, n: h.n, p: (u / u0 - 1) * 100 }; mv.push({ n: h.n, p: (u / u0 - 1) * 100, d }); }
       }
       const has = b > 0, pc = has ? pl / b * 100 : 0;
-      return { n: p.n, main: p.main, v, has, pl, pc, top, mv, chg: has ? arrow(pl) + (snap.hide ? "" : tl(Math.abs(pl)) + " · ") + pct(pc) : "" };
+      return { n: p.n, main: p.main, v, has, pl, pc, b, top, mv, chg: has ? (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")") : "" };
     });
     const pick = ls => ({ m: ls.find(l => l.main) || ls[0], rest: ls.filter(l => !l.main && l.has) });
     const val = m => m.n + (snap.hide ? "" : " · " + tl(m.v));
@@ -120,6 +123,7 @@ async function notify(kindForced, test) {
     let kinds = kindForced ? [kindForced] : [];
     if (!kindForced) {
       if (P.d && due("daily") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("daily");
+      if (P.ps && snap.pfs.length > 1 && due("pfs") && (P.we || (T.dow >= 1 && T.dow <= 5))) kinds.push("pfs");
       // gün içi özetler: saati gelmiş (en fazla 2 saat geçmiş) ve bugün gönderilmemiş saatler; birden çoğu birikmişse tek bildirim
       const tsDue = (Array.isArray(P.ts) ? P.ts : []).filter(s => T.hm >= s && st["ts:" + s] !== today && (+T.hm.slice(0, 2) * 60 + +T.hm.slice(3)) - (+s.slice(0, 2) * 60 + +s.slice(3)) <= 120);
       if (tsDue.length && (P.we || (T.dow >= 1 && T.dow <= 5)) && !kinds.includes("daily")) { kinds.push("pulse"); if (!test) tsDue.forEach(s => { st["ts:" + s] = today; }); }
@@ -152,16 +156,34 @@ async function notify(kindForced, test) {
         if (kind === "big") {
           if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0));
           else show("hareket", "Portföyde büyük hareket", val(m) + "\nAyrıntı için dokunun.", open);
-        } else if (m.has) show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + (gap > 3 ? "Son " + gap + " gün " : "Bugün ") + m.chg, [val(m), ...rest.map(l => l.n + ": " + l.chg)].join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0));
-        else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
+        } else if (m.has) {
+          // gün sonu: başlıkta ana portföyün değişimi; altında toplam değer, en çok yükselen/düşen ve (portföy özeti ayrı değilse) diğer portföyler
+          const mv = m.mv.filter(x => isFinite(x.p)).sort((a, b) => b.p - a.p), up = mv[0], dn = mv[mv.length - 1];
+          const lines = [];
+          if (!snap.hide) lines.push("Toplam değer " + tl(m.v));
+          if (up && up.p > 0.005) lines.push("En çok yükselen  " + up.n + " " + sp(up.p));
+          if (dn && dn.p < -0.005 && dn !== up) lines.push("En çok düşen  " + dn.n + " " + sp(dn.p));
+          if (!P.ps && rest.length) lines.push(...rest.map(l => dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
+          show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + m.n + (gap > 3 ? " son " + gap + " günde " : " bugün ") + m.chg, lines.join("\n") || val(m), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0));
+        } else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
+      }
+      if (kind === "pfs") {
+        // tüm portföylerin günlük değişimi tek bildirimde, her portföy bir satır
+        const ls = since(dref), gap = dref ? dayGap(dref.d, today) : 0, hs = ls.filter(l => l.has);
+        const pl = hs.reduce((a, l) => a + l.pl, 0), base = hs.reduce((a, l) => a + l.b, 0), pc = base ? pl / base * 100 : 0;
+        const when = gap > 3 ? "son " + gap + " günde" : "bugün";
+        if (hs.length) show("portfoyler", "📊 Portföyler " + when + " " + (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")"),
+          ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(ls.reduce((a, l) => a + l.v, 0))), open,
+          await chartImg(sp(pc), "Portföyler · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), ls.map(l => ({ n: l.n, p: l.has ? l.pc : 0 })), pl >= 0));
+        else show("portfoyler", "📊 Portföyler", ls.map(l => l.n + (snap.hide ? "" : "  " + tl(l.v))).join("\n") + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
       if (kind === "pulse") {
         const ls = since(dref), { m, rest } = pick(ls);
         const all = ls.flatMap(l => l.mv).filter(x => isFinite(x.p)).sort((a, b) => b.p - a.p), up = all[0], dn = all[all.length - 1];
         const lines = [val(m)];
-        if (up && up.p > 0) lines.push("En çok yükselen: " + up.n + " " + arrow(up.p) + pct(up.p));
-        if (dn && dn.p < 0 && dn !== up) lines.push("En çok düşen: " + dn.n + " " + arrow(dn.p) + pct(dn.p));
-        rest.slice(0, 3).forEach(l => lines.push(l.n + ": " + l.chg));
+        if (up && up.p > 0) lines.push("En çok yükselen  " + up.n + " " + sp(up.p));
+        if (dn && dn.p < 0 && dn !== up) lines.push("En çok düşen  " + dn.n + " " + sp(dn.p));
+        rest.slice(0, 3).forEach(l => lines.push(dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
         show("gun-ici", (m.has ? (m.pl >= 0 ? "📈 " : "📉 ") : "") + "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open, await chartImg(m.has ? (m.pl >= 0 ? "+" : "−") + pct(m.pc) : T.hm, (m.has ? m.n + " · saat " : "Saat ") + T.hm, movers(all), m.has ? m.pl >= 0 : null));
       }
       if (kind === "weekly") {
@@ -215,7 +237,7 @@ async function notify(kindForced, test) {
   for (const [tag, title, body, o, img] of notes) await self.registration.showNotification(title, { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag, renotify: true, timestamp: Date.now(), data: { open: o, base: base(o) },
     ...(img ? { image: img } : {}),
     // Android'de bildirimin altında iki kısa yol
-    actions: /^(gun-sonu|gun-ici|hareket|haftalik|aylik)$/.test(tag) ? [{ action: "portfoy", title: "Portföy" }, { action: "akis", title: "Bütçe" }] : [] });
+    actions: /^(gun-sonu|gun-ici|hareket|haftalik|aylik|portfoyler)$/.test(tag) ? [{ action: "portfoy", title: "Portföy" }, { action: "akis", title: "Bütçe" }] : [] });
 }
 self.addEventListener("push", e => e.waitUntil(notify(null, false)));
 self.addEventListener("message", e => { if (e.data && e.data.type === "gun-sonu") e.waitUntil(notify(e.data.kind || "daily", !!e.data.test)); });

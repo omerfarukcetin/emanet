@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.79";
+const APP_VERSION="2.80";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1645,7 +1645,7 @@ async function notifSnap(){
 /* cihazın bildirim ayarları (yalnızca bu cihazda): d günlük özet, t saat, we hafta sonu, w haftalık, m aylık, bm büyük hareket eşiği (%) */
 const NP="emanet-notif-prefs";
 function notifPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(NP)||"{}")||{}}catch(e){}
-  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,dv:p.dv!==false,bu:p.bu!==false,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
+  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,dv:p.dv!==false,bu:p.bu!==false,ps:!!p.ps,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
 function notifPrefSet(k,v){const p=notifPrefs();p[k]=v;try{localStorage.setItem(NP,JSON.stringify(p))}catch(e){}notifSnap();notifSync(true);render()}
 /* büyük hareket uyarısı için: ana portföyün hangi fiyata yüzde kaç bağlı olduğu (tutar yok) */
 function notifWeights(){
@@ -1749,6 +1749,7 @@ function notifCard(){
     <div class="set-row col"><div class="lbl"><b>Gün içi özetler</b><small>Seçtiğin her saatte portföyün o anki durumu: toplam, günlük değişim, en çok yükselen ve en çok düşen varlık. En çok 6 saat.</small></div>
       <div class="ts-list">${p.ts.map(x=>`<span class="ts-chip">${x}<button type="button" data-tsdel="${x}" aria-label="${x} saatini kaldır">×</button></span>`).join("")}${p.ts.length<6?`${sel("tsAdd",[["","+ Saat ekle"],...times.filter(x=>!p.ts.includes(x)&&x!==p.t).map(x=>[x,x])],"")}`:""}</div></div>
     ${tg("we","Hafta sonu da gönder","Altın, döviz ve kripto hafta sonu da oynar")}
+    ${state.portfolios.filter(p=>p.holdings.some(h=>h.kind!=="bes"&&+h.qty>0)).length>1?tg("ps","Portföyler özeti","Gün sonunda ayrı bir bildirim: her portföyün günlük değişimi bir satırda, toplamla birlikte. Açıkken gün sonu bildirimi yalnızca ana portföyü anlatır."):""}
     ${tg("w","Haftalık özet","Her cuma, haftanın değişimi")}
     ${tg("m","Aylık özet","Ayın son günü: gelir, gider, birikim oranı ve portföyün aylık değişimi")}
   </div></section>
@@ -1761,7 +1762,7 @@ function notifCard(){
   </div></section>
   ${alertsCard(true)}
   <section class="card"><h2 style="margin-bottom:4px">Deneme</h2><div class="set-group">
-    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["pulse","Gün içi"],["daily","Gün sonu"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"],["vade","Vade"],["butce","Bütçe"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
+    <div class="set-row"><div class="lbl"><small>Bildirimin bu cihazda nasıl görüneceğini şimdi gösterir</small></div><div style="display:flex;gap:6px;flex-wrap:wrap">${[["pulse","Gün içi"],["daily","Gün sonu"],["pfs","Portföyler"],["weekly","Haftalık"],["monthly","Aylık"],["big","Büyük hareket"],["alert","Fiyat alarmı"],["zakat","Zekât"],["vade","Vade"],["butce","Bütçe"]].map(([k,l])=>`<button class="btn sm" data-act="notif-test" data-k="${k}">${l}</button>`).join("")}</div></div>
     <div class="note">Tutarlarınız sunucuya gönderilmez; bildirimin metni bu cihazda hesaplanır. “Tutarları gizle” açıksa yalnızca yüzdeler yazar. Telefon pil tasarrufundaysa bildirim gecikebilir.</div>
   </div></section>`:alertsCard(false)}`;
 }

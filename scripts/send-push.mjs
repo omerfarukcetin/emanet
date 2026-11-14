@@ -53,7 +53,7 @@ export function decide(row, nowMs) {
   // borç/alacak vadesi (3 gün, 1 gün kala ve günü) ve bugün geçilen bütçe eşiği: sunucuya yalnızca tarih gelir
   const dueSoon = p.dv !== false && Array.isArray(p.dd) && p.dd.some(x => [3, 1, 0].includes(gapTo(x)));
   const budToday = p.bu !== false && p.bw === D;
-  const sched = hm >= t && row.last_poke !== D && ((daily && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap) || dueSoon || budToday);
+  const sched = hm >= t && row.last_poke !== D && (((daily || p.ps) && (p.we || (dow >= 1 && dow <= 5))) || (p.w && dow === 5) || (p.m && lastDay) || [7, 1, 0].includes(zkGap) || dueSoon || budToday);
   // gün içi özet saatleri: saati gelmiş, en fazla 2 saat geçmiş ve bugün gönderilmemiş olanlar (kayıt "fired" alanında ts:SS:DD olarak tutulur)
   const mins = x => +x.slice(0, 2) * 60 + +x.slice(3);
   const ts = Array.isArray(p.ts) && row.fired && (p.we || (dow >= 1 && dow <= 5)) ? p.ts.filter(x => /^\d\d:\d\d$/.test(x) && hm >= x && mins(hm) - mins(x) <= 120 && row.fired["ts:" + x] !== D) : [];
