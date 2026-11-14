@@ -1,8 +1,8 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v43";
+const V = "emanet-v44";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
-  "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
+  "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== NC).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {
@@ -37,8 +37,34 @@ const tl = v => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "T
 const pct = v => "%" + new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
 const dm = d => new Date(d + "T00:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const arrow = v => v >= 0 ? "▲ " : "▼ ";
+/* bildirimin büyük görseli (Android'de bildirim açılınca görünür): en çok yükselen ve düşenler, yeşil/kırmızı çubuklarla.
+   Tutar yazmaz, yalnızca yüzde. Çizilemezse bildirim görselsiz gider. */
+async function chartImg(head, sub, items, up) {
+  try {
+    if (typeof OffscreenCanvas === "undefined" || !items || items.length < 2) return undefined;
+    const W = 720, H = 360, c = new OffscreenCanvas(W, H), x = c.getContext("2d");
+    const F = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif", G = "#3ccf8e", R = "#ff6b5e", M = "#a3acc4";
+    x.fillStyle = "#24272c"; x.fillRect(0, 0, W, H);
+    x.textBaseline = "alphabetic"; x.textAlign = "left";
+    x.fillStyle = up == null ? "#ffffff" : up ? G : R; x.font = "800 54px " + F; x.fillText(head, 32, 82);
+    x.fillStyle = M; x.font = "500 23px " + F; x.fillText(sub, 32, 118, W - 64);
+    const ls = items.slice(0, 5), top = 146, rh = (H - top - 16) / ls.length, mx = Math.max(...ls.map(i => Math.abs(i.p)), 0.01);
+    const L0 = 200, L1 = W - 150, bh = Math.min(26, rh * 0.56);
+    ls.forEach((it, i) => {
+      const y = top + i * rh + rh / 2, w = Math.max(6, (L1 - L0) * Math.abs(it.p) / mx), col = it.p >= 0 ? G : R;
+      x.fillStyle = "#ffffff"; x.font = "700 24px " + F; x.textBaseline = "middle"; x.fillText(String(it.n).slice(0, 11), 32, y, L0 - 44);
+      x.fillStyle = "rgba(255,255,255,.07)"; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, L1 - L0, bh, bh / 2) : x.rect(L0, y - bh / 2, L1 - L0, bh); x.fill();
+      x.fillStyle = col; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, w, bh, bh / 2) : x.rect(L0, y - bh / 2, w, bh); x.fill();
+      x.textAlign = "right"; x.font = "800 24px " + F; x.fillText((it.p >= 0 ? "+" : "−") + pct(it.p), W - 32, y); x.textAlign = "left";
+    });
+    const buf = new Uint8Array(await (await c.convertToBlob({ type: "image/png" })).arrayBuffer());
+    let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return "data:image/png;base64," + btoa(bin);
+  } catch (e) { return undefined; }
+}
+const movers = mv => { const a = mv.filter(x => isFinite(x.p) && Math.abs(x.p) >= 0.005).sort((p, q) => q.p - p.p); return a.length <= 5 ? a : a.slice(0, 3).concat(a.slice(-2)); };
 async function notify(kindForced, test) {
-  const notes = [], show = (tag, title, body, open) => notes.push([tag, (test ? "Deneme · " : "") + title, body, open]);
+  const notes = [], show = (tag, title, body, open, img) => notes.push([tag, (test ? "Deneme · " : "") + title, body, open, img]);
   let open = self.registration.scope;
   try {
     const snap = await nget("snap");
@@ -84,7 +110,7 @@ async function notify(kindForced, test) {
     const fired = st.al || (st.al = {}), hit = [], alerts = snap.alerts || [];
     for (const a of alerts) { const p = price(a.k); if (!(p > 0)) continue; const on = a.op === "gte" ? p >= a.v : p <= a.v; if (on && !fired[a.id]) hit.push([a, p]); else if (!on && fired[a.id]) delete fired[a.id]; }
     for (const id of Object.keys(fired)) if (!alerts.some(a => a.id === id)) delete fired[id];
-    const alertNote = (a, p) => show("alarm-" + a.id, a.n + " " + pn(a.v) + " " + a.cur + (a.op === "gte" ? " üstüne çıktı" : " altına indi"), "Şu an " + pn(p) + " " + a.cur, open);
+    const alertNote = (a, p) => show("alarm-" + a.id, "🔔 " + a.n + " " + pn(a.v) + " " + a.cur + (a.op === "gte" ? " üstüne çıktı" : " altına indi"), "Şu an " + pn(p) + " " + a.cur, open);
     const due = t => T.hm >= P.t && st[t] !== today;
     // bütçe: ayda her kategori için %80 ve %100 eşiğinde birer kez
     const ym = today.slice(0, 7), bst = st.bud && st.bud.ym === ym ? st.bud : { ym, lv: {} };
@@ -124,9 +150,9 @@ async function notify(kindForced, test) {
       if (kind === "daily" || kind === "big") {
         const { m, rest } = pick(since(dref)), gap = dref ? dayGap(dref.d, today) : 0;
         if (kind === "big") {
-          if (m.has) show("hareket", "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open);
+          if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0));
           else show("hareket", "Portföyde büyük hareket", val(m) + "\nAyrıntı için dokunun.", open);
-        } else if (m.has) show("gun-sonu", (gap > 3 ? "Son " + gap + " gün " : "Bugün ") + m.chg, [val(m), ...rest.map(l => l.n + ": " + l.chg)].join("\n"), open);
+        } else if (m.has) show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + (gap > 3 ? "Son " + gap + " gün " : "Bugün ") + m.chg, [val(m), ...rest.map(l => l.n + ": " + l.chg)].join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0));
         else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
       if (kind === "pulse") {
@@ -136,11 +162,11 @@ async function notify(kindForced, test) {
         if (up && up.p > 0) lines.push("En çok yükselen: " + up.n + " " + arrow(up.p) + pct(up.p));
         if (dn && dn.p < 0 && dn !== up) lines.push("En çok düşen: " + dn.n + " " + arrow(dn.p) + pct(dn.p));
         rest.slice(0, 3).forEach(l => lines.push(l.n + ": " + l.chg));
-        show("gun-ici", "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open);
+        show("gun-ici", (m.has ? (m.pl >= 0 ? "📈 " : "📉 ") : "") + "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open, await chartImg(m.has ? (m.pl >= 0 ? "+" : "−") + pct(m.pc) : T.hm, (m.has ? m.n + " · saat " : "Saat ") + T.hm, movers(all), m.has ? m.pl >= 0 : null));
       }
       if (kind === "weekly") {
         const ref = back(7, 5, 10), w = snap.per && snap.per.w;
-        if (ref) { const { m, rest } = pick(since(ref)); show("haftalik", "Bu hafta " + (m.has ? m.chg : ""), [val(m), ...rest.map(l => l.n + ": " + l.chg), dm(ref.d) + " – " + dm(today)].join("\n"), open); }
+        if (ref) { const { m, rest } = pick(since(ref)); show("haftalik", "🗓️ Bu hafta " + (m.has ? m.chg : ""), [val(m), ...rest.map(l => l.n + ": " + l.chg), dm(ref.d) + " – " + dm(today)].join("\n"), open, m.has ? await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + dm(ref.d) + " – " + dm(today), movers(m.mv), m.pl >= 0) : undefined); }
         else if (w) { const { m } = pick(since(null)); show("haftalik", "Bu hafta " + arrow(w.pct) + pct(w.pct), [val(m), dm(w.from) + " – " + dm(today)].join("\n"), open); }
         else { const { m } = pick(since(null)); show("haftalik", "Emanet · Haftalık özet", val(m) + "\nHaftalık değişim için bir haftalık kayıt gerekiyor; gelecek cuma hazır olur.", open); }
       }
@@ -155,26 +181,26 @@ async function notify(kindForced, test) {
         } else lines.push("Bu ay bütçe kaydı yok.");
         if (ref) { const { m } = pick(since(ref)); if (m.has) lines.push("Portföy bu ay " + m.chg); lines.push(val(m)); }
         else if (w) lines.push("Portföy bu ay " + arrow(w.pct) + pct(w.pct));
-        show("aylik", title, lines.join("\n"), open);
+        show("aylik", "🗓️ " + title, lines.join("\n"), open);
       }
       if (kind === "zakat") {
         const z = snap.zk, g = z && z.d ? dayGap(today, z.d) : 7;
         const title = g <= 0 ? "Bugün zekât günü" : g === 1 ? "Yarın zekât günü" : "Zekât gününe " + g + " gün kaldı";
         const body = !z ? "Örnek bildirim. Zekât tarihiniz ayarlıysa gerçek tutar yazar." : z.reached ? (snap.hide ? "Hesaplanan zekâtı görmek için dokunun." : "Hesaplanan zekât: " + tl(z.left)) + "\nÖdediğinizde Zekât sekmesinden kaydedin." : "Varlıklarınız şu an nisabın altında; zekât düşmüyor.";
-        show("zekat", title, body, open.replace(/#.*$/, "") + "#zekat");
+        show("zekat", "🌙 " + title, body, open.replace(/#.*$/, "") + "#zekat");
       }
       if (kind === "vade") {
         let ls = (snap.dues || []).filter(x => [3, 1, 0].includes(dayGap(today, x.d)));
         if (kindForced) ls = (snap.dues || []).slice(0, 3);
         const tx = x => x.n + " · " + (x.dir === "lent" ? "alacak" : "borç") + (snap.hide ? "" : " " + x.a) + " · " + when(dayGap(today, x.d));
         if (!ls.length) show("vade", "Vade yarın: Mehmet", "Örnek bildirim. Vadesi yaklaşan borç ya da alacak olunca gerçek kayıt yazar.", open.replace(/#.*$/, "") + "#borc");
-        else show("vade", ls.length === 1 ? "Vade " + when(dayGap(today, ls[0].d)) + ": " + ls[0].n : "Yaklaşan vadeler · " + ls.length + " kayıt", ls.map(tx).join("\n"), open.replace(/#.*$/, "") + "#borc");
+        else show("vade", "📅 " + (ls.length === 1 ? "Vade " + when(dayGap(today, ls[0].d)) + ": " + ls[0].n : "Yaklaşan vadeler · " + ls.length + " kayıt"), ls.map(tx).join("\n"), open.replace(/#.*$/, "") + "#borc");
       }
       if (kind === "butce") {
         const ls = kindForced ? (snap.bud || []).slice(0, 3) : budNew();
         const tx = x => x.c + ": %" + x.p + (snap.hide ? "" : " · " + tl(x.s) + " / " + tl(x.b));
         if (!ls.length) show("butce", "Market bütçesi %85 doldu", "Örnek bildirim. Bir kategori bütçenin %80’ine ulaşınca gerçek tutar yazar.", open.replace(/#.*$/, "") + "#akis");
-        else show("butce", ls.length === 1 ? (ls[0].p >= 100 ? ls[0].c + " bütçesi aşıldı" : ls[0].c + " bütçesi %" + ls[0].p + " doldu") : "Bütçe uyarısı · " + ls.length + " kategori", ls.map(tx).join("\n") + ((r => r > 0 ? "\nAyın bitmesine " + r + " gün var." : "\nBugün ayın son günü.")(new Date(+ym.slice(0, 4), +ym.slice(5), 0).getDate() - +today.slice(8))), open.replace(/#.*$/, "") + "#akis");
+        else show("butce", "⚠️ " + (ls.length === 1 ? (ls[0].p >= 100 ? ls[0].c + " bütçesi aşıldı" : ls[0].c + " bütçesi %" + ls[0].p + " doldu") : "Bütçe uyarısı · " + ls.length + " kategori"), ls.map(tx).join("\n") + ((r => r > 0 ? "\nAyın bitmesine " + r + " gün var." : "\nBugün ayın son günü.")(new Date(+ym.slice(0, 4), +ym.slice(5), 0).getDate() - +today.slice(8))), open.replace(/#.*$/, "") + "#akis");
         if (!test) { (snap.bud || []).forEach(x => { bst.lv[x.c] = Math.max(bst.lv[x.c] || 0, bstep(x.p)); }); st.bud = bst; }
       }
       if (!test && kind !== "big" && kind !== "pulse") st[kind] = today;
@@ -185,12 +211,16 @@ async function notify(kindForced, test) {
     }
   } catch (e) {}
   if (!notes.length) notes.push(["gun-sonu", (test ? "Deneme · " : "") + "Emanet", "Özetiniz hazır. Görmek için dokunun.", open]);
-  for (const [tag, title, body, o] of notes) await self.registration.showNotification(title, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag, renotify: true, data: { open: o } });
+  const base = o => o.replace(/#.*$/, "");
+  for (const [tag, title, body, o, img] of notes) await self.registration.showNotification(title, { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag, renotify: true, timestamp: Date.now(), data: { open: o, base: base(o) },
+    ...(img ? { image: img } : {}),
+    // Android'de bildirimin altında iki kısa yol
+    actions: /^(gun-sonu|gun-ici|hareket|haftalik|aylik)$/.test(tag) ? [{ action: "portfoy", title: "Portföy" }, { action: "akis", title: "Bütçe" }] : [] });
 }
 self.addEventListener("push", e => e.waitUntil(notify(null, false)));
 self.addEventListener("message", e => { if (e.data && e.data.type === "gun-sonu") e.waitUntil(notify(e.data.kind || "daily", !!e.data.test)); });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.open) || self.registration.scope;
+  const dt = e.notification.data || {}, url = e.action && dt.base ? dt.base + "#" + e.action : (dt.open || self.registration.scope);
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => { const c = cs.find(x => x.url.startsWith(self.registration.scope)); if (!c) return self.clients.openWindow(url); return (url.includes("#") && c.navigate ? c.navigate(url).catch(() => c) : Promise.resolve(c)).then(w => (w || c).focus()); }));
 });
