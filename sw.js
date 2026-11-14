@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v46";
+const V = "emanet-v47";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
@@ -39,6 +39,7 @@ const dm = d => new Date(d + "T00:00:00").toLocaleDateString("tr-TR", { day: "nu
 const arrow = v => v >= 0 ? "▲ " : "▼ ";
 const sg = v => v >= 0 ? "+" : "−";
 const sp = v => sg(v) + pct(v);                       // +%0,52
+const big1 = (mv) => { const a = mv.filter(x => isFinite(x.p) && Math.abs(x.p) >= 0.005).sort((p, q) => Math.abs(q.p) - Math.abs(p.p))[0]; return a ? "en çok " + (a.p > 0 ? "yükselen " : "düşen ") + a.n + " " + sp(a.p) : ""; };
 const dot = (v, has) => !has || Math.abs(v) < 0.005 ? "⚪" : v > 0 ? "🟢" : "🔴";
 /* bildirimin büyük görseli (Android'de bildirim açılınca görünür): en çok yükselen ve düşenler, yeşil/kırmızı çubuklarla.
    "Tutarları gizle" açıksa yalnızca yüzde yazar; değilse tutar da yazar. Çizilemezse bildirim görselsiz gider. */
@@ -53,18 +54,18 @@ async function chartImg(head, sub, items, up, amt) {
     if (amt) { x.font = "800 52px " + F; x.fillText(amt, 32, 80); const w = x.measureText(amt).width; x.font = "700 30px " + F; x.fillText(head, 32 + w + 18, 80); }
     else { x.font = "800 54px " + F; x.fillText(head, 32, 82); }
     x.fillStyle = M; x.font = "500 23px " + F; x.fillText(sub, 32, 118, W - 64);
-    const ls = items.slice(0, 6), top = 146, rh = (H - top - 16) / ls.length, mx = Math.max(...ls.map(i => Math.abs(i.p)), 0.01);
-    const money = !!amt && ls.some(i => i.d != null), L0 = 200, L1 = W - (money ? 262 : 150), bh = Math.min(26, rh * 0.56);
+    // satırlar: ad solda, tutar ve yüzde sağda; aralarında ince çizgi (çubuk yok)
+    const ls = items.slice(0, 6), top = 140, rh = (H - top - 12) / ls.length, money = !!amt && ls.some(i => i.d != null);
+    x.textBaseline = "middle";
     ls.forEach((it, i) => {
-      const y = top + i * rh + rh / 2, w = Math.max(6, (L1 - L0) * Math.abs(it.p) / mx), col = it.p >= 0 ? G : R;
-      x.fillStyle = "#ffffff"; x.font = "700 24px " + F; x.textBaseline = "middle"; x.fillText(String(it.n).slice(0, 16), 32, y, L0 - 44);
-      x.fillStyle = "rgba(255,255,255,.07)"; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, L1 - L0, bh, bh / 2) : x.rect(L0, y - bh / 2, L1 - L0, bh); x.fill();
-      x.fillStyle = col; x.beginPath(); x.roundRect ? x.roundRect(L0, y - bh / 2, w, bh, bh / 2) : x.rect(L0, y - bh / 2, w, bh); x.fill();
-      x.textAlign = "right";
-      if (money && it.d != null) { x.font = "800 23px " + F; x.fillText(sp(it.p), W - 32, y); const pw = x.measureText(sp(it.p)).width; x.font = "600 21px " + F; x.fillStyle = "rgba(255,255,255,.78)"; x.fillText(sg(it.d) + tl(Math.abs(it.d)), W - 32 - pw - 14, y); }
-      else { x.font = "800 24px " + F; x.fillText(sp(it.p), W - 32, y); }
-      x.textAlign = "left";
+      const y = top + i * rh + rh / 2, col = Math.abs(it.p) < 0.005 ? M : it.p > 0 ? G : R;
+      if (i) { x.fillStyle = "rgba(255,255,255,.08)"; x.fillRect(32, top + i * rh, W - 64, 1); }
+      x.fillStyle = col; x.beginPath(); x.arc(40, y, 6, 0, 7); x.fill();
+      x.textAlign = "left"; x.fillStyle = "#ffffff"; x.font = "700 25px " + F; x.fillText(String(it.n).slice(0, 18), 58, y, money ? 330 : 470);
+      x.textAlign = "right"; x.fillStyle = col; x.font = "800 25px " + F; x.fillText(sp(it.p), W - 32, y);
+      if (money && it.d != null) { x.fillStyle = "rgba(255,255,255,.75)"; x.font = "600 23px " + F; x.fillText(sg(it.d) + tl(Math.abs(it.d)), W - 32 - 128, y); }
     });
+    x.textAlign = "left";
     const buf = new Uint8Array(await (await c.convertToBlob({ type: "image/png" })).arrayBuffer());
     let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
     return "data:image/png;base64," + btoa(bin);
@@ -72,7 +73,8 @@ async function chartImg(head, sub, items, up, amt) {
 }
 const movers = mv => { const a = mv.filter(x => isFinite(x.p) && Math.abs(x.p) >= 0.005).sort((p, q) => q.p - p.p); return a.length <= 5 ? a : a.slice(0, 3).concat(a.slice(-2)); };
 async function notify(kindForced, test) {
-  const notes = [], show = (tag, title, body, open, img) => notes.push([tag, (test ? "Deneme · " : "") + title, body, open, img]);
+  // img varsa (Android'de bildirim açılınca görünür) altındaki yazı kısa hâliyle (short) gider; ayrıntı resimdedir
+  const notes = [], show = (tag, title, body, open, img, short) => notes.push([tag, (test ? "Deneme · " : "") + title, img && short ? short : body, open, img]);
   let open = self.registration.scope;
   try {
     const snap = await nget("snap");
@@ -159,7 +161,7 @@ async function notify(kindForced, test) {
       if (kind === "daily" || kind === "big") {
         const { m, rest } = pick(since(dref)), gap = dref ? dayGap(dref.d, today) : 0;
         if (kind === "big") {
-          if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))));
+          if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))), [snap.hide ? "" : "Toplam " + tl(m.v), big1(m.mv)].filter(Boolean).join(" · "));
           else show("hareket", "Portföyde büyük hareket", val(m) + "\nAyrıntı için dokunun.", open);
         } else if (m.has) {
           // gün sonu: başlıkta ana portföyün değişimi; altında toplam değer, en çok yükselen/düşen ve (portföy özeti ayrı değilse) diğer portföyler
@@ -169,7 +171,8 @@ async function notify(kindForced, test) {
           if (up && up.p > 0.005) lines.push("En çok yükselen  " + up.n + " " + sp(up.p));
           if (dn && dn.p < -0.005 && dn !== up) lines.push("En çok düşen  " + dn.n + " " + sp(dn.p));
           if (!P.ps && rest.length) lines.push(...rest.map(l => dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
-          show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + m.n + (gap > 3 ? " son " + gap + " günde " : " bugün ") + m.chg, lines.join("\n") || val(m), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))));
+          show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + m.n + (gap > 3 ? " son " + gap + " günde " : " bugün ") + m.chg, lines.join("\n") || val(m), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))),
+            [snap.hide ? "" : "Toplam " + tl(m.v), big1(m.mv)].filter(Boolean).join(" · ") + (!P.ps && rest.length ? "\n" + rest.map(l => dot(l.pc, l.has) + " " + l.n + " " + sp(l.pc)).join(" · ") : ""));
         } else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
       if (kind === "pfs") {
@@ -179,7 +182,8 @@ async function notify(kindForced, test) {
         const when = gap > 3 ? "son " + gap + " günde" : "bugün";
         if (hs.length) show("portfoyler", "📊 Portföyler " + when + " " + (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")"),
           ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(ls.reduce((a, l) => a + l.v, 0))), open,
-          await chartImg(sp(pc), "Portföyler · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), ls.map(l => ({ n: l.n, p: l.has ? l.pc : 0, d: l.has ? l.pl : 0 })), pl >= 0, snap.hide ? undefined : sg(pl) + tl(Math.abs(pl))));
+          await chartImg(sp(pc), "Portföyler · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), ls.map(l => ({ n: l.n, p: l.has ? l.pc : 0, d: l.has ? l.pl : 0 })), pl >= 0, snap.hide ? undefined : sg(pl) + tl(Math.abs(pl))),
+          ls.map(l => dot(l.pc, l.has) + " " + l.n + " " + (l.has ? sp(l.pc) : "—")).join(" · "));
         else show("portfoyler", "📊 Portföyler", ls.map(l => l.n + (snap.hide ? "" : "  " + tl(l.v))).join("\n") + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
       if (kind === "pulse") {
@@ -189,11 +193,12 @@ async function notify(kindForced, test) {
         if (up && up.p > 0) lines.push("En çok yükselen  " + up.n + " " + sp(up.p));
         if (dn && dn.p < 0 && dn !== up) lines.push("En çok düşen  " + dn.n + " " + sp(dn.p));
         rest.slice(0, 3).forEach(l => lines.push(dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
-        show("gun-ici", (m.has ? (m.pl >= 0 ? "📈 " : "📉 ") : "") + "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open, await chartImg(m.has ? (m.pl >= 0 ? "+" : "−") + pct(m.pc) : T.hm, (m.has ? m.n + " · saat " : "Saat ") + T.hm, movers(all), m.has ? m.pl >= 0 : null, m.has ? snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl)) : undefined));
+        show("gun-ici", (m.has ? (m.pl >= 0 ? "📈 " : "📉 ") : "") + "Portföy " + T.hm + (m.has ? " · " + m.chg : ""), lines.join("\n"), open, await chartImg(m.has ? (m.pl >= 0 ? "+" : "−") + pct(m.pc) : T.hm, (m.has ? m.n + " · saat " : "Saat ") + T.hm, movers(all), m.has ? m.pl >= 0 : null, m.has ? snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl)) : undefined),
+          [snap.hide ? "" : "Toplam " + tl(m.v), big1(all)].filter(Boolean).join(" · "));
       }
       if (kind === "weekly") {
         const ref = back(7, 5, 10), w = snap.per && snap.per.w;
-        if (ref) { const { m, rest } = pick(since(ref)); show("haftalik", "🗓️ Bu hafta " + (m.has ? m.chg : ""), [val(m), ...rest.map(l => l.n + ": " + l.chg), dm(ref.d) + " – " + dm(today)].join("\n"), open, m.has ? await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + dm(ref.d) + " – " + dm(today), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))) : undefined); }
+        if (ref) { const { m, rest } = pick(since(ref)); show("haftalik", "🗓️ Bu hafta " + (m.has ? m.chg : ""), [val(m), ...rest.map(l => l.n + ": " + l.chg), dm(ref.d) + " – " + dm(today)].join("\n"), open, m.has ? await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + dm(ref.d) + " – " + dm(today), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))) : undefined, [snap.hide ? "" : "Toplam " + tl(m.v), dm(ref.d) + " – " + dm(today)].filter(Boolean).join(" · ")); }
         else if (w) { const { m } = pick(since(null)); show("haftalik", "Bu hafta " + arrow(w.pct) + pct(w.pct), [val(m), dm(w.from) + " – " + dm(today)].join("\n"), open); }
         else { const { m } = pick(since(null)); show("haftalik", "Emanet · Haftalık özet", val(m) + "\nHaftalık değişim için bir haftalık kayıt gerekiyor; gelecek cuma hazır olur.", open); }
       }
