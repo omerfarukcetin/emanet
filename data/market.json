@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-13T23:40:28.283Z",
+ "updatedAt": "2026-11-14T00:01:16.885Z",
  "fx": {
   "EUR": 55.5666,
   "USD": 50.3716
@@ -108,9 +108,13 @@
    "pc": 73.35
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "KLU: fon fiyatı alınamadı (fetch failed)",
+  "ENR: fon fiyatı alınamadı (fetch failed)",
+  "ZPO: fon fiyatı alınamadı (fetch failed)",
+  "TEFAS art arda yanıt vermedi; kalan fonlar bu turda atlandı"
  ]
 }
