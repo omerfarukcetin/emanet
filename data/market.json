@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-15T23:40:26.067Z",
+ "updatedAt": "2026-11-15T23:50:34.880Z",
  "fx": {
-  "EUR": 55.5869,
-  "USD": 50.3861
+  "EUR": 55.6067,
+  "USD": 50.3905
  },
  "gold": {
-  "ata": 42593,
+  "ata": 42700,
   "aziz": null,
-  "ceyrek": 10413,
-  "cumhuriyet": 42593,
-  "gram": 6299.76,
-  "gumus": 79.29,
-  "hamit": 42593,
-  "resat": 42593,
-  "resatAlis": 41440.94,
-  "resatSatis": 42107.81,
-  "tam": 41485,
-  "yarim": 20819,
+  "ceyrek": 10439,
+  "cumhuriyet": 42700,
+  "gram": 6317.41,
+  "gumus": 79.48,
+  "hamit": 42700,
+  "resat": 42700,
+  "resatAlis": 41562.58,
+  "resatSatis": 42231.61,
+  "tam": 41589,
+  "yarim": 20871,
   "resatKaynak": "altin.in",
-  "ayar22": 5967.31,
-  "ayar18": 5120,
-  "ayar14": 4640.16
+  "ayar22": 5984.27,
+  "ayar18": 5130,
+  "ayar14": 4651.89
  },
  "quotes": {
   "abd:LPTH": {
