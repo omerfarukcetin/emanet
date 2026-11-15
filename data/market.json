@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-15T22:40:23.217Z",
+ "updatedAt": "2026-11-15T22:50:25.068Z",
  "fx": {
-  "EUR": 55.6355,
-  "USD": 50.404
+  "EUR": 55.6422,
+  "USD": 50.4071
  },
  "gold": {
   "ata": 42500,
   "aziz": null,
   "ceyrek": 10390,
   "cumhuriyet": 42500,
-  "gram": 6282.71,
+  "gram": 6282.61,
   "gumus": 79.06,
   "hamit": 42500,
   "resat": 42500,
-  "resatAlis": 41356.05,
-  "resatSatis": 42021.05,
+  "resatAlis": 41358.04,
+  "resatSatis": 42024.04,
   "tam": 41394,
   "yarim": 20773,
   "resatKaynak": "altin.in",
-  "ayar22": 5954.16,
+  "ayar22": 5954.19,
   "ayar18": 5110,
-  "ayar14": 4631.07
+  "ayar14": 4631.09
  },
  "quotes": {
   "abd:LPTH": {
