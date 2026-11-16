@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.84";
+const APP_VERSION="2.85";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -573,7 +573,10 @@ function rebuild(h){
   const bd=buysOf(h).map(t=>t.date).filter(Boolean).sort()[0];if(bd)h.buyDate=bd;
   h.fxAt=null;recalcFx(h);return null;
 }
-const hKey=h=>h.kind==="bes"?"bes|"+h.id:[h.kind,h.cur,(h.symbol||"").toLocaleUpperCase("tr").trim()||(h.kind==="altin"&&goldKey(h))||trLow(h.name).trim()].join("|");
+const hKey=h=>h.kind==="bes"?"bes|"+h.id:[h.kind,h.cur,(h.symbol||"").toLocaleUpperCase("tr").trim()||(h.kind==="altin"&&goldKey(h))||trLow(h.name).trim(),trLow(h.broker||"").trim()].join("|");
+/* aracı kurumlar: her portföyün kendi listesi (p.brokers) + o portföydeki varlıklarda yazan kurumlar */
+const BROKER_HINT=["Midas","Garanti BBVA Yatırım","Enpara","Foneria","Osmanlı Yatırım","İş Yatırım","Yapı Kredi Yatırım","Akbank","QNB Invest","Kuveyt Türk","Ziraat Yatırım","Gedik Yatırım","İnfo Yatırım","Halk Yatırım","Vakıf Yatırım","Ünlü & Co","Papara","Paribu","BtcTurk","Binance","Kuyumcu","Evde"];
+const pfBrokers=p=>p?[...new Set([...(p.brokers||[]),...p.holdings.map(h=>h.broker).filter(Boolean)])]:[];
 function mergeInto(a,b){
   const snapA=JSON.stringify(a);ensureTrades(a);ensureTrades(b);
   a.trades=a.trades.concat(b.trades||[]);a.realizedLegacy=(+a.realizedLegacy||0)+(+b.realizedLegacy||0);
@@ -1306,6 +1309,10 @@ function flowChart(compact){
 }
 
 /* Varlık bazında dağılım: aynı kod farklı portföylerde birleştirilir; ilk 9'dan sonrası "Diğer" */
+/* aracı kuruma göre dağılım; aynı ad farklı portföylerde birleşir */
+function brokerParts(hs){const by={};hs.forEach(h=>{const k=(h.broker||"").trim()||"Belirtilmemiş";by[k]=(by[k]||0)+hVal(h)});
+  const C=["--c2","--c4","--c3","--c9","--c5","--c8","--c6","--c1","--c10"];let i=0;
+  return Object.entries(by).filter(e=>e[1]>0).sort((a,b)=>(a[0]==="Belirtilmemiş")-(b[0]==="Belirtilmemiş")||b[1]-a[1]).map(([n,v])=>({n,v,c:n==="Belirtilmemiş"?"--c7":C[i++%C.length]}))}
 function itemParts(hs){
   const pal=["--c2","--c4","--c3","--c9","--c5","--c8","--c1","--c10","--c6"],by=new Map();
   hs.forEach(h=>{const k=(h.symbol||h.name||"?").toUpperCase(),v=hVal(h);if(!(v>0))return;const o=by.get(k)||{n:h.symbol?h.symbol.toUpperCase():h.name,v:0};o.v+=v;by.set(k,o)});
@@ -1367,7 +1374,7 @@ function rPortfoy(){
     ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
   ${cur&&hs.length?foldCard("hedef",targetCard(cur,hs),cur.target&&Object.keys(cur.target).length?(x=>`<span class="sub">sapma ${fmtN(x,1)} puan</span>`)(targetPlan(cur,hs,0).rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2):""):""}
-  ${parts.length?foldCard("dagilim",`<section class="card"><div class="sec" style="margin-bottom:12px"><h2>Dağılım</h2><div class="seg" role="group" aria-label="Dağılım türü">${[["kind","Kategori"],["item","Varlık"]].map(([k,l])=>`<button data-act="dgmode" data-k="${k}" aria-pressed="${(view.dgMode||"kind")===k}">${l}</button>`).join("")}</div></div>${donut(view.dgMode==="item"?itemParts(hs):parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
+  ${parts.length?foldCard("dagilim",`<section class="card"><div class="sec" style="margin-bottom:12px"><h2>Dağılım</h2><div class="seg" role="group" aria-label="Dağılım türü">${[["kind","Kategori"],["item","Varlık"],...(hs.some(h=>h.broker)?[["broker","Kurum"]]:[])].map(([k,l])=>`<button data-act="dgmode" data-k="${k}" aria-pressed="${(view.dgMode||"kind")===k}">${l}</button>`).join("")}</div></div>${donut(view.dgMode==="item"?itemParts(hs):view.dgMode==="broker"&&hs.some(h=>h.broker)?brokerParts(hs):parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
   ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
   ${hs.length?foldCard("bench",benchCard((cur?[cur]:vis).map(p=>p.id)),(b=>b?`<span class="num ${b.items[0].v>=0?"pos-t":"neg-t"}">${fmtPct(b.items[0].v)}</span>`:"")(benchCalc((cur?[cur]:vis).map(p=>p.id),view.hRange||90))):""}
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
@@ -1495,7 +1502,7 @@ function vHead(hs,ctx){
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
-  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.symbol?h.symbol.toUpperCase():h.name)}<small class="num">${(()=>{const ep=effPrice(h);return S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur))})()}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
+  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.symbol?h.symbol.toUpperCase():h.name)}<small class="num">${(()=>{const ep=effPrice(h);return S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur))})()}${h.broker?` · ${esc(h.broker)}`:""}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
   const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
@@ -2172,8 +2179,9 @@ function pfSheet(p){
   formSheet({title:p?"Portföyü düzenle":"Yeni portföy",fields:[{id:"name",label:"Portföy adı",value:p?p.name:"",ph:"Örn. Uzun vade, Çocuk için, BES"},
     {id:"owner",label:"Kimin portföyü",value:p?ownerOf(p):(view.owner!=="all"?view.owner:MAIN()),list:[...new Set([...owners(),"Eşim","Oğlum","Kızım"])],ph:"Örn. Ben, Eşim"},
     {id:"isMain",label:"Ana portföy (bütçe ve nakit bakiyesi buna bağlanır)",type:"seg",value:p&&state.portfolios.length&&mainPf()===p?"1":(!state.portfolios.length?"1":"0"),options:[["1","Evet"],["0","Hayır"]]},
+    {id:"brokers",label:"Aracı kurumlar (virgülle ayırın)",value:p?(p.brokers||pfBrokers(p)).join(", "):"",ph:"Örn. Midas, Garanti, Enpara, Foneria"},
     {id:"color",label:"Renk",type:"select",value:p?pfColor(p):colors[state.portfolios.length%6],options:CN}],
-    onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1";if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
+    onSave:v=>{if(!v.name.trim())return"Portföy adı girin.";const ow=v.owner.trim()||MAIN(),mk=v.isMain==="1",brs=[...new Set(v.brokers.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean))];if(p){p.name=v.name.trim();p.color=v.color;p.owner=ow;p.brokers=brs;if(mk)S().mainPf=p.id;else if(mainPf()===p&&state.portfolios.length>1)S().mainPf=(state.portfolios.find(x=>x!==p)||{}).id}else{const n={id:uid(),name:v.name.trim(),color:v.color,owner:ow,brokers:brs,holdings:[]};state.portfolios.push(n);if(mk)S().mainPf=n.id;view.pf=n.id;if(view.tab!=="portfoy")view.tab="portfoy"}commit(p?"Portföy güncellendi":"Portföy oluşturuldu")},
     extra:p?shareBlock(p):"",onOpen:(form,sh)=>{
       // renk: açılır liste yerine renk düğmeleri; seçim gizli listeye yazılır
       const sel=form.elements.color,box=sel.closest(".field");sel.hidden=true;
@@ -2202,6 +2210,7 @@ function besSheet(pfId,h){
       const nh={id:uid(),name:v.name.trim(),symbol:"",buyDate:v.buyDate||"",fxAt:null,bes:nb};besApply(nh);recalcFx(nh);target.holdings.push(nh);commit("BES eklendi")},
     onDelete:h?()=>{state.portfolios.forEach(p=>p.holdings=p.holdings.filter(x=>x!==h));commit("BES silindi")}:null});
 }
+function brokerOpts(pid,cur){const p=state.portfolios.find(x=>x.id===pid),b=pfBrokers(p);if(cur&&!b.includes(cur))b.push(cur);return [["","Belirtilmemiş"],...b.map(x=>[x,x]),["__new","+ Yeni kurum ekle"]]}
 function holdingSheet(pfId,h){
   if(h&&h.kind==="bes")return besSheet(pfId,h);
   if(!state.portfolios.length){pfSheet();return}
@@ -2215,6 +2224,7 @@ function holdingSheet(pfId,h){
     {id:"pf",label:"Portföy",type:"select",value:pid,options:ownPfs().map(p=>[p.id,p.name+(owners().length>1?" ("+ownerOf(p)+")":"")])},
     [{id:"kind",label:"Tür",type:"select",value:k0,options:Object.entries(KINDS)},{id:"cur",label:"Para birimi",type:"select",value:h?h.cur:"TRY",options:CURS}],
     {id:"preset",label:"Ürün",type:"select",value:curPreset,options:presetOpts(k0),hidden:!PRESETS[k0]},
+    [{id:"broker",label:"Aracı kurum",type:"select",value:h?(h.broker||""):(view.lastBroker&&view.lastBroker[pid])||"",options:brokerOpts(pid,h&&h.broker)},{id:"brokerNew",label:"Yeni kurum adı",value:"",ph:"Örn. Midas",list:BROKER_HINT,hidden:true}],
     {id:"name",label:"Varlık adı",value:h?h.name:"",ph:"Adını veya kodunu yazmaya başlayın"},
     ...(multiT?[{id:"symbol",label:"Kod",value:h.symbol||"",ph:"Örn. THYAO"},{id:"price",label:"Güncel fiyat (otomatik yoksa)",type:"number",value:h.price,ph:"0"}]
     :[[{id:"symbol",label:"Kod",value:h?h.symbol:"",ph:"Örn. THYAO"},{id:"buyDate",label:"Alış tarihi",type:"date",value:h?(h.buyDate||""):todayISO()}]]),
@@ -2244,7 +2254,10 @@ function holdingSheet(pfId,h){
             E.cur.value=k==="abd"?"USD":(["hisse","fon","ppf"].includes(k)?"TRY":E.cur.value)}}
         const ph=PH[k];E.name.placeholder=ph?ph[0]:"Örn. Katılım hesabı";E.symbol.placeholder=ph?ph[1]:"İsteğe bağlı";
         form.dataset.lastKind=k;note()};
-      form.addEventListener("change",e=>{if(e.target.name==="kind")setKind(false);if(e.target.name==="preset"){applyPreset(!h);note()}});
+      const brk=()=>{const nw=E.broker.value==="__new";sh.querySelector("#w_brokerNew").hidden=!nw;if(nw)E.brokerNew.focus()};
+      const brkFill=()=>{const keep=E.broker.value;E.broker.innerHTML=brokerOpts(E.pf.value,h&&h.broker).map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");E.broker.value=[...E.broker.options].some(o=>o.value===keep)&&keep!=="__new"?keep:"";brk()};
+      form.addEventListener("change",e=>{if(e.target.name==="kind")setKind(false);if(e.target.name==="preset"){applyPreset(!h);note()}if(e.target.name==="broker")brk();if(e.target.name==="pf")brkFill()});
+      brk();
       setKind(true);if(!h&&PRESETS[k0])applyPreset(true);
       /* yazdıkça öneri */
       const pick=(c,n)=>{E.symbol.value=c;E.name.value=n};
@@ -2257,9 +2270,11 @@ function holdingSheet(pfId,h){
       const price=isNaN(parseNum(v.price))?(h?cost:bp):parseNum(v.price);
       if(!v.name.trim())return"Varlık adını girin.";if(!(qty>0)&&!h)return"Miktar sıfırdan büyük olmalı.";if(isNaN(cost)||(!h&&isNaN(bp)))return h?"Ortalama maliyeti girin.":"Alış fiyatını girin.";
       if(v.buyDate&&v.buyDate>todayISO())return"Alış tarihi ileri bir tarih olamaz.";
-      const data={name:v.name.trim(),symbol:v.symbol.trim(),kind:v.kind,cur:v.cur,qty,cost,price:isNaN(price)?cost:price,buyDate:v.buyDate||""};
+      const broker=v.broker==="__new"?v.brokerNew.trim():v.broker;if(v.broker==="__new"&&!broker)return"Yeni aracı kurumun adını yazın.";
+      const data={name:v.name.trim(),symbol:v.symbol.trim(),kind:v.kind,cur:v.cur,qty,cost,price:isNaN(price)?cost:price,buyDate:v.buyDate||"",broker};
       if(data.kind==="abd"&&data.cur==="TRY")return"ABD hisseleri için para birimi USD olmalı.";
       const target=state.portfolios.find(p=>p.id===v.pf);
+      if(broker){target.brokers=target.brokers||pfBrokers(target);if(!target.brokers.includes(broker))target.brokers.push(broker);view.lastBroker={...(view.lastBroker||{}),[target.id]:broker}}
       if(h){
         const from=state.portfolios.find(p=>p.holdings.includes(h));const dateChanged=h.buyDate!==data.buyDate;
         Object.assign(h,data);
@@ -2343,7 +2358,7 @@ function holdingDetail(pfId,h){
       ${h.fxAt?`<div><span>Alış günü kuru${h.fxAt.multi?" (ağırlıklı)":""}<br><small class="sub">${esc(h.fxAt.src||"")}${h.fxAt.pending?" · bazı alımların kuru bekleniyor":""}</small></span><span>USD ${fmtN(h.fxAt.USD,4)}${+h.fxAt.EUR?"<br>EUR "+fmtN(h.fxAt.EUR,4):""}</span></div>
       <div><span>${h.cur==="USD"?"TL maliyeti":"Dolar maliyeti"}</span><span>${h.cur==="USD"?fmt(costIn(h,"TRY"),"TRY"):fmt(costIn(h,"USD"),"USD")}</span></div>
       ${h.cur==="USD"?"":`<div><span>Dolar bazında kâr/zarar</span><span class="${(val*rate(S().base)/rate("USD"))>=costIn(h,"USD")?"pos-t":"neg-t"}">${fmt(val*rate(S().base)/rate("USD")-costIn(h,"USD"),"USD")}</span></div>`}`:fxWaiting(h)?`<div><span>Alış günü kuru</span><span style="font-family:var(--f-body)" class="sub">bekleniyor</span></div>`:""}`.trim();
-  openSheet(`<h3>${mkIcon(KIND_ICON[h.kind]||I.dots,KIND_COLOR[h.kind]||"--c7")}<span class="h3-t">${esc(h.name)}<small>${[h.symbol,KINDS[h.kind]].filter(Boolean).map(esc).join(" · ")}</small></span></h3>
+  openSheet(`<h3>${mkIcon(KIND_ICON[h.kind]||I.dots,KIND_COLOR[h.kind]||"--c7")}<span class="h3-t">${esc(h.name)}<small>${[h.symbol,KINDS[h.kind],h.broker].filter(Boolean).map(esc).join(" · ")}</small></span></h3>
     <div class="dsum"><div><span class="label">Değer</span><div class="dv num">${fmt(val)}</div></div><span class="chg ${pl>=0?"up":"down"}"><b class="num">${pl>=0?"▲":"▼"} ${fmt(Math.abs(pl))}</b><span class="num">%${fmtN(Math.abs(plp),1)}</span></span></div>
     <div class="tiles">
       <div><span class="label">Miktar</span><b class="num">${fmtN(h.qty,4)}</b></div>
