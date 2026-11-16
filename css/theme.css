@@ -1221,3 +1221,10 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .swb[aria-checked="true"]{box-shadow:0 0 0 2px var(--fg)}
 .swb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .swn{display:block;color:var(--muted)}
+
+/* 2.84 · kredi kartı etiketi ve ödeme süzgeci */
+.ctag{display:inline-flex;align-items:center;gap:4px;padding:0 7px 0 5px;border-radius:999px;font-weight:700;font-size:var(--fs-sub);line-height:1.35;color:var(--x);background:color-mix(in srgb,var(--x) 14%,transparent);vertical-align:1px}
+.ctag svg{flex:none}
+.txf:has(#txPay){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.txf:has(#txPay) .search{grid-column:1/-1}
+.txf:has(#txPay) select{max-width:none;width:100%}
