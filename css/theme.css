@@ -1238,3 +1238,21 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .bk-sum small:not(.pos-t):not(.neg-t){color:var(--muted)}
 .bk-sum .r{text-align:right}
 .bk-sum b{font-size:var(--fs-row)}
+
+/* 2.88 · tek satırla hızlı ekleme */
+.qadd{display:grid;gap:8px;margin:0 0 14px;padding:12px;border-radius:16px;background:var(--surface-2)}
+.qadd .label{margin:0}
+.qa-row{display:flex;gap:8px}
+.qa-row input{flex:1;min-width:0;font-size:1rem;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.qa-row input:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+.qa-row .btn{flex:none;padding:0 18px}
+.qa-prev{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:24px;font-size:var(--fs-sub)}
+.qa-prev .sub b{color:var(--fg);font-weight:600}
+.qp{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:600;line-height:1.5}
+.qp.out{color:var(--neg);border-color:color-mix(in srgb,var(--neg) 35%,transparent)}
+.qp.in{color:var(--pos);border-color:color-mix(in srgb,var(--pos) 35%,transparent)}
+.qp.sv{color:var(--c5);border-color:color-mix(in srgb,var(--c5) 35%,transparent)}
+.qp.warn{color:var(--c9);border-style:dashed}
+.qp.nt{font-weight:500;color:var(--muted)}
+.qa-prev .ctag{padding:2px 9px 2px 7px;line-height:1.5}
+#qaForm2{justify-self:start;padding:0;min-height:0}

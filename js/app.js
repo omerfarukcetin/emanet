@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.87";
+const APP_VERSION="2.88";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2495,6 +2495,66 @@ function quickTx(){
   const seen=new Set(freq.map(o=>o.cat+"|"+o.amount)),rec=all.filter(o=>!seen.has(o.cat+"|"+o.amount)).sort((a,b)=>b.last.localeCompare(a.last));
   return freq.concat(rec).slice(0,6);
 }
+/* ---------- tek satırla ekleme: "market 450 garanti", "benzin 1.200 dün", "maaş 85000", "kahve dünyası 245 kuveyt 3 taksit" ----------
+   Tutar: ilk sayı ("2 bin" = 2000). Tür: gelir/maaş → gelir, birikim/tasarruf → tasarruf, yoksa gider.
+   Kart: kart adı geçerse o kart; "nakit" → nakit. Tarih: dün / evvelsi gün / bugün.
+   Kategori sırası: kategori adı yazılmışsa o; yoksa aynı notla daha önce girilmiş işlemin kategorisi (ve kartı); yoksa anahtar kelime; yoksa "Diğer". */
+const QK=[[/^(market|migros|bim|a101|şok|carrefour|bakkal|manav|kasap|fırın|ekmek|süt|yumurta|meyve|sebze|et|tavuk|happy)/,/market|mutfak|gıda/i],
+  [/^(benzin|mazot|motorin|akaryakıt|yakıt|opet|shell|petrol|lpg|otopark|hgs|ogs|köprü|otoyol|taksi|dolmuş|otobüs|metro|akbil|istanbulkart|araba|lastik|servis|muayene|kasko|sigorta)/,/ulaşım|araç|yakıt/i],
+  [/^(eczane|ilaç|doktor|hastane|muayene|diş|gözlük|vitamin)/,/sağlık/i],
+  [/^(kahve|çay|cafe|kafe|restoran|lokanta|yemek|döner|kebap|pide|pizza|burger|tatlı|pasta|dondurma|sinema|simit|börek)/,/yemek|eğlence/i],
+  [/^(elektrik|su|doğalgaz|gaz|internet|fatura|turkcell|vodafone|telekom|superonline|türknet)/,/fatura/i],
+  [/^(aidat)/,/aidat|kira/i],
+  [/^(netflix|spotify|youtube|disney|exxen|blutv|prime|icloud|tv\+|abonelik|gain|tabii)/,/abonelik/i],
+  [/^(kırtasiye|kitap|defter|okul|kurs|servis ücreti|harçlık)/,/eğitim/i],
+  [/^(mama|bez|oyuncak|çocuk|bebek)/,/çocuk/i],
+  [/^(giyim|ayakkabı|mont|pantolon|gömlek|elbise|lcw|defacto|koton)/,/giyim/i],
+  [/^(sadaka|bağış|yardım|zekat|fitre)/,/yardım|sadaka/i],
+  [/^(hediye)/,/hediye/i],[/^(kira)/,/kira/i]];
+function quickParse(raw){
+  const src=String(raw||"").trim();if(!src)return null;
+  const T=src.split(/\s+/),L=T.map(trLow),used=new Set();const r={type:"out",cur:"TRY",date:todayISO(),method:"",note:"",inst:1,why:{}};
+  // tutar
+  for(let i=0;i<T.length&&r.amount==null;i++){let t=T[i].replace(/^₺|₺$|tl$/gi,"");if(!/^\d+([.,]\d+)*$/.test(t))continue;
+    if(/^\d{1,3}(\.\d{3})+$/.test(t))t=t.replace(/\./g,"");let a=parseNum(t);if(!(a>0))continue;
+    if(L[i+1]==="taksit"&&a<=36&&Number.isInteger(a)){r.inst=a;used.add(i);used.add(i+1);continue}
+    if(L[i+1]==="bin"){a*=1000;used.add(i+1)}r.amount=a;used.add(i)}
+  for(let i=0;i<T.length;i++){if(used.has(i))continue;const t=T[i].replace(/[.,]$/,"");if(/^\d+$/.test(t)&&L[i+1]==="taksit"){r.inst=Math.min(36,+t);used.add(i);used.add(i+1)}}
+  // tarih
+  L.forEach((w,i)=>{if(used.has(i))return;if(w==="dün"||w==="dun"){r.date=addDays(todayISO(),-1);used.add(i)}else if(w==="bugün"||w==="bugun")used.add(i);else if((w==="evvelsi"||w==="önceki")&&(L[i+1]==="gün"||L[i+1]==="gun")){r.date=addDays(todayISO(),-2);used.add(i);used.add(i+1)}});
+  // tür
+  L.forEach((w,i)=>{if(used.has(i))return;if(/^(gelir|maaş|maas|ikramiye|prim)$/.test(w)){r.type="in";if(w==="gelir")used.add(i)}else if(/^(tasarruf|birikim)$/.test(w)){r.type="save";if(w==="tasarruf")used.add(i)}});
+  // kart / nakit
+  L.forEach((w,i)=>{if(used.has(i)||w.length<3)return;if(w==="nakit"){r.method="";r.why.m="nakit";used.add(i);return}
+    const c=state.cards.find(c=>{const n=trLow(c.name);return n===w||n.split(/\s+/)[0]===w||(w.length>=4&&n.startsWith(w))});if(c){r.method=c.id;r.why.m="yazdın";used.add(i)}
+    else if((w==="kart"||w==="kredi")&&state.cards.length===1){r.method=state.cards[0].id;used.add(i)}});
+  const cats=r.type==="in"?CATS.in:r.type==="save"?CATS.save:CATS.out;
+  // kategori adı yazılmışsa
+  const words=c=>trLow(c).split(/[^a-zçğıöşü]+/).filter(x=>x.length>=4);
+  for(let i=0;i<T.length&&!r.cat;i++){if(used.has(i)||L[i].length<4)continue;const w=L[i];
+    const c=cats.find(c=>words(c).some(x=>x.startsWith(w)||w.startsWith(x)));if(c){r.cat=c;r.why.c="yazdın";if(cats.some(k=>trLow(k).split(/[^a-zçğıöşü]+/)[0]===w))used.add(i)}}
+  const rest=T.filter((_,i)=>!used.has(i)).join(" ").replace(/\s+/g," ").trim();
+  // aynı notla daha önce girilmiş işlem
+  const rl=trLow(rest);
+  if(rl.length>=3){const prev=state.tx.filter(x=>(x.type==="out"||x.type==="in"||x.type==="save")&&x.note&&(trLow(x.note)===rl||trLow(x.note).startsWith(rl)||rl.startsWith(trLow(x.note)))).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+    if(prev){if(!r.cat){r.type=prev.type;r.cat=prev.cat;r.why.c="önceki kayıt"}if(!r.why.m&&prev.method&&r.type==="out"&&cardById(prev.method)){r.method=prev.method;r.why.m="önceki kayıt"}if(trLow(prev.note)===rl||prev.note.length>rest.length)r.note=prev.note}}
+  if(!r.cat){const tk=rl.split(" ");for(const[re,cr]of QK){if(tk.some(w=>re.test(w))||re.test(rl)){const c=cats.find(x=>cr.test(x));if(c){r.cat=c;r.why.c="tahmin";break}}}}
+  if(!r.cat){r.cat=cats.find(c=>/diğer/i.test(c))||cats[cats.length-1];r.why.c="bulunamadı"}
+  if(!r.note&&rest)r.note=rest.charAt(0).toLocaleUpperCase("tr")+rest.slice(1);
+  if(r.type!=="out"){r.method="";r.inst=1}if(!r.method)r.inst=1;
+  return r}
+function quickSave(r){const a=r.amount,ym=r.date.slice(0,7),b0=r.type==="out"?budLevel(r.cat,ym):null;
+  withUndo(()=>{if(r.inst>1){const g=uid(),per=Math.round(a/r.inst*100)/100;
+      for(let k=0;k<r.inst;k++){const[y,m]=ym.split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
+        state.tx.push({id:uid(),type:"out",amount:k===r.inst-1?Math.round((a-per*(r.inst-1))*100)/100:per,cur:"TRY",cat:r.cat,date:dayIn(mm,+r.date.slice(8)),note:r.note,method:r.method,inst:(k+1)+"/"+r.inst,grp:g})}}
+    else state.tx.push({id:uid(),type:r.type,amount:a,cur:"TRY",cat:r.cat,date:r.date,note:r.note,method:r.type==="out"?r.method:""});
+    view.month=ym;commit((r.type==="in"?"Gelir":r.type==="save"?"Tasarruf":"Gider")+" eklendi · "+r.cat+" "+fmt(a,"TRY",{dec:a%1?2:0,show:true})+(r.method?" · "+(cardById(r.method)||{}).name:"")+(r.type==="out"?budNote(r.cat,ym,b0):""))})}
+function quickPrev(r){if(!r)return `<span class="sub">Yaz ve Enter'a bas. Örnek: <b>market 450 garanti</b> · <b>benzin 1.200 dün</b> · <b>maaş 85000</b></span>`;
+  if(!(r.amount>0))return `<span class="sub">Tutarı da yaz, örneğin <b>${esc(r.note||"market")} 450</b></span>`;
+  const c=r.method&&cardById(r.method),tag=(l,cls)=>`<span class="qp ${cls||""}">${l}</span>`;
+  return [tag(r.type==="in"?"Gelir":r.type==="save"?"Tasarruf":"Gider",r.type==="in"?"in":r.type==="save"?"sv":"out"),tag(`<b class="num">${fmt(r.amount,"TRY",{dec:r.amount%1?2:0,show:true})}</b>`),
+    tag(esc(r.cat)+(r.why.c==="bulunamadı"?" ?":""),r.why.c==="bulunamadı"?"warn":""),r.type==="out"?(c?cardTag(c):tag("Nakit")):"",r.inst>1?tag(r.inst+" taksit"):"",
+    r.date!==todayISO()?tag(fmtDate(r.date)):"",r.note?tag(esc(r.note),"nt"):""].join("")}
 /* ---------- tek + menüsü: her sekmede aynı ---------- */
 function curPfId(){const v=view.pf;return v&&v!=="all"&&ownPfs().some(p=>p.id===v)?v:(mainPf()||ownPfs()[0]||{}).id}
 function addMenu(){
@@ -2507,7 +2567,20 @@ function addMenu(){
     ["debt","Borç / alacak",I.borc,"--c8","Verdiğin ya da aldığın"],
     ["zakat","Zekât ödemesi",I.zekat,"--c3","Ödediğin zekâtı kaydet"],
     ...(state.cards.length?[["card","Kart ödemesi",I.card,"--c10","Kredi kartı borcu"]]:[])];
-  openSheet(`<h3>Ne eklemek istersin?</h3><div class="amenu">${it.map(([k,l,ico,c,d])=>`<button type="button" class="amx" data-am="${k}" style="--ac:var(${c})"><span class="am-ic">${ic(ico,22)}</span><b>${l}</b><small>${d}</small></button>`).join("")}</div>`,sh=>{
+  openSheet(`<h3>Ne eklemek istersin?</h3>
+    <form class="qadd" id="qaForm" autocomplete="off"><label class="label" for="qaIn">Hızlı ekle · tek satır yaz</label>
+      <div class="qa-row"><input id="qaIn" enterkeyhint="done" autocapitalize="off" spellcheck="false" placeholder="market 450 garanti"><button type="submit" class="btn primary" id="qaGo" disabled>Ekle</button></div>
+      <div class="qa-prev" id="qaPrev" aria-live="polite">${quickPrev(null)}</div>
+      <button type="button" class="btn ghost sm" id="qaForm2" hidden>Formda aç, düzenle</button></form>
+    <div class="amenu">${it.map(([k,l,ico,c,d])=>`<button type="button" class="amx" data-am="${k}" style="--ac:var(${c})"><span class="am-ic">${ic(ico,22)}</span><b>${l}</b><small>${d}</small></button>`).join("")}</div>`,sh=>{
+    const qi=sh.querySelector("#qaIn"),qp=sh.querySelector("#qaPrev"),qg=sh.querySelector("#qaGo"),qf=sh.querySelector("#qaForm2");let qr=null;
+    const upd=()=>{qr=quickParse(qi.value);qp.innerHTML=quickPrev(qr);const ok=!!(qr&&qr.amount>0);qg.disabled=!ok;qf.hidden=!ok};
+    qi.addEventListener("input",upd);
+    sh.querySelector("#qaForm").onsubmit=e=>{e.preventDefault();upd();if(!(qr&&qr.amount>0))return;closeSheet();quickSave(qr)};
+    qf.onclick=()=>{if(!qr)return;const x=qr;txSheet(null,{type:x.type,amount:x.amount});const f=document.querySelector("#sheet form");if(!f)return;const el=f.elements;
+      if(el.cat){if(![...el.cat.options].some(o=>o.value===x.cat))el.cat.insertAdjacentHTML("afterbegin",`<option value="${esc(x.cat)}">${esc(x.cat)}</option>`);el.cat.value=x.cat}
+      if(el.date)el.date.value=x.date;if(el.note)el.note.value=x.note;if(el.method)el.method.value=x.method||"cash";if(el.inst)el.inst.value=String(x.inst);
+      f.dispatchEvent(new Event("change",{bubbles:true}))};
     sh.querySelectorAll("[data-am]").forEach(b=>b.onclick=()=>{const k=b.dataset.am;
       if(k==="out"||k==="in"||k==="save"||k==="card")return txSheet(null,{type:k});
       if(k==="buy"||k==="sell")return pickHolding(k);
