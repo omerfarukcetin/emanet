@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.89";
+const APP_VERSION="2.90";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -980,7 +980,9 @@ function render(){
   }
   const R={ozet:rOzet,portfoy:rPortfoy,akis:rAkis,borc:rBorc,zekat:rZekat,ayarlar:rAyarlar,rapor:rRapor}[view.tab]||rOzet;
   const prevN=motionBefore(m);
+  const nv0=$(".setnav"),nx=nv0?nv0.scrollLeft:null;
   m.innerHTML=(view.tab==="akis"||view.tab==="borc"?subTabs():"")+R();
+  if(view.tab==="ayarlar"){const nv=$(".setnav");if(nv){if(nx!=null)nv.scrollLeft=nx;else setNavFix(0)}}
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   /* + her sekmede aynı menüyü açar (ayarlar ve rapor dışında) */
   const addOn=!!F||view.tab==="zekat";
@@ -1662,7 +1664,8 @@ async function notifSnap(){
 /* cihazın bildirim ayarları (yalnızca bu cihazda): d günlük özet, t saat, we hafta sonu, w haftalık, m aylık, bm büyük hareket eşiği (%) */
 const NP="emanet-notif-prefs";
 function notifPrefs(){let p={};try{p=JSON.parse(localStorage.getItem(NP)||"{}")||{}}catch(e){}
-  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,dv:p.dv!==false,bu:p.bu!==false,ps:!!p.ps,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,6):[]}}
+  return{d:p.d!==false,t:/^\d\d:\d\d$/.test(p.t)?p.t:"18:30",we:!!p.we,w:!!p.w,m:!!p.m,bm:+p.bm>0?+p.bm:0,zk:p.zk!==false,dv:p.dv!==false,bu:p.bu!==false,ps:!!p.ps,ts:Array.isArray(p.ts)?[...new Set(p.ts.filter(x=>/^\d\d:\d\d$/.test(x)))].sort().slice(0,TS_MAX):[]}}
+const TS_MAX=24,TS_BORSA=["10:30","11:30","12:30","13:30","14:30","15:30","16:30","17:30"];
 function notifPrefSet(k,v){const p=notifPrefs();p[k]=v;try{localStorage.setItem(NP,JSON.stringify(p))}catch(e){}notifSnap();notifSync(true);render()}
 /* büyük hareket uyarısı için: ana portföyün hangi fiyata yüzde kaç bağlı olduğu (tutar yok) */
 function notifWeights(){
@@ -1754,7 +1757,7 @@ function notifCard(){
     :Notification.permission==="denied"?"Bu site için bildirim izni kapalı. Telefonun ya da tarayıcının ayarlarından Emanet için bildirime izin verin.":"";
   const p=notifPrefs();
   const tg=(k,label,small)=>`<div class="set-row"><div class="lbl"><b>${label}</b>${small?`<small>${small}</small>`:""}</div><label class="toggle"><input type="checkbox" data-np="${k}" ${p[k]?"checked":""}><span></span></label></div>`;
-  const times=[];for(let h=7;h<24;h++)for(const m of ["00","30"])times.push(String(h).padStart(2,"0")+":"+m);
+  const times=[];for(let h=0;h<24;h++)for(const m of ["00","30"])times.push(String(h).padStart(2,"0")+":"+m);
   const sel=(k,opts,val)=>`<select class="inline-in" style="width:auto;font-family:var(--f-body);text-align:left" data-np="${k}" aria-label="${k==="t"?"Bildirim saati":"Eşik"}">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===String(v)?"selected":""}>${l}</option>`).join("")}</select>`;
   return `<section class="card"><div class="set-group">
     <div class="set-row"><div class="lbl"><b>Bildirimler</b><small>Bu cihaza bildirim gönderilsin. Aşağıdaki seçenekler her cihazda ayrı tutulur.</small></div><label class="toggle"><input type="checkbox" id="notifTog" ${on?"checked":""} ${why&&!on?"disabled":""}><span></span></label></div>
@@ -1763,8 +1766,10 @@ function notifCard(){
   ${on?`<section class="card"><h2 style="margin-bottom:4px">Özetler</h2><div class="set-group">
     ${tg("d","Gün sonu özeti","Ana portföyün günlük kâr/zararı; diğer portföyler altında")}
     <div class="set-row"><div class="lbl"><b>Saat</b><small>Özetler bu saatte, fiyatlar güncellendikten hemen sonra gelir</small></div>${sel("t",times.map(x=>[x,x]),p.t)}</div>
-    <div class="set-row col"><div class="lbl"><b>Gün içi özetler</b><small>Seçtiğin her saatte portföyün o anki durumu: toplam, günlük değişim, en çok yükselen ve en çok düşen varlık. En çok 6 saat.</small></div>
-      <div class="ts-list">${p.ts.map(x=>`<span class="ts-chip">${x}<button type="button" data-tsdel="${x}" aria-label="${x} saatini kaldır">×</button></span>`).join("")}${p.ts.length<6?`${sel("tsAdd",[["","+ Saat ekle"],...times.filter(x=>!p.ts.includes(x)&&x!==p.t).map(x=>[x,x])],"")}`:""}</div></div>
+    <div class="set-row col"><div class="lbl"><b>Gün içi özetler</b><small>Seçtiğin her saatte portföyün o anki durumu: toplam, günlük değişim, en çok yükselen ve en çok düşen varlık. En çok ${TS_MAX} saat; hafta içi gelir (hafta sonu ayarı açıksa her gün).</small></div>
+      <div class="ts-list">${p.ts.map(x=>`<span class="ts-chip">${x}<button type="button" data-tsdel="${x}" aria-label="${x} saatini kaldır">×</button></span>`).join("")}${p.ts.length<TS_MAX?`${sel("tsAdd",[["","+ Saat ekle"],...times.filter(x=>!p.ts.includes(x)&&x!==p.t).map(x=>[x,x])],"")}`:""}</div>
+      <div class="ts-quick">${TS_BORSA.every(x=>p.ts.includes(x))?"":`<button type="button" class="btn sm" data-tsset="borsa">${ic(I.clock||I.bell,14)}Borsa açıkken saat başı</button>`}${p.ts.length?`<button type="button" class="btn ghost sm" data-tsset="none">Tümünü kaldır</button>`:""}</div>
+      ${TS_BORSA.every(x=>p.ts.includes(x))?`<small class="sub">Borsa saatleri ekli: 10:30–17:30 arası her saat. Fiyatlar 15 dakika gecikmeli geldiği için buçuklarda; kapanışı gün sonu bildirimi anlatır.</small>`:""}</div>
     ${tg("we","Hafta sonu da gönder","Altın, döviz ve kripto hafta sonu da oynar")}
     ${state.portfolios.filter(p=>p.holdings.some(h=>h.kind!=="bes"&&+h.qty>0)).length>1?tg("ps","Portföyler özeti","Gün sonunda ayrı bir bildirim: her portföyün günlük değişimi bir satırda, toplamla birlikte. Açıkken gün sonu bildirimi yalnızca ana portföyü anlatır."):""}
     ${tg("w","Haftalık özet","Her cuma, haftanın değişimi")}
@@ -1922,6 +1927,8 @@ function histScrub(e){
 document.addEventListener("pointermove",histScrub);
 document.addEventListener("pointerdown",histScrub);
 document.addEventListener("pointerout",e=>{const w=e.target.closest&&e.target.closest(".hist-wrap");if(w&&!w.contains(e.relatedTarget)){const c=w.querySelector(".hcur");if(c)c.hidden=true}});
+document.addEventListener("click",e=>{const q=e.target.closest("[data-tsset]");if(!q)return;const p=notifPrefs();
+  notifPrefSet("ts",q.dataset.tsset==="none"?[]:[...new Set([...p.ts,...TS_BORSA.filter(x=>x!==p.t)])].sort().slice(0,TS_MAX))});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-tsdel]");if(!b)return;const p=notifPrefs();notifPrefSet("ts",p.ts.filter(x=>x!==b.dataset.tsdel))});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-taxrep]");if(!b)return;closeSheet();view.taxPf=b.dataset.taxrep;view.rpMode="vergi";view.rpYear=+todayISO().slice(0,4);view.tab="rapor";render();window.scrollTo(0,0)});
 document.addEventListener("click",e=>{
