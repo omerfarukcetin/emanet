@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.90";
+const APP_VERSION="2.91";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2620,12 +2620,13 @@ function txSheet(t,preset){
     ...(!t&&mainPf()&&mainPf().holdings.some(h=>h.kind!=="bes")?[{id:"buyH",label:"Bununla ne aldınız?",type:"select",value:"",options:[["","Portföye alım yazma"],...mainPf().holdings.filter(h=>h.kind!=="bes").map(h=>[h.id,h.name]),["new","Yeni bir varlık…"]]},
       [{id:"buyQty",label:"Alınan miktar",type:"number",value:"",ph:"0"},{id:"buyPrice",label:"Alış fiyatı (birim)",type:"number",value:"",ph:"0"}]]:[]),
     ...(mg.length?[{id:"goal",label:"Birikim hedefi",type:"select",value:t&&t.goal||"",options:[["","Hedefe bağlama"],...mg.map(g=>[g.id,g.name])]}]:[]),
+    ...(!t?[{id:"dl",label:"Borç / alacakla bağla (isteğe bağlı)",type:"select",value:"",options:[["","Bağlama"]]},{id:"dlP",label:"Kişi / kurum",value:"",ph:"Örn. Ahmet"}]:[]),
     {id:"note",label:"Not",value:t?t.note:"",ph:"İsteğe bağlı"}],
-    extra:`<div class="note" id="txHint"></div>`,
+    extra:`<div class="note" id="txHint"></div>${t&&t.debt?`<div class="note">Bu işlem Borçlar’daki “${esc((state.debts.find(x=>x.id===t.debt.d)||{}).person||"")}” kaydına bağlı. Tutarı ya da tarihi değiştirirsen orada da değişir; silersen oradaki ${t.debt.p?"ödeme":"bağlantı"} de kalkar.</div>`:""}`,
     onChange:(form)=>sync(form),
     onOpen:(form,sh)=>{form.addEventListener("input",e=>{if(e.target.name==="buyQty")e.target.dataset.auto="0";else if(e.target.name==="amount"||e.target.name==="buyPrice")sync(form)});
       if(t){form.insertAdjacentHTML("afterbegin",`<div class="again"><button type="button" class="btn sm" id="txAgain">${ic(I.repeat,16)}Bugüne tekrar ekle</button><span class="sub">Aynı kayıt, bugünün tarihiyle</span></div>`);
-        sh.querySelector("#txAgain").onclick=()=>{const ym=todayISO().slice(0,7),b0=t.type==="out"?budLevel(t.cat,ym):null,c={...t,id:uid(),date:todayISO()};["grp","inst","buy","rid"].forEach(k=>delete c[k]);
+        sh.querySelector("#txAgain").onclick=()=>{const ym=todayISO().slice(0,7),b0=t.type==="out"?budLevel(t.cat,ym):null,c={...t,id:uid(),date:todayISO()};["grp","inst","buy","rid","debt"].forEach(k=>delete c[k]);
           state.tx.push(c);view.month=ym;closeSheet();commit((t.type==="in"?"Gelir":t.type==="save"?"Tasarruf":t.type==="card"?"Kart ödemesi":"Gider")+" bugüne tekrar eklendi"+(t.type==="out"?budNote(t.cat,ym,b0):""))}}
       if(!t){const q=quickTx();if(q.length){
         form.insertAdjacentHTML("afterbegin",`<div class="quick"><span class="label">Sık kullanılanlar</span><div class="quick-row">${q.map((x,i)=>`<button type="button" class="qchip" data-q="${i}" style="--qc:var(${x.type==="in"?"--pos":x.type==="save"?"--c5":catColor(x.cat)})">${ic(catIcon(x.cat),15)}<span>${esc(x.cat)}</span><b class="num">${fmt(x.amount,x.cur,{dec:x.amount%1?2:0,show:true})}</b></button>`).join("")}</div></div>`);
@@ -2680,15 +2681,31 @@ function txSheet(t,preset){
       else if(n>1&&method){const g=uid(),per=Math.round(a/n*100)/100;
         for(let k=0;k<n;k++){const[y,m]=v.date.slice(0,7).split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
           state.tx.push({id:uid(),type:"out",amount:k===n-1?Math.round((a-per*(n-1))*100)/100:per,cur:v.cur,cat:v.cat,date:dayIn(mm,+v.date.slice(8)),note:v.note.trim(),method,inst:(k+1)+"/"+n,grp:g})}}
-      else state.tx.push({id:uid(),type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method,...(preset&&preset.rid?{rid:preset.rid}:{})});
-      view.month=v.date.slice(0,7);commit((t?"İşlem güncellendi":(v.type==="in"?"Gelir eklendi":n>1?n+" taksit aylara bölündü":"Gider eklendi"))+bn())},
-    onDelete:t?()=>{if(t.grp&&state.tx.filter(x=>x.grp===t.grp).length>1){state.tx=state.tx.filter(x=>x.grp!==t.grp||x.date<t.date);commit("Bu ve sonraki taksitler silindi")}else{state.tx=state.tx.filter(x=>x!==t);commit("İşlem silindi")}}:null});
+      else{const nt={id:uid(),type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method,...(preset&&preset.rid?{rid:preset.rid}:{})};
+        const dl=v.dl||"";
+        if(dl.startsWith("new:")){const who=(v.dlP||v.note||"").trim();if(!who)return"Borç verdiğin ya da aldığın kişinin adını yazın.";
+          const nd={id:uid(),dir:dl.slice(4),person:who,amount:a,cur:v.cur,date:v.date,due:"",note:"",pf:(mainPf()||{}).id,payments:[],tx:nt.id};state.debts.push(nd);nt.debt={d:nd.id};if(!nt.note)nt.note=who}
+        else if(dl){const dd=state.debts.find(x=>x.id===dl);if(dd){const amt=v.cur===dd.cur?a:toBase(a,v.cur)*rate(S().base)/(rate(dd.cur)||1);
+          if(amt>debtLeft(dd)+0.005)return"Tutar kalan "+(dd.dir==="lent"?"alacaktan":"borçtan")+" ("+fmt(debtLeft(dd),dd.cur)+") fazla.";
+          const p={id:uid(),amount:Math.round(amt*100)/100,date:v.date,tx:nt.id};dd.payments.push(p);nt.debt={d:dd.id,p:p.id}}}
+        state.tx.push(nt)}
+      if(t&&t.debt)debtFromTx(t,false);
+      view.month=v.date.slice(0,7);commit((t?"İşlem güncellendi":(v.type==="in"?"Gelir eklendi":n>1?n+" taksit aylara bölündü":"Gider eklendi"))+(!t&&v.dl?" · Borçlar’a işlendi":"")+bn())},
+    onDelete:t?()=>{if(t.grp&&state.tx.filter(x=>x.grp===t.grp).length>1){state.tx=state.tx.filter(x=>x.grp!==t.grp||x.date<t.date);commit("Bu ve sonraki taksitler silindi")}else{debtFromTx(t,true);state.tx=state.tx.filter(x=>x!==t);commit("İşlem silindi"+(t.debt?" · Borçlar’daki kaydı da güncellendi":""))}}:null});
   function sync(form){
     const ty=form.elements.type.value,el=form.elements;
     const show=(name,on)=>{const f=el[name];if(f){const box=f.closest(".field");box.hidden=!on;const row=box.parentElement;if(row.classList.contains("frow"))row.hidden=[...row.children].every(c=>c.hidden)}};
     const cat=el.cat;if(ty!=="card"&&cat.dataset.ty!==ty){const cur=cat.value;cat.innerHTML=catOpts(ty).map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("")+`<option value="__new">Yeni kategori…</option>`;cat.dataset.ty=ty}
     show("newCat",ty!=="card"&&cat.value==="__new");
     show("cat",ty!=="card");show("goal",ty==="save");show("method",ty==="out");
+    if(el.dl){const opts=ty==="out"?[["","Bağlama"],...state.debts.filter(d=>d.dir==="borrowed"&&debtLinkable(d)&&debtLeft(d)>0).map(d=>[d.id,"Borç ödemesi · "+d.person+" (kalan "+fmt(debtLeft(d),d.cur,{dec:0})+")"]),["new:lent","Yeni alacak · birine borç verdim"]]
+        :ty==="in"?[["","Bağlama"],...state.debts.filter(d=>d.dir==="lent"&&debtLinkable(d)&&debtLeft(d)>0).map(d=>[d.id,"Tahsilat · "+d.person+" (kalan "+fmt(debtLeft(d),d.cur,{dec:0})+")"]),["new:borrowed","Yeni borç · birinden borç aldım"]]:[["","Bağlama"]];
+      const key=ty+"|"+opts.length;if(el.dl.dataset.k!==key){const cur=el.dl.value;el.dl.innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");el.dl.value=opts.some(o=>o[0]===cur)?cur:"";el.dl.dataset.k=key}
+      show("dl",ty==="out"||ty==="in");show("dlP",(ty==="out"||ty==="in")&&el.dl.value.startsWith("new:"));
+      const dv=el.dl.value;if(dv&&el.dl.dataset.v!==dv){el.dl.dataset.v=dv;const dd=state.debts.find(x=>x.id===dv),c=dd?DEBT_CAT.pay[dd.dir]:DEBT_CAT.open[dv.slice(4)];
+        if(![...cat.options].some(o=>o.value===c))cat.insertAdjacentHTML("afterbegin",`<option value="${esc(c)}">${esc(c)}</option>`);cat.value=c;if(el.method)el.method.value="cash";
+        if(dd){if(el.cur)el.cur.value=dd.cur;if(!el.amount.value)el.amount.value=String(debtLeft(dd)).replace(".",",");if(!el.note.value)el.note.value=dd.person}}
+      if(!dv)el.dl.dataset.v=""}
     if(el.buyH){show("buyH",ty==="save");const bh=el.buyH.value,hh=ty==="save"&&bh&&bh!=="new"?mainPf().holdings.find(h=>h.id===bh):null;show("buyQty",!!hh);show("buyPrice",!!hh);
       if(hh){const num=x=>String(+x.toFixed(x<10?4:2)).replace(".",",");
         if(el.buyPrice.dataset.h!==bh){el.buyPrice.dataset.h=bh;el.buyPrice.value=effPrice(hh).p>0?num(effPrice(hh).p):"";el.buyQty.dataset.auto="1"}
@@ -2869,6 +2886,22 @@ function budgetSheet(){
       state.budgets=nb;closeSheet();commit("Bütçe kaydedildi")};
   });
 }
+/* ---------- borç ↔ bütçe bağlantısı (isteğe bağlı) ----------
+   Borç verdim → gider "Verilen borç", tahsilatı → gelir "Borç tahsilatı".
+   Borç aldım → gelir "Alınan borç", ödemesi → gider "Borç ödemesi".
+   Bağlı işlemde tx.debt={d:borçId, p:ödemeId?}; borçta d.tx, ödemede p.tx. Altın/gram birimli borçlar bağlanmaz. */
+const DEBT_CAT={open:{lent:"Verilen borç",borrowed:"Alınan borç"},pay:{lent:"Borç tahsilatı",borrowed:"Borç ödemesi"}};
+const debtTxType=(d,pay)=>(d.dir==="lent")!==!!pay?"out":"in";
+const debtLinkable=d=>d&&!isG(d.cur);
+function debtTxMake(d,p){const t={id:uid(),type:debtTxType(d,!!p),amount:p?p.amount:d.amount,cur:d.cur,date:p?p.date:d.date,cat:(p?DEBT_CAT.pay:DEBT_CAT.open)[d.dir],note:d.person,method:"",debt:{d:d.id,...(p?{p:p.id}:{})}};
+  state.tx.push(t);if(p)p.tx=t.id;else d.tx=t.id;return t}
+function debtTxSync(d){const t=d.tx&&state.tx.find(x=>x.id===d.tx);if(!t){delete d.tx;return}
+  Object.assign(t,{type:debtTxType(d,false),amount:d.amount,cur:d.cur,date:d.date,cat:DEBT_CAT.open[d.dir],method:""});if(!t.note)t.note=d.person}
+const debtTxDrop=id=>{if(id)state.tx=state.tx.filter(x=>x.id!==id)};
+/* bütçe tarafında bağlı işlem değişince/silinince borç kaydı da güncellenir */
+function debtFromTx(t,del){const L=t&&t.debt;if(!L)return;const d=state.debts.find(x=>x.id===L.d);if(!d)return;
+  if(L.p){const p=d.payments.find(x=>x.id===L.p);if(!p)return;if(del)d.payments=d.payments.filter(x=>x!==p);else{p.amount=+t.amount;p.date=t.date}}
+  else if(del)delete d.tx;else{d.amount=+t.amount;d.date=t.date}}
 function debtSheet(d){
   formSheet({title:d?"Kaydı düzenle":"Borç / alacak ekle",fields:[
     {id:"dir",label:"Yön",type:"seg",value:d?d.dir:view.debtDir,options:[["lent","Borç verdim"],["borrowed","Borç aldım"]]},
@@ -2876,11 +2909,20 @@ function debtSheet(d){
     ...(state.portfolios.length?[{id:"pf",label:"Hangi portföye ait (zekât hesabı için)",type:"select",value:d?(d.pf||(mainPf()||{}).id):(view.debtPf&&view.debtPf!=="all"?view.debtPf:(mainPf()||{}).id),options:ownPfs().map(p=>[p.id,pfName(p.id)])}]:[]),
     [{id:"amount",label:"Tutar / miktar",type:"number",value:d?d.amount:"",ph:"0"},{id:"cur",label:"Birim",type:"select",value:d?d.cur:"TRY",options:DEBT_UNITS}],
     [{id:"date",label:"Tarih",type:"date",value:d?d.date:todayISO()},{id:"due",label:"Vade (isteğe bağlı)",type:"date",value:d?d.due:""}],
-    {id:"note",label:"Not",value:d?d.note:"",ph:"İsteğe bağlı"}],
+    {id:"note",label:"Not",value:d?d.note:"",ph:"İsteğe bağlı"},
+    {id:"bud",label:"Gelir-gidere de yazılsın mı?",type:"select",value:d?(d.tx?"1":""):(S().debtBud?"1":""),options:[["","Hayır, yalnızca borç kaydı"],["1","Evet, bütçeye de yaz"]]}],
+    extra:`<div class="note" id="dBudNote"></div>`,
+    onOpen:(form,sh)=>{const el=form.elements,n=sh.querySelector("#dBudNote");
+      const upd=()=>{const g=isG(el.cur.value),lent=el.dir.value==="lent";el.bud.closest(".field").hidden=g;
+        n.hidden=g||!el.bud.value;n.textContent=lent?"Bu tutar Bütçe’de “Verilen borç” gideri olarak görünür; tahsilatlar da istersen gelir olarak yazılır.":"Bu tutar Bütçe’de “Alınan borç” geliri olarak görünür; ödemeler de istersen gider olarak yazılır."};
+      form.addEventListener("change",upd);form.addEventListener("click",()=>setTimeout(upd,0));upd()},
     onSave:v=>{const a=parseNum(v.amount);if(!v.person.trim())return"Kişi veya kurum adını girin.";if(!(a>0))return"Tutar sıfırdan büyük olmalı.";
       const x={dir:v.dir,person:v.person.trim(),amount:a,cur:v.cur,date:v.date,due:v.due,note:v.note.trim(),pf:v.pf||(mainPf()||{}).id};
-      if(d)Object.assign(d,x);else state.debts.push({id:uid(),payments:[],...x});view.debtDir=v.dir;commit(d?"Kayıt güncellendi":"Kayıt eklendi")},
-    onDelete:d?()=>{state.debts=state.debts.filter(y=>y!==d);commit("Kayıt silindi")}:null});
+      let dd=d;if(d)Object.assign(d,x);else{dd={id:uid(),payments:[],...x};state.debts.push(dd)}
+      const want=!!v.bud&&debtLinkable(dd);if(!d)S().debtBud=!!v.bud;
+      if(want){if(dd.tx&&state.tx.some(t=>t.id===dd.tx))debtTxSync(dd);else debtTxMake(dd,null)}else if(dd.tx){debtTxDrop(dd.tx);delete dd.tx}
+      view.debtDir=v.dir;commit((d?"Kayıt güncellendi":"Kayıt eklendi")+(want&&!d?" · bütçeye "+(debtTxType(dd,false)==="out"?"gider":"gelir")+" yazıldı":""))},
+    onDelete:d?()=>{state.debts=state.debts.filter(y=>y!==d);state.tx=state.tx.filter(t=>!(t.debt&&t.debt.d===d.id));commit("Kayıt silindi")}:null});
 }
 function debtDetail(d){
   const left=debtLeft(d);
@@ -2888,21 +2930,22 @@ function debtDetail(d){
     <div class="dsum"><div><span class="label">${d.dir==="lent"?"Kalan alacak":"Kalan borç"}</span><div class="dv num">${fmt(left,d.cur)}</div>${isG(d.cur)&&rate(d.cur)?`<small class="sub">≈ ${fmt(toBase(left,d.cur),null,{dec:0})} · güncel fiyatla</small>`:""}</div>${left<=0?`<span class="chg up"><b>Kapandı</b></span>`:d.due?(n=>`<span class="chg ${n<0?"down":""}"><b>${n<0?-n+" gün gecikti":n+" gün kaldı"}</b></span>`)(daysBetween(todayISO(),d.due)):""}</div>
     <div class="bar"><i style="width:${+d.amount?Math.min(100,debtPaid(d)/d.amount*100):0}%;background:var(${d.dir==="lent"?"--pos":"--neg"})"></i></div>
     <div class="tiles">
-      <div><span class="label">${d.dir==="lent"?"Verdiğim":"Aldığım"} tutar</span><b class="num">${fmt(d.amount,d.cur)}</b></div>
+      <div><span class="label">${d.dir==="lent"?"Verdiğim":"Aldığım"} tutar${d.tx?" · bütçede":""}</span><b class="num">${fmt(d.amount,d.cur)}</b></div>
       <div><span class="label">${d.dir==="lent"?"Tahsil edilen":"Ödenen"}</span><b class="num">${fmt(debtPaid(d),d.cur)}</b></div>
       ${d.due?`<div><span class="label">Vade</span><b>${fmtDate(d.due)}</b></div>`:""}
       ${d.note?`<div class="w2"><span class="label">Not</span><b class="txt">${esc(d.note)}</b></div>`:""}
     </div>
-    ${left>0?`<form class="form" id="payF" novalidate><div class="label sh-sec">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">${isG(d.cur)?"Miktar ("+esc(unitName(d.cur))+")":"Tutar ("+esc(d.cur)+")"}</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div><div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
+    ${left>0?`<form class="form" id="payF" novalidate><div class="label sh-sec">${d.dir==="lent"?"Tahsilat ekle":"Ödeme ekle"}</div><div class="frow"><div class="field"><label for="payA">${isG(d.cur)?"Miktar ("+esc(unitName(d.cur))+")":"Tutar ("+esc(d.cur)+")"}</label><input id="payA" inputmode="decimal" placeholder="${esc(fmtN(left))}"></div><div class="field"><label for="payD">Tarih</label><input id="payD" type="date" value="${todayISO()}"></div></div>${debtLinkable(d)?`<label class="chk-row"><input type="checkbox" id="payBud" ${d.tx||d.payments.some(p=>p.tx)?"checked":""}><span>Bütçeye de yaz (${d.dir==="lent"?"gelir · Borç tahsilatı":"gider · Borç ödemesi"})</span></label>`:""}<div class="err" id="payErr"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Ekle</button><button class="btn" type="button" id="payAll">Tamamını kapat</button></div></form>`:`<div class="note">Bu kayıt tamamen kapandı.</div>`}
     <div class="label sh-sec">Ödeme geçmişi</div>
-    ${d.payments.length?`<div class="list">${d.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<div class="row"><div class="main"><div class="t num">${fmt(p.amount,d.cur)}</div><div class="s">${fmtDate(p.date)}</div></div><button class="icon-btn sm" data-del-pay="${p.id}" aria-label="Ödemeyi kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz ödeme yok.</div>`}
+    ${d.payments.length?`<div class="list">${d.payments.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`<div class="row"><div class="main"><div class="t num">${fmt(p.amount,d.cur)}</div><div class="s">${fmtDate(p.date)}${p.tx?" · bütçede":""}</div></div><button class="icon-btn sm" data-del-pay="${p.id}" aria-label="Ödemeyi kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:`<div class="sub" style="padding:8px 0">Henüz ödeme yok.</div>`}
     <div class="actions eq"><button class="btn" id="dEdit">${ic(I.edit)}Düzenle</button></div>`,sh=>{
       sh.querySelector("#dEdit").onclick=()=>{closeSheet();debtSheet(d)};
       const f=sh.querySelector("#payF");
-      const add=a=>{d.payments.push({id:uid(),amount:a,date:sh.querySelector("#payD").value||todayISO()});commit(debtLeft(d)<=0?"Kayıt kapandı":"Ödeme eklendi");debtDetail(d)};
+      const add=a=>{const p={id:uid(),amount:a,date:sh.querySelector("#payD").value||todayISO()};d.payments.push(p);const pb=sh.querySelector("#payBud");if(pb&&pb.checked)debtTxMake(d,p);
+        commit((debtLeft(d)<=0?"Kayıt kapandı":"Ödeme eklendi")+(p.tx?" · bütçeye "+(d.dir==="lent"?"gelir":"gider")+" yazıldı":""));debtDetail(d)};
       if(f){f.onsubmit=e=>{e.preventDefault();const a=parseNum(sh.querySelector("#payA").value);if(!(a>0)){sh.querySelector("#payErr").textContent="Geçerli bir tutar girin.";return}if(a>left+1e-9){sh.querySelector("#payErr").textContent="Tutar kalan borçtan fazla olamaz.";return}add(a)};
         sh.querySelector("#payAll").onclick=()=>add(left)}
-      sh.querySelectorAll("[data-del-pay]").forEach(b=>b.onclick=()=>{d.payments=d.payments.filter(p=>p.id!==b.dataset.delPay);commit("Ödeme kaldırıldı");debtDetail(d)});
+      sh.querySelectorAll("[data-del-pay]").forEach(b=>b.onclick=()=>{const p=d.payments.find(p=>p.id===b.dataset.delPay);if(p)debtTxDrop(p.tx);d.payments=d.payments.filter(x=>x!==p);commit("Ödeme kaldırıldı"+(p&&p.tx?" · bütçedeki kaydı da silindi":""));debtDetail(d)});
     });
 }
 function zakatSheet(p){
