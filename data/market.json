@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-16T06:21:49.917Z",
+ "updatedAt": "2026-11-16T06:30:29.261Z",
  "fx": {
-  "EUR": 55.6669,
-  "USD": 50.368
+  "EUR": 55.5681,
+  "USD": 50.3953
  },
  "gold": {
-  "ata": 42149,
+  "ata": 42165,
   "aziz": null,
-  "ceyrek": 10304,
-  "cumhuriyet": 42149,
-  "gram": 6239.72,
-  "gumus": 77.04,
-  "hamit": 42149,
-  "resat": 42149,
-  "resatAlis": 41123.39,
-  "resatSatis": 41785.37,
-  "tam": 41052,
-  "yarim": 20602,
+  "ceyrek": 10308,
+  "cumhuriyet": 42165,
+  "gram": 6241.05,
+  "gumus": 76.92,
+  "hamit": 42165,
+  "resat": 42165,
+  "resatAlis": 41121.71,
+  "resatSatis": 41782.79,
+  "tam": 41068,
+  "yarim": 20610,
   "resatKaynak": "altin.in",
-  "ayar22": 5904.75,
-  "ayar18": 5060,
-  "ayar14": 4596.9
+  "ayar22": 5907.05,
+  "ayar18": 5065,
+  "ayar14": 4598.49
  },
  "quotes": {
   "abd:LPTH": {
@@ -108,9 +108,8 @@
    "pc": 73.35
   }
  },
- "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
-  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
