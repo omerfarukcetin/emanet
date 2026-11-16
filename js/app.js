@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.86";
+const APP_VERSION="2.87";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1062,9 +1062,15 @@ function rOzet(){
   </section>
   `;
   P.attn=`${onMain?attnCard():""}`;
+  // aracı kuruma göre süzme: yalnızca bu portföyde kurum yazılmış varlık varsa görünür
+  const NB="Belirtilmemiş",bkOf=h=>(h.broker||"").trim()||NB,bks=mp?[...new Set(hs.map(bkOf))].sort((a,b)=>(a===NB)-(b===NB)||a.localeCompare(b,"tr")):[];
+  let bk=mp&&view.brk&&view.brk[mp.id];if(bk&&!bks.includes(bk))bk="";
+  const hsB=bk?hs.filter(h=>bkOf(h)===bk):hs,vB=hsB.reduce((a,h)=>a+hVal(h),0),cB=hsB.reduce((a,h)=>a+hCost(h),0);
+  const bkBar=bks.length>1||(bks.length===1&&bks[0]!==NB)?`<div class="chips bk" role="group" aria-label="Aracı kuruma göre süz"><button class="chip" data-act="brk" data-k="" aria-pressed="${!bk}">Tüm kurumlar</button>${bks.map(b=>`<button class="chip" data-act="brk" data-k="${esc(b)}" aria-pressed="${bk===b}">${esc(b)}</button>`).join("")}</div>
+    ${bk?`<div class="bk-sum"><div><b>${esc(bk)}</b><small>${hsB.length} varlık · portföydeki payı %${fmtN(t.v?vB/t.v*100:0,1)}</small></div><div class="r"><b class="num">${money(vB)}</b><small class="num ${vB>=cB?"pos-t":"neg-t"}">${S().hide?"••":fmt(vB-cB,null,{dec:0})} (${fmtPct(cB?(vB-cB)/cB*100:0)})</small></div></div>`:""}`:"";
   P.assets=`${mp?`<section class="card">
-    ${vHead(hs,"ozet")}
-    ${kinds.length||mp.holdings.length?assetTable(hs,t.v,{ctx:"ozet",pf:mp.id,closed:mp.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:mp}))})
+    ${vHead(hsB,"ozet")}${bkBar}
+    ${kinds.length||mp.holdings.length?assetTable(hsB,bk?vB:t.v,{ctx:"ozet",pf:mp.id,closed:bk?[]:mp.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:mp}))})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
   </section>`
   :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}`;
@@ -2934,6 +2940,7 @@ document.addEventListener("click",e=>{
   if(a==="pforder"){pfOrderSheet();return}
   if(a==="korder"){kindOrderSheet(t.dataset.ks.split(","));return}
   if(a==="dgmode"){view.dgMode=t.dataset.k;render();return}
+  if(a==="brk"){const mp=ozPf();if(mp){view.brk={...(view.brk||{}),[mp.id]:t.dataset.k}}render();return}
   if(a==="bnsel"){view.bnSel=view.bnSel===t.dataset.k?null:t.dataset.k;render();return}
   if(a==="hrange"){view.hRange=t.dataset.k==="all"?"all":+t.dataset.k;render();return}
   if(a==="csv-h")return exportCSV("varliklar");

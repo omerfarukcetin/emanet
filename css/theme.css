@@ -1228,3 +1228,13 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .txf:has(#txPay){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .txf:has(#txPay) .search{grid-column:1/-1}
 .txf:has(#txPay) select{max-width:none;width:100%}
+
+/* 2.87 · varlıkları aracı kuruma göre süzme */
+.chips.bk{margin:2px 0 8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.chips.bk::-webkit-scrollbar{display:none}
+.chips.bk .chip{padding:6px 12px;font-size:var(--fs-act);white-space:nowrap}
+.bk-sum{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;border-radius:12px;background:var(--surface-2)}
+.bk-sum small{display:block;font-size:var(--fs-sub)}
+.bk-sum small:not(.pos-t):not(.neg-t){color:var(--muted)}
+.bk-sum .r{text-align:right}
+.bk-sum b{font-size:var(--fs-row)}
