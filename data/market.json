@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-16T10:50:26.240Z",
+ "updatedAt": "2026-11-16T11:00:37.196Z",
  "fx": {
-  "EUR": 55.5246,
-  "USD": 50.3974
+  "EUR": 55.4989,
+  "USD": 50.3978
  },
  "gold": {
-  "ata": 42266,
+  "ata": 42316,
   "aziz": null,
-  "ceyrek": 10333,
-  "cumhuriyet": 42266,
-  "gram": 6265.61,
-  "gumus": 77.23,
-  "hamit": 42266,
-  "resat": 42266,
-  "resatAlis": 41245.97,
-  "resatSatis": 41908.97,
-  "tam": 41166,
-  "yarim": 20659,
+  "ceyrek": 10345,
+  "cumhuriyet": 42316,
+  "gram": 6274.16,
+  "gumus": 77.44,
+  "hamit": 42316,
+  "resat": 42316,
+  "resatAlis": 41293.79,
+  "resatSatis": 41957.74,
+  "tam": 41215,
+  "yarim": 20684,
   "resatKaynak": "altin.in",
-  "ayar22": 5920.39,
-  "ayar18": 5060,
-  "ayar14": 4607.72
+  "ayar22": 5928.34,
+  "ayar18": 5070,
+  "ayar14": 4613.21
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 7.21
   },
   "hisse:SOKE": {
-   "p": 7.39,
+   "p": 7.4,
    "cur": "TRY",
-   "t": "2026-11-16T10:34:46.000Z",
+   "t": "2026-11-16T10:44:59.000Z",
    "pc": 7.39
   },
   "hisse:BALSU": {
-   "p": 6.91,
+   "p": 6.92,
    "cur": "TRY",
-   "t": "2026-11-16T10:35:02.000Z",
+   "t": "2026-11-16T10:45:22.000Z",
    "pc": 6.83
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 35.93
   },
   "hisse:OPT25": {
-   "p": 49.75,
+   "p": 49.8,
    "cur": "TRY",
-   "t": "2026-11-16T10:17:04.000Z",
+   "t": "2026-11-16T10:43:23.000Z",
    "pc": 49.77
   },
   "fon:KPA": {
@@ -92,23 +92,23 @@
   "hisse:FZLGY": {
    "p": 7.78,
    "cur": "TRY",
-   "t": "2026-11-16T10:34:39.000Z",
+   "t": "2026-11-16T10:44:57.000Z",
    "pc": 7.08
   },
   "hisse:BIMAS": {
-   "p": 401.25,
+   "p": 401.5,
    "cur": "TRY",
-   "t": "2026-11-16T10:35:14.000Z",
+   "t": "2026-11-16T10:45:27.000Z",
    "pc": 395.5
   },
   "hisse:FROTO": {
-   "p": 73.1,
+   "p": 73.2,
    "cur": "TRY",
-   "t": "2026-11-16T10:35:15.000Z",
+   "t": "2026-11-16T10:45:26.000Z",
    "pc": 73.75
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
