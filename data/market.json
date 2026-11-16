@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-16T13:02:01.290Z",
+ "updatedAt": "2026-11-16T13:10:26.721Z",
  "fx": {
-  "EUR": 55.6669,
-  "USD": 50.368
+  "EUR": 55.5448,
+  "USD": 50.3962
  },
  "gold": {
-  "ata": 42299,
+  "ata": 42315,
   "aziz": null,
-  "ceyrek": 10341,
-  "cumhuriyet": 42299,
-  "gram": 6268.79,
-  "gumus": 77.28,
-  "hamit": 42299,
-  "resat": 42299,
-  "resatAlis": 41239.04,
-  "resatSatis": 41902.05,
-  "tam": 41198,
-  "yarim": 20675,
+  "ceyrek": 10345,
+  "cumhuriyet": 42315,
+  "gram": 6270.58,
+  "gumus": 77.12,
+  "hamit": 42315,
+  "resat": 42315,
+  "resatAlis": 41294.37,
+  "resatSatis": 41958.38,
+  "tam": 41214,
+  "yarim": 20683,
   "resatKaynak": "altin.in",
-  "ayar22": 5925.75,
-  "ayar18": 5065,
-  "ayar14": 4611.42
+  "ayar22": 5928.07,
+  "ayar18": 5075,
+  "ayar14": 4613.02
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 7.21
   },
   "hisse:SOKE": {
-   "p": 7.37,
+   "p": 7.38,
    "cur": "TRY",
-   "t": "2026-11-16T12:43:20.000Z",
+   "t": "2026-11-16T12:54:13.000Z",
    "pc": 7.39
   },
   "hisse:BALSU": {
-   "p": 6.93,
+   "p": 6.92,
    "cur": "TRY",
-   "t": "2026-11-16T12:45:36.000Z",
+   "t": "2026-11-16T12:55:01.000Z",
    "pc": 6.83
   },
   "ppf:KLU": {
@@ -92,29 +92,25 @@
   "hisse:FZLGY": {
    "p": 7.78,
    "cur": "TRY",
-   "t": "2026-11-16T12:45:37.000Z",
+   "t": "2026-11-16T12:55:03.000Z",
    "pc": 7.08
   },
   "hisse:BIMAS": {
-   "p": 398,
+   "p": 396.75,
    "cur": "TRY",
-   "t": "2026-11-16T12:45:45.000Z",
+   "t": "2026-11-16T12:55:16.000Z",
    "pc": 395.5
   },
   "hisse:FROTO": {
-   "p": 73.15,
+   "p": 73.1,
    "cur": "TRY",
-   "t": "2026-11-16T12:45:45.000Z",
+   "t": "2026-11-16T12:55:13.000Z",
    "pc": 73.75
   }
  },
- "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
-  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ENR: fon fiyatı alınamadı (fetch failed)",
-  "GSP: fon fiyatı alınamadı (fetch failed)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
