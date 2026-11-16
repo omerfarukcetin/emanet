@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-16T06:40:48.525Z",
+ "updatedAt": "2026-11-16T06:50:32.312Z",
  "fx": {
-  "EUR": 55.5595,
-  "USD": 50.4038
+  "EUR": 55.5673,
+  "USD": 50.3951
  },
  "gold": {
-  "ata": 42030,
+  "ata": 42025,
   "aziz": null,
-  "ceyrek": 10275,
-  "cumhuriyet": 42030,
-  "gram": 6221.47,
-  "gumus": 76.65,
-  "hamit": 42030,
-  "resat": 42030,
-  "resatAlis": 41003.89,
-  "resatSatis": 41663.84,
-  "tam": 40936,
-  "yarim": 20544,
+  "ceyrek": 10274,
+  "cumhuriyet": 42025,
+  "gram": 6220.9,
+  "gumus": 76.68,
+  "hamit": 42025,
+  "resat": 42025,
+  "resatAlis": 40996.47,
+  "resatSatis": 41655.45,
+  "tam": 40932,
+  "yarim": 20541,
   "resatKaynak": "altin.in",
-  "ayar22": 5888.07,
-  "ayar18": 5050,
-  "ayar14": 4585.37
+  "ayar22": 5887.52,
+  "ayar18": 5045,
+  "ayar14": 4584.99
  },
  "quotes": {
   "abd:LPTH": {
@@ -84,10 +84,10 @@
    "pc": 49.43
   },
   "fon:KPA": {
-   "p": 1.460227,
+   "p": 1.465173,
    "cur": "TRY",
-   "t": "2026-11-13",
-   "pc": 1.439225
+   "t": "2026-11-16",
+   "pc": 1.460227
   },
   "hisse:FZLGY": {
    "p": 7.08,
@@ -111,7 +111,6 @@
  "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KPA: fon fiyatı alınamadı (fetch failed)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
