@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.88";
+const APP_VERSION="2.89";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2939,7 +2939,7 @@ function sample(){
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{
   const t=e.target.closest("[data-tab],[data-act]");if(!t||t.closest("#sheet"))return;
-  if(t.dataset.tab){view.tab=t.dataset.tab;render();window.scrollTo({top:0});return}
+  if(t.dataset.tab){view.tab=t.dataset.tab;render();window.scrollTo({top:0});if(view.tab==="ayarlar")setNavFix(0);return}
   const a=t.dataset.act,id=t.dataset.id;
   if(a==="start-empty"){state=state||emptyState();state.updatedAt=Date.now();commit();pfSheet();return}
   if(a==="start-sample"){state=normalize(sample());commit("Örnek veriler yüklendi");return}
@@ -2987,10 +2987,10 @@ document.addEventListener("click",e=>{
   if(a==="backups"){backupSheet();return}
   if(a==="alert-new"){alertSheet(null);return}
   if(a==="alert-edit"){const x=state.alerts.find(q=>q.id===id);if(x)alertSheet(x);return}
-  if(a==="setg"){view.setG=t.dataset.k;render();return}
+  if(a==="setg"){const nv=$(".setnav"),x=nv?nv.scrollLeft:0;view.setG=t.dataset.k;render();setNavFix(x);return}
   if(a==="txclear"){view.txQ="";view.txCat="";view.txPay="";render();return}
   if(a==="notif-test"){notifTest(t.dataset.k);return}
-  if(a==="rates"||a==="zset"){view.tab="ayarlar";view.setG=a==="rates"?"fiyat":"zekat";render();setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
+  if(a==="rates"||a==="zset"){view.tab="ayarlar";view.setG=a==="rates"?"fiyat":"zekat";render();setNavFix(0);setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
   if(a==="set"){S()[t.dataset.k]=t.dataset.v;commit();return}
   if(a==="nisab"){S().nisabGram=+t.dataset.v;commit();return}
   if(a==="save-rates"){const u=$("#rUSD")?parseNum($("#rUSD").value):S().rates.USD,eu=$("#rEUR")?parseNum($("#rEUR").value):S().rates.EUR;
@@ -3082,6 +3082,10 @@ function toast(m,undoSnap){
   t.hidden=false;toastT=setTimeout(()=>t.hidden=true,undoSnap?7000:2400);
 }
 /* silme işlemlerinden sonra birkaç saniye "Geri al" sunar */
+/* ayar menüsü yeniden çizilince kaydırma başa dönmesin: önceki konumdan seçili düğmeye kayar */
+function setNavFix(x){const nv=$(".setnav");if(!nv)return;nv.scrollLeft=x||0;const on=nv.querySelector('[aria-pressed="true"]');if(!on)return;
+  const l=on.offsetLeft-nv.offsetLeft,want=Math.max(0,l-(nv.clientWidth-on.offsetWidth)/2);
+  if(l<nv.scrollLeft||l+on.offsetWidth>nv.scrollLeft+nv.clientWidth||!x)nv.scrollTo({left:want,behavior:x?"smooth":"auto"})}
 function withUndo(fn){const snap=JSON.stringify(pure());fn();const t=$("#toast");toast(t.hidden?"Silindi":t.textContent,snap)}
 
 applyPrefs();render();boot();
