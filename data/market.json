@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-16T12:00:55.119Z",
+ "updatedAt": "2026-11-16T12:10:25.171Z",
  "fx": {
-  "EUR": 55.5266,
-  "USD": 50.3952
+  "EUR": 55.5215,
+  "USD": 50.3953
  },
  "gold": {
-  "ata": 42326,
+  "ata": 42272,
   "aziz": null,
-  "ceyrek": 10347,
-  "cumhuriyet": 42326,
-  "gram": 6277.08,
-  "gumus": 77.36,
-  "hamit": 42326,
-  "resat": 42326,
-  "resatAlis": 41284.19,
-  "resatSatis": 41948.12,
-  "tam": 41224,
-  "yarim": 20688,
+  "ceyrek": 10334,
+  "cumhuriyet": 42272,
+  "gram": 6269.9,
+  "gumus": 77.2,
+  "hamit": 42272,
+  "resat": 42272,
+  "resatAlis": 41231.96,
+  "resatSatis": 41894.96,
+  "tam": 41172,
+  "yarim": 20662,
   "resatKaynak": "altin.in",
-  "ayar22": 5929.64,
-  "ayar18": 5070,
-  "ayar14": 4614.11
+  "ayar22": 5922.09,
+  "ayar18": 5065,
+  "ayar14": 4608.89
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 7.21
   },
   "hisse:SOKE": {
-   "p": 7.4,
+   "p": 7.41,
    "cur": "TRY",
-   "t": "2026-11-16T11:42:45.000Z",
+   "t": "2026-11-16T11:50:56.000Z",
    "pc": 7.39
   },
   "hisse:BALSU": {
    "p": 6.92,
    "cur": "TRY",
-   "t": "2026-11-16T11:45:17.000Z",
+   "t": "2026-11-16T11:55:09.000Z",
    "pc": 6.83
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 35.93
   },
   "hisse:OPT25": {
-   "p": 49.65,
+   "p": 49.54,
    "cur": "TRY",
-   "t": "2026-11-16T11:45:01.000Z",
+   "t": "2026-11-16T11:51:13.000Z",
    "pc": 49.77
   },
   "fon:KPA": {
@@ -92,26 +92,25 @@
   "hisse:FZLGY": {
    "p": 7.78,
    "cur": "TRY",
-   "t": "2026-11-16T11:43:02.000Z",
+   "t": "2026-11-16T11:53:20.000Z",
    "pc": 7.08
   },
   "hisse:BIMAS": {
-   "p": 397.5,
+   "p": 397.75,
    "cur": "TRY",
-   "t": "2026-11-16T11:45:24.000Z",
+   "t": "2026-11-16T11:55:12.000Z",
    "pc": 395.5
   },
   "hisse:FROTO": {
-   "p": 73.15,
+   "p": 73.2,
    "cur": "TRY",
-   "t": "2026-11-16T11:45:20.000Z",
+   "t": "2026-11-16T11:55:12.000Z",
    "pc": 73.75
   }
  },
  "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
