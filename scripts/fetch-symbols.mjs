@@ -54,9 +54,19 @@ const tasks = {
     // Yeni TEFAS (/api/funds/*): sitenin kendi betiklerinden uç adlarını bulup liste döndüreni dener
     const H = { "user-agent": UA, accept: "application/json, text/plain, */*", "content-type": "application/json", origin: "https://www.tefas.gov.tr", referer: "https://www.tefas.gov.tr/", "accept-language": "tr-TR,tr;q=0.9" };
     const html = await (await fetch("https://www.tefas.gov.tr/", { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text();
-    const srcs = [...new Set([...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => new URL(m[1], "https://www.tefas.gov.tr/").href))].slice(0, 25);
+    // Next.js: sayfadaki ve derleme listesindeki tüm parçaları tara; uç adları "fon...Getir" biçiminde
+    const base = "https://www.tefas.gov.tr/", seen = new Set(), queue = [...html.matchAll(/["'(]((?:https:\/\/www\.tefas\.gov\.tr)?\/?_next\/static\/[^"'()\s]+?\.js)/g)].map(m => new URL(m[1], base).href);
     const names = new Set();
-    for (const u of srcs) { try { const t = await (await fetch(u, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text(); for (const m of t.matchAll(/api\/funds\/([A-Za-z0-9]+)/g)) names.add(m[1]); for (const m of t.matchAll(/["'`]\/?funds\/([A-Za-z0-9]+)["'`]/g)) names.add(m[1]); } catch { } }
+    while (queue.length && seen.size < 120) {
+      const u = queue.shift(); if (seen.has(u)) continue; seen.add(u);
+      try { const t = await (await fetch(u, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text();
+        for (const m of t.matchAll(/["'`]\/?(?:api\/)?funds\/([A-Za-z0-9]+)/g)) names.add(m[1]);
+        for (const m of t.matchAll(/["'`](fon[A-Z][A-Za-z0-9]{3,40})["'`]/g)) names.add(m[1]);
+        for (const m of t.matchAll(/["'(](?:\/)?(_next\/static\/[^"'()\s]+?\.js)/g)) { const x = new URL(m[1], base).href; if (!seen.has(x)) queue.push(x); }
+        for (const m of t.matchAll(/["'](static\/chunks\/[^"']+?\.js)["']/g)) { const x = new URL("_next/" + m[1], base).href; if (!seen.has(x)) queue.push(x); }
+      } catch { }
+    }
+    const srcs = [...seen];
     console.log("TEFAS uçları:", [...names].join(", ") || "(bulunamadı)", "· betik:", srcs.length);
     const cand = [...names].sort((a, b) => (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(b) ? 1 : 0) - (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(a) ? 1 : 0)).slice(0, 10);
     for (const n of cand) {
