@@ -1,32 +1,32 @@
 {
- "updatedAt": "2026-11-17T18:40:46.250Z",
+ "updatedAt": "2026-11-17T18:50:29.042Z",
  "fx": {
-  "EUR": 55.5799,
-  "USD": 50.4191
+  "EUR": 55.5707,
+  "USD": 50.4197
  },
  "gold": {
-  "ata": 42420,
+  "ata": 42358,
   "aziz": null,
-  "ceyrek": 10370,
-  "cumhuriyet": 42420,
-  "gram": 6259.75,
-  "gumus": 76.99,
-  "hamit": 42420,
-  "resat": 42420,
-  "resatAlis": 41453.03,
-  "resatSatis": 42124.03,
-  "tam": 41316,
-  "yarim": 20734,
+  "ceyrek": 10355,
+  "cumhuriyet": 42358,
+  "gram": 6250.45,
+  "gumus": 76.82,
+  "hamit": 42358,
+  "resat": 42358,
+  "resatAlis": 41406.01,
+  "resatSatis": 42076.01,
+  "tam": 41255,
+  "yarim": 20704,
   "resatKaynak": "altin.in",
-  "ayar22": 5942.83,
-  "ayar18": 5095,
-  "ayar14": 4623.24
+  "ayar22": 5934.11,
+  "ayar18": 5090,
+  "ayar14": 4617.21
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 6.235,
+   "p": 6.22,
    "cur": "USD",
-   "t": "2026-11-17T18:40:13.000Z",
+   "t": "2026-11-17T18:49:47.000Z",
    "pc": 6.16
   },
   "hisse:SOKE": {
@@ -66,15 +66,15 @@
    "pc": 0.544722
   },
   "abd:SPMO": {
-   "p": 126.56,
+   "p": 126.49,
    "cur": "USD",
-   "t": "2026-11-17T18:39:55.000Z",
+   "t": "2026-11-17T18:50:10.000Z",
    "pc": 128.06
   },
   "abd:SCHD": {
-   "p": 35.47,
+   "p": 35.48,
    "cur": "USD",
-   "t": "2026-11-17T18:40:30.000Z",
+   "t": "2026-11-17T18:50:11.000Z",
    "pc": 35.86
   },
   "hisse:OPT25": {
@@ -110,29 +110,29 @@
   "abd:OWL": {
    "p": 9.22,
    "cur": "USD",
-   "t": "2026-11-17T18:40:12.000Z",
+   "t": "2026-11-17T18:50:13.000Z",
    "pc": 9.35
   },
   "kripto:ETH": {
-   "p": 1790.02,
+   "p": 1785.51,
    "cur": "USD",
-   "t": "2026-11-17T18:40:23.000Z",
+   "t": "2026-11-17T18:50:13.000Z",
    "pc": 1819.17
   },
   "kripto:XRP": {
-   "p": 0.9558,
+   "p": 0.9573,
    "cur": "USD",
-   "t": "2026-11-17T18:40:31.000Z",
+   "t": "2026-11-17T18:50:13.000Z",
    "pc": 0.9546
   },
   "abd:SCHG": {
-   "p": 32.76,
+   "p": 32.73,
    "cur": "USD",
-   "t": "2026-11-17T18:40:32.000Z",
+   "t": "2026-11-17T18:50:14.000Z",
    "pc": 33.17
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
