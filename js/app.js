@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.05";
+const APP_VERSION="3.06";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1224,6 +1224,41 @@ function taxCalc(h,Y){
   }
   return{sells,divs,pend};
 }
+/* ---------- "şimdi satarsam ne kadar vergi öderim" (yurt dışı hisse/ETF) ----------
+   Kaynak (2026): ücret dışı gelirler tarifesi 31.12.2025 tarihli Resmî Gazete; yıllık beyanname damga vergisi 1.189,50 TL.
+   Yurt dışı menkul kıymet satış kazancında istisna ve beyan sınırı yok; Yİ-ÜFE artışı %10'u bulursa maliyet endekslenir.
+   Varsayım: maaş tek işverenden ve beyan sınırının altında (beyana eklenmez). Tahmindir; kesin hesap mali müşavirindir. */
+const TAX_Y={2026:{br:[[190000,.15],[400000,.20],[1000000,.27],[5300000,.35],[Infinity,.40]],stamp:1189.5}};
+function taxYear(Y){return TAX_Y[Y]||TAX_Y[Math.max(...Object.keys(TAX_Y).map(Number).filter(y=>y<=Y))]||TAX_Y[2026]}
+function incomeTax(m,Y){if(!(m>0))return 0;let t=0,lo=0;for(const[hi,r]of taxYear(Y).br){if(m<=lo)break;t+=(Math.min(m,hi)-lo)*r;lo=hi}return t}
+function sellTaxSim(h,pf){
+  if(h.kind!=="abd"||!(+h.qty>0))return null;const ep=effPrice(h);if(!(ep.p>0))return null;
+  const Y=+todayISO().slice(0,4);let trades=(h.trades||[]).filter(t=>t.type!=="div");
+  if(!buysOf(h).some(t=>t.date)){if(!h.buyDate||!(+h.cost>0))return{need:true};trades=[{id:"_b",type:"buy",date:h.buyDate,qty:+h.qty,price:+h.cost}]}
+  const v={id:"_now",type:"sell",date:todayISO(),qty:+h.qty,price:ep.p,fx:{[h.cur]:rate(h.cur)}};
+  const r=taxCalc({...h,trades:[...trades,v]},Y),x=r.sells.find(z=>z.t===v);if(!x)return null;
+  // bu yıl bu portföyde gerçekleşmiş diğer yurt dışı satış kazançları (aynı beyannameye girer)
+  const other=(pf?pf.holdings:[]).filter(o=>o.cur!=="TRY"&&(o.trades||[]).length).reduce((a,o)=>a+taxCalc(o,Y).sells.reduce((b,z)=>b+z.gain,0),0);
+  const base=Math.max(0,other),tot=Math.max(0,other+x.gain),tax=Math.max(0,incomeTax(tot,Y)-incomeTax(base,Y));
+  const stamp=x.gain>0&&base<=0?taxYear(Y).stamp:0;
+  return{Y,x,other,tax,stamp,net:x.sale-tax-stamp,rate:x.gain>0?tax/x.gain*100:0,pend:r.pend,idxPct:x.cost?(x.idx/x.cost-1)*100:0}}
+function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>fmt(v,"TRY",{dec:0});
+  if(s.need)return `<div class="stx"><div class="label sh-sec" style="margin:0 0 4px">Şimdi satarsan vergi</div><p class="kr-sum">Hesaplamak için alım tarihini girmen gerekiyor (Düzenle → alış tarihi, ya da alımları tarihleriyle ekle).</p></div>`;
+  const x=s.x,g=x.gain;
+  return `<details class="stx" ${view.stxOpen?"open":""}><summary><span class="label sh-sec" style="margin:0">Şimdi satarsan vergi (tahmini)</span><b class="num ${g>0?"neg-t":""}">${g>0?tl(s.tax+s.stamp):"Vergi yok"}</b></summary>
+    <div class="kv stx-kv">
+      <div><span>Satış tutarı<br><small class="sub">${fmtN(x.qty,4)} adet × ${fmtN(x.t.price,2)} ${esc(h.cur)} · kur ${fmtN(x.fx,4)}</small></span><span class="num">${tl(x.sale)}</span></div>
+      <div><span>Alış maliyeti (alış günü kurlarıyla)</span><span class="num">${tl(x.cost)}</span></div>
+      <div><span>Vergide düşülecek maliyet<br><small class="sub">${x.nIdx?"Yİ-ÜFE ile endekslendi ("+fmtPct(s.idxPct)+")":"Yİ-ÜFE artışı %10'un altında, endekslenmedi"}${x.prov?" · son yayımlanan endeksle":""}</small></span><span class="num">${tl(x.idx)}</span></div>
+      <div class="tot"><span>Vergiye konu kazanç</span><span class="num ${g>=0?"pos-t":"neg-t"}">${tl(g)}</span></div>
+      ${g>0?`<div><span>Gelir vergisi (${s.Y} tarifesi)<br><small class="sub">bu satışa düşen ortalama oran %${fmtN(s.rate,1)}${s.other>0?" · bu yılki diğer satış kazançların ("+tl(s.other)+") ile birlikte":""}</small></span><span class="num neg-t">${tl(s.tax)}</span></div>
+      <div><span>Damga vergisi (beyanname)<br><small class="sub">${s.stamp?"yıllık beyanname başına bir kez":"bu yıl zaten beyanname vereceğin için ek değil"}</small></span><span class="num neg-t">${s.stamp?fmt(s.stamp,"TRY",{dec:2}):"—"}</span></div>
+      <div class="tot"><span>Toplam vergi</span><span class="num neg-t">${tl(s.tax+s.stamp)}</span></div>
+      <div><span>Vergiden sonra eline geçen</span><span class="num">${tl(s.net)}</span></div>`
+      :`<div><span>Vergi</span><span class="num">Yok</span></div><div><span>Not</span><span class="sub">${g<0?"Zarar, bu yılki diğer yurt dışı hisse kazançlarından düşülebilir.":"Kazanç oluşmuyor."}</span></div>`}
+    </div>
+    <p class="kr-sum">Tüm adetleri bugünkü fiyat ve kurla satsaydın. Ödeme ${s.Y+1} Mart'ta yıllık beyannameyle yapılır. Varsayımlar: maaşın tek işverenden ve beyan sınırının altında; komisyon dahil değil; resmi hesapta TCMB döviz alış kuru kullanılır, rakamlar biraz değişebilir.${s.pend?" Bazı alımların kuru henüz alınamadı, bugünkü kur kullanıldı.":""} Kesin tutar için mali müşavirine danış.</p>
+  </details>`}
 function taxReport(Y){
   const pfs=state.portfolios,sel=pfs.find(p=>p.id===view.taxPf)||mainPf();
   if(!sel)return `<section class="card"><div class="empty"><b>Portföy yok</b></div></section>`;
@@ -2561,6 +2596,7 @@ function holdingDetail(pfId,h){
       ${dvb?`<div class="w2"><span class="label">Alınan temettü / kâr payı · toplam K/Z'ye dahil</span><b class="num pos-t">+${fmt(+h.divs,h.cur)}</b></div>`:""}
     </div>
     ${rest?`<div class="kv">${rest}</div>`:""}
+    ${sellTaxBlock(h,pf)}
     ${karne(h,pf)}
     <div class="sec sh-sec2"><div class="label sh-sec" style="margin:0">İşlem geçmişi</div>${h.kind!=="bes"&&!CASH_KINDS.includes(h.kind)?`<button class="btn ghost sm" id="hDiv">${ic(I.plus,14)}Temettü ekle</button>`:""}</div>
     ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:4px 0 8px">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}

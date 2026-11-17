@@ -1386,3 +1386,11 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .kr-lots span:first-child{color:var(--muted);white-space:nowrap}
 .kr-lots .num{white-space:nowrap}
 .kr-lots b{font-weight:800}
+
+/* 3.06 · şimdi satarsan vergi */
+.stx{margin:12px 0;padding:12px 14px;border-radius:16px;background:var(--surface-2)}
+.stx summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none}
+.stx summary::-webkit-details-marker{display:none}
+.stx summary b{font-size:var(--fs-h2);font-weight:800;white-space:nowrap}
+.stx .stx-kv{margin-top:10px}
+.stx .stx-kv>div.tot{font-weight:700;border-top:1px solid var(--line);padding-top:8px}
