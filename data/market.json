@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-17T15:20:29.765Z",
+ "updatedAt": "2026-11-17T15:30:53.597Z",
  "fx": {
-  "EUR": 55.4828,
-  "USD": 50.4188
+  "EUR": 55.3989,
+  "USD": 50.413
  },
  "gold": {
   "ata": 42364,
@@ -24,9 +24,9 @@
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 6.35,
+   "p": 6.295,
    "cur": "USD",
-   "t": "2026-11-17T15:20:10.000Z",
+   "t": "2026-11-17T15:30:36.000Z",
    "pc": 6.16
   },
   "hisse:SOKE": {
@@ -38,7 +38,7 @@
   "hisse:BALSU": {
    "p": 6.79,
    "cur": "TRY",
-   "t": "2026-11-17T15:05:11.000Z",
+   "t": "2026-11-17T15:09:40.000Z",
    "pc": 6.87
   },
   "ppf:KLU": {
@@ -66,15 +66,15 @@
    "pc": 0.544722
   },
   "abd:SPMO": {
-   "p": 127.37,
+   "p": 127.32,
    "cur": "USD",
-   "t": "2026-11-17T15:19:51.000Z",
+   "t": "2026-11-17T15:30:36.000Z",
    "pc": 128.06
   },
   "abd:SCHD": {
-   "p": 35.65,
+   "p": 35.68,
    "cur": "USD",
-   "t": "2026-11-17T15:20:12.000Z",
+   "t": "2026-11-17T15:30:38.000Z",
    "pc": 35.86
   },
   "hisse:OPT25": {
@@ -92,48 +92,49 @@
   "hisse:FZLGY": {
    "p": 8.44,
    "cur": "TRY",
-   "t": "2026-11-17T15:05:11.000Z",
+   "t": "2026-11-17T15:09:40.000Z",
    "pc": 7.78
   },
   "hisse:BIMAS": {
    "p": 393.25,
    "cur": "TRY",
-   "t": "2026-11-17T15:05:11.000Z",
+   "t": "2026-11-17T15:09:57.000Z",
    "pc": 394.5
   },
   "hisse:FROTO": {
    "p": 71.7,
    "cur": "TRY",
-   "t": "2026-11-17T15:05:11.000Z",
+   "t": "2026-11-17T15:09:58.000Z",
    "pc": 73
   },
   "abd:OWL": {
-   "p": 9.275,
+   "p": 9.225,
    "cur": "USD",
-   "t": "2026-11-17T15:20:17.000Z",
+   "t": "2026-11-17T15:30:41.000Z",
    "pc": 9.35
   },
   "kripto:ETH": {
-   "p": 1801.66,
+   "p": 1806.32,
    "cur": "USD",
-   "t": "2026-11-17T15:20:16.000Z",
+   "t": "2026-11-17T15:30:31.000Z",
    "pc": 1819.17
   },
   "kripto:XRP": {
-   "p": 0.9687,
+   "p": 0.9685,
    "cur": "USD",
-   "t": "2026-11-17T15:20:14.000Z",
+   "t": "2026-11-17T15:30:37.000Z",
    "pc": 0.9546
   },
   "abd:SCHG": {
-   "p": 32.98,
+   "p": 32.93,
    "cur": "USD",
-   "t": "2026-11-17T15:20:20.000Z",
+   "t": "2026-11-17T15:30:42.000Z",
    "pc": 33.17
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
