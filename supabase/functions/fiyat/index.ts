@@ -1,7 +1,7 @@
 // Emanet · canlı fiyat (Supabase Edge Function, adı: fiyat)
 // Uygulama açıkken 30 saniyede bir çağrılır; hisse, ABD hissesi ve kripto için Yahoo Finance'ten,
 // altın ve döviz için finans.truncgil.com'dan son fiyatı alıp döndürür. Hiçbir şey saklamaz.
-// BIST fiyatları kaynağın kendisinde yaklaşık 15 dakika gecikmelidir.
+// BIST fiyatları kaynağın kendisinde yaklaşık 15 dakika gecikmelidir. Takip listesindeki endeksler de "y:" koduyla buradan gelir.
 // Kurulum: Supabase → Edge Functions → Deploy a new function → Via Editor → adı "fiyat" → bu dosyayı yapıştır → Deploy.
 // Sonra fonksiyonun Details/Settings bölümünde "Verify JWT with legacy secret" (Enforce JWT) seçeneğini KAPAT.
 
@@ -33,7 +33,8 @@ async function goldFx() {
   }
   return { fx: {}, gold: {} };
 }
-function ySym(kind: string, s: string) { return kind === "hisse" ? s + ".IS" : kind === "kripto" ? s + "-USD" : s.replace(/\./g, "-"); }
+// "y:" ile gelen kod Yahoo'daki adıyla aynen kullanılır (endeksler, emtia, kur: ^GSPC, GC=F, USDTRY=X)
+function ySym(kind: string, s: string) { return kind === "y" ? s : kind === "hisse" ? s + ".IS" : kind === "kripto" ? s + "-USD" : s.replace(/\./g, "-"); }
 async function quote(kind: string, s: string) {
   for (const h of ["query1", "query2"]) {
     try {
@@ -48,7 +49,7 @@ async function quote(kind: string, s: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   const url = new URL(req.url);
-  const keys = [...new Set((url.searchParams.get("k") || "").split(",").map(x => x.trim()).filter(x => /^(hisse|abd|kripto):[A-Z0-9.\-]{1,12}$/.test(x)))].slice(0, 60);
+  const keys = [...new Set((url.searchParams.get("k") || "").split(",").map(x => x.trim()).filter(x => /^(hisse|abd|kripto):[A-Z0-9.\-]{1,12}$/.test(x) || /^y:[A-Z0-9.\-^=]{1,12}$/.test(x)))].slice(0, 80);
   const [gf, qs] = await Promise.all([
     cached("gf", 20000, goldFx),
     Promise.all(keys.map(k => cached("q:" + k, 20000, () => { const i = k.indexOf(":"); return quote(k.slice(0, i), k.slice(i + 1)); }).then(v => [k, v] as const))),
