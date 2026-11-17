@@ -67,8 +67,10 @@ const tasks = {
       } catch { }
     }
     const srcs = [...seen];
+    console.log("TEFAS ana sayfa:", html.length, "karakter ·", html.replace(/\s+/g, " ").slice(0, 160));
+    ["fonListesiGetir", "fonListeGetir", "fonListesi", "tumFonlariGetir", "fonAramaGetir", "fonAra", "fonKarsilastirmaGetir", "fonGetiriBazliGetir", "fonUnvanListesiGetir", "fonKoduListesiGetir", "fonTurListesiGetir", "getiriBazliFonListesiGetir"].forEach(n => names.add(n));
     console.log("TEFAS uçları:", [...names].join(", ") || "(bulunamadı)", "· betik:", srcs.length);
-    const cand = [...names].sort((a, b) => (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(b) ? 1 : 0) - (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(a) ? 1 : 0)).slice(0, 10);
+    const cand = [...names].sort((a, b) => (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(b) ? 1 : 0) - (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(a) ? 1 : 0)).slice(0, 14);
     for (const n of cand) {
       for (const body of [{ dil: "TR" }, { dil: "TR", fonTipi: "YAT" }, { dil: "TR", fonTurKod: "", fonTipi: "YAT", sFonTur: "" }]) {
         try {
