@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-17T04:01:11.681Z",
+ "updatedAt": "2026-11-17T04:10:25.769Z",
  "fx": {
-  "EUR": 55.5745,
-  "USD": 50.4265
+  "EUR": 55.5688,
+  "USD": 50.421
  },
  "gold": {
-  "ata": 42386,
+  "ata": 42374,
   "aziz": null,
-  "ceyrek": 10362,
-  "cumhuriyet": 42386,
-  "gram": 6274.7,
-  "gumus": 76.91,
-  "hamit": 42386,
-  "resat": 42386,
-  "resatAlis": 41352.83,
-  "resatSatis": 42017.83,
-  "tam": 41283,
-  "yarim": 20718,
+  "ceyrek": 10359,
+  "cumhuriyet": 42374,
+  "gram": 6273.55,
+  "gumus": 76.86,
+  "hamit": 42374,
+  "resat": 42374,
+  "resatAlis": 41344.97,
+  "resatSatis": 42009.97,
+  "tam": 41272,
+  "yarim": 20712,
   "resatKaynak": "altin.in",
-  "ayar22": 5938.09,
+  "ayar22": 5936.49,
   "ayar18": 5085,
-  "ayar14": 4619.96
+  "ayar14": 4618.85
  },
  "quotes": {
   "abd:LPTH": {
@@ -48,22 +48,22 @@
    "pc": 5.246403
   },
   "ppf:ENR": {
-   "p": 1.313668,
+   "p": 1.315077,
    "cur": "TRY",
-   "t": "2026-11-16",
-   "pc": 1.309838
+   "t": "2026-11-17",
+   "pc": 1.313668
   },
   "ppf:ZPO": {
-   "p": 1.126487,
+   "p": 1.127584,
    "cur": "TRY",
-   "t": "2026-11-16",
-   "pc": 1.130893
+   "t": "2026-11-17",
+   "pc": 1.126487
   },
   "fon:GSP": {
-   "p": 0.544722,
+   "p": 0.544868,
    "cur": "TRY",
-   "t": "2026-11-16",
-   "pc": 0.54047
+   "t": "2026-11-17",
+   "pc": 0.544722
   },
   "abd:SPMO": {
    "p": 128.06,
@@ -108,10 +108,9 @@
    "pc": 73.75
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "GSP: fon fiyatı alınamadı (fetch failed)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
