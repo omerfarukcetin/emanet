@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.99";
+const APP_VERSION="3.00";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1381,7 +1381,7 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
 let syms=null,symsBusy=null;
 function loadSyms(){if(syms)return Promise.resolve(syms);if(symsBusy)return symsBusy;
   symsBusy=(async()=>{for(const u of marketUrls().map(x=>x.replace("market.json","symbols.json"))){try{const d=await getJSON(u);if(d&&(d.hisse||d.kripto)){syms=d;return d}}catch(e){}}return null})().finally(()=>{symsBusy=null});return symsBusy}
-const SYM_K=[["","Tümü"],["hisse","BIST"],["abd","ABD"],["fon","Fon"],["kripto","Kripto"]];
+const SYM_K=[["","Tümü"],["hisse","BIST"],["abd","ABD"],["kripto","Kripto"],["fon","Fon"]];
 const ppfName=n=>/para piyasas/i.test(trLow(n));
 // Türkçe harfler sadeleştirilir: kaynaklar "Turk Hava Yollari" yazabiliyor, kullanıcı "türk hava" yazıyor
 const fold=x=>trLow(x).replace(/[şŞ]/g,"s").replace(/[ıİ]/g,"i").replace(/[ğĞ]/g,"g").replace(/[üÜ]/g,"u").replace(/[öÖ]/g,"o").replace(/[çÇ]/g,"c").replace(/[âÂ]/g,"a");
@@ -1399,7 +1399,7 @@ function tkAdd(){let kf="";
     const add=(k,c,n)=>{state.follow=state.follow||[];if(state.follow.some(f=>f.k===k&&f.s===c)){toast(c+" zaten listede");return}
       state.follow.push({k,s:c,n:n||undefined,c:k==="abd"||k==="kripto"?"USD":"TRY"});closeSheet();view.tab="takip";commit(c+" takibe eklendi"+(market&&market.quotes&&market.quotes[k+":"+c]?"":" · fiyatı birkaç dakika içinde gelir"))};
     const draw=()=>{const q=qi.value.trim(),r=symSearch(q,kf),code=q.toUpperCase().replace(/\.IS$/,"");
-      if(!q){box.innerHTML=`<div class="sub tk-hint">${syms?"Yazdıkça eşleşen hisseler, fonlar ve kriptolar listelenir.":"Kod rehberi yükleniyor…"}</div>`;return}
+      if(!q){box.innerHTML=`<div class="sub tk-hint">${!syms?"Kod rehberi yükleniyor…":kf==="fon"?"Fon listesi yok: TEFAS fon kodunu (örn. TTE, AFT) yazıp “Fon” ile ekle.":"Yazdıkça eşleşen BIST ve ABD hisseleri ile kriptolar listelenir. Fonlar için kodu yazman yeterli."}</div>`;return}
       box.innerHTML=r.map(x=>`<button class="tk-hit" data-k="${x.k}" data-c="${esc(x.c)}" data-n="${esc(x.n)}"><b>${esc(x.c)}</b><span>${esc(x.n)}</span><em>${esc({hisse:"BIST",abd:"ABD",fon:"Fon",ppf:"PPF",kripto:"Kripto"}[x.k])}</em></button>`).join("")
         +(/^[A-Z0-9.\-]{1,12}$/.test(code)&&!r.some(x=>x.c===code)?`<div class="tk-man"><span class="sub">Listede yoksa “${esc(code)}” kodunu yine de ekle:</span><div class="chips">${[["hisse","BIST"],["abd","ABD"],["fon","Fon"],["kripto","Kripto"]].map(([k,l])=>`<button class="chip" data-mk="${k}">${l}</button>`).join("")}</div></div>`:"");
       box.querySelectorAll(".tk-hit").forEach(b=>b.onclick=()=>add(b.dataset.k,b.dataset.c,b.dataset.n));
