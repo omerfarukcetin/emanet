@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-17T06:40:24.209Z",
+ "updatedAt": "2026-11-17T06:51:25.190Z",
  "fx": {
-  "EUR": 55.5556,
-  "USD": 50.4217
+  "EUR": 55.5664,
+  "USD": 50.4207
  },
  "gold": {
-  "ata": 42395,
+  "ata": 42351,
   "aziz": null,
-  "ceyrek": 10364,
-  "cumhuriyet": 42395,
-  "gram": 6281.9,
-  "gumus": 77.06,
-  "hamit": 42396,
-  "resat": 42396,
-  "resatAlis": 41368,
-  "resatSatis": 42033,
-  "tam": 41293,
-  "yarim": 20723,
+  "ceyrek": 10354,
+  "cumhuriyet": 42351,
+  "gram": 6276.18,
+  "gumus": 76.95,
+  "hamit": 42351,
+  "resat": 42351,
+  "resatAlis": 41334.46,
+  "resatSatis": 41999.44,
+  "tam": 41249,
+  "yarim": 20701,
   "resatKaynak": "altin.in",
-  "ayar22": 5939.33,
-  "ayar18": 5085,
-  "ayar14": 4620.81
+  "ayar22": 5933.23,
+  "ayar18": 5080,
+  "ayar14": 4616.6
  },
  "quotes": {
   "abd:LPTH": {
@@ -33,13 +33,13 @@
    "p": 7.28,
    "cur": "TRY",
    "t": "2026-11-16T15:05:17.000Z",
-   "pc": 7.39
+   "pc": 7.28
   },
   "hisse:BALSU": {
    "p": 6.87,
    "cur": "TRY",
    "t": "2026-11-16T15:08:01.000Z",
-   "pc": 6.83
+   "pc": 6.87
   },
   "ppf:KLU": {
    "p": 5.265992,
@@ -81,7 +81,7 @@
    "p": 49.45,
    "cur": "TRY",
    "t": "2026-11-16T15:05:17.000Z",
-   "pc": 49.77
+   "pc": 49.45
   },
   "fon:KPA": {
    "p": 1.465951,
@@ -93,24 +93,27 @@
    "p": 7.78,
    "cur": "TRY",
    "t": "2026-11-16T15:08:01.000Z",
-   "pc": 7.08
+   "pc": 7.78
   },
   "hisse:BIMAS": {
    "p": 394.5,
    "cur": "TRY",
    "t": "2026-11-16T15:09:56.000Z",
-   "pc": 395.5
+   "pc": 394.5
   },
   "hisse:FROTO": {
    "p": 73,
    "cur": "TRY",
    "t": "2026-11-16T15:09:49.000Z",
-   "pc": 73.75
+   "pc": 73
   }
  },
  "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "KLU: fon fiyatı alınamadı (fetch failed)",
+  "ZPO: fon fiyatı alınamadı (fetch failed)",
+  "GSP: fon fiyatı alınamadı (fetch failed)"
  ]
 }
