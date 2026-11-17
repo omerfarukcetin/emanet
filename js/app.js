@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.06";
+const APP_VERSION="3.07";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1207,7 +1207,8 @@ const catBars=(obj,total,color,extra)=>{const arr=Object.entries(obj).sort((a,b)
    Endeksleme: alış ayından önceki ayın Yİ-ÜFE'si ile satış ayından önceki ayın Yİ-ÜFE'si arasındaki artış %10'u bulursa maliyet bu oranla artırılır.
    Bu bir hesap yardımıdır; beyan için mali müşavir kontrolü gerekir. */
 function taxCalc(h,Y){
-  const fxD=(t)=>{const f=t.fx||fxLookup(t.date);const v=f&&+f[h.cur];return v>0?{v,ok:true}:{v:rate(h.cur),ok:false}};
+  const fxD=(t)=>{const f=t.fx||fxLookup(t.date);const v=f&&+f[h.cur];if(v>0)return{v,ok:true};
+    if(t.type==="buy"&&h.fxAt&&+h.fxAt[h.cur]>0)return{v:+h.fxAt[h.cur],ok:!h.fxAt.pending};return{v:rate(h.cur),ok:false}};
   const tr=(h.trades||[]).filter(t=>t.date&&(t.type==="buy"||t.type==="sell"||t.type==="div")).slice().sort((a,c)=>a.date.localeCompare(c.date)||(a.type==="buy"?-1:1));
   const lots=[],sells=[],divs=[];let pend=false;
   for(const t of tr){
@@ -1255,8 +1256,9 @@ function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>
       <div><span>Damga vergisi (beyanname)<br><small class="sub">${s.stamp?"yıllık beyanname başına bir kez":"bu yıl zaten beyanname vereceğin için ek değil"}</small></span><span class="num neg-t">${s.stamp?fmt(s.stamp,"TRY",{dec:2}):"—"}</span></div>
       <div class="tot"><span>Toplam vergi</span><span class="num neg-t">${tl(s.tax+s.stamp)}</span></div>
       <div><span>Vergiden sonra eline geçen</span><span class="num">${tl(s.net)}</span></div>`
-      :`<div><span>Vergi</span><span class="num">Yok</span></div><div><span>Not</span><span class="sub">${g<0?"Zarar, bu yılki diğer yurt dışı hisse kazançlarından düşülebilir.":"Kazanç oluşmuyor."}</span></div>`}
+      :`<div><span>Vergi</span><span class="num">Yok</span></div>`}
     </div>
+    ${g<=0?`<p class="kr-sum"><b>${g<0?"Zararda satış:":"Kazanç yok:"}</b> ${g<0?"vergi çıkmaz; bu zarar aynı yılki diğer yurt dışı hisse kazançlarından düşülebilir.":"vergi çıkmaz."}</p>`:""}
     <p class="kr-sum">Tüm adetleri bugünkü fiyat ve kurla satsaydın. Ödeme ${s.Y+1} Mart'ta yıllık beyannameyle yapılır. Varsayımlar: maaşın tek işverenden ve beyan sınırının altında; komisyon dahil değil; resmi hesapta TCMB döviz alış kuru kullanılır, rakamlar biraz değişebilir.${s.pend?" Bazı alımların kuru henüz alınamadı, bugünkü kur kullanıldı.":""} Kesin tutar için mali müşavirine danış.</p>
   </details>`}
 function taxReport(Y){
