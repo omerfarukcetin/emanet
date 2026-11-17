@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.04";
+const APP_VERSION="3.05";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2451,8 +2451,50 @@ function techKey(h){
   if(h.kind==="doviz")return h.cur==="USD"||h.cur==="EUR"?"fx:"+h.cur:null;
   return null;
 }
+/* ---------- karne ekleri: kıyaslama, gerçek kazanç, alım alım durum ---------- */
+const pctS=v=>(v>=0?"+":"−")+"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0);
+/* elde kalan alımlar (satışlar ilk alınandan düşer); birim maliyet TL ve kendi para biriminde */
+function lotsFifo(h){const tr=(h.trades||[]).filter(t=>(t.type==="buy"||t.type==="sell")&&t.date).slice().sort((a,c)=>a.date.localeCompare(c.date));const lots=[];
+  for(const t of tr){if(t.type==="buy"){const q=+t.qty||0;if(!(q>0))continue;const fx=h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||(fxhist[t.date]&&+fxhist[t.date][h.cur])||fxOf(h,h.cur));
+      lots.push({date:t.date,q,px:+t.price||0,unitTL:((+t.price||0)*q+(+t.fee||0))*fx/q})}
+    else{let r=+t.qty||0;while(r>1e-9&&lots.length){const l=lots[0],x=Math.min(l.q,r);l.q-=x;r-=x;if(l.q<=1e-9)lots.shift()}}}
+  const rem=lots.filter(l=>l.q>1e-9),q=rem.reduce((a,l)=>a+l.q,0);return q>0&&Math.abs(q-(+h.qty||0))<=Math.max(1e-6,(+h.qty||0)*.02)?rem:null}
+const usdAt=d=>bAt("usd",d)||(fxhist[d]&&+fxhist[d].USD)||0;
+/* 1) kıyaslama: varlığın 1 ay / 3 ay / 1 yıl getirisi, uygun ölçütlerle yan yana */
+function benchRet(key,days){if(key==="tufe"){const a=tufeLevel(addDays(todayISO(),-days)),b=tufeLevel(todayISO());return a&&b?(b.v/a.v-1)*100:null}
+  const o=key==="gram"?mktSeries("gram"):bench&&bench[key];if(!o)return null;const ks=Object.keys(o).sort();if(ks.length<2)return null;
+  const last=ks[ks.length-1],k0=ks.filter(k=>k<=addDays(last,-days)).pop();if(!k0)return null;let v=+o[last];
+  const L=key!=="gram"&&MKT_Y[key]&&mktLive(key);if(L)v=L.p;return(v/ +o[k0]-1)*100}
+function karneBench(h,t){if(!t)return"";const sy=(h.symbol||"").toUpperCase();
+  const C=h.kind==="hisse"?[["xu100","BIST 100"],["tufe","Enflasyon"]]:h.kind==="abd"?[["spx","S&P 500"],["ndx","Nasdaq"]]:h.kind==="kripto"?(sy==="BTC"?[["spx","S&P 500"]]:[["btc","Bitcoin"]])
+    :h.kind==="altin"?[["usd","Dolar"],["tufe","Enflasyon"]]:h.kind==="doviz"?[["gram","Gram altın"],["tufe","Enflasyon"]]:[["tufe","Enflasyon"],["usd","Dolar"],["gram","Gram altın"]];
+  const R=[["1 ay",t.r1m,30],["3 ay",t.r3m,91],["1 yıl",t.r1y,365]].filter(r=>r[1]!=null).map(([l,v,d])=>[l,v,C.map(([k])=>benchRet(k,d))]);
+  if(!R.length||!R.some(r=>r[2].some(x=>x!=null)))return"";
+  const cl=v=>v==null?"":v>=0?"pos-t":"neg-t",cell=v=>v==null?"—":pctS(v);
+  const y=R[R.length-1],b=y[2][0],gap=b!=null?y[1]-b:null;
+  const sum=gap==null?"":`Son ${y[0]}da bu varlık ${pctS(y[1])}, ${C[0][1]} ${pctS(b)}: <b class="${gap>=0?"pos-t":"neg-t"}">${Math.abs(gap)<1?"aşağı yukarı aynı":fmtN(Math.abs(gap),0)+" puan "+(gap>=0?"önde":"geride")}</b>.`;
+  return `<div class="label sh-sec" style="margin:12px 0 6px">Kıyaslama</div>
+    <table class="kr-cmp"><thead><tr><th></th><th>Bu varlık</th>${C.map(c=>`<th>${c[1]}</th>`).join("")}</tr></thead>
+    <tbody>${R.map(([l,v,bs])=>`<tr><th>${l}</th><td class="num ${cl(v)}"><b>${cell(v)}</b></td>${bs.map(x=>`<td class="num ${cl(x)}">${cell(x)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    ${sum?`<p class="kr-sum">${sum}</p>`:""}`}
+/* 2) gerçek kazanç: alım tarihlerine göre enflasyondan arındırılmış ve dolar bazında; 3) alım alım durum */
+function karnePos(h){const lots=lotsFifo(h);if(!lots||!lots.length)return"";const ep=effPrice(h),valTL=hVal(h)*rate(S().base);if(!(valTL>0))return"";
+  const cost=lots.reduce((a,l)=>a+l.unitTL*l.q,0),now=tufeLevel(todayISO()),uNow=rate("USD");
+  let inf=0,infOK=!!now,usd=0,usdOK=uNow>0;lots.forEach(l=>{const a=tufeLevel(l.date);if(a&&now)inf+=l.unitTL*l.q*now.v/a.v;else infOK=false;const u=usdAt(l.date);if(u>0)usd+=l.unitTL*l.q/u;else usdOK=false});
+  const nom=(valTL/cost-1)*100,re=infOK?(valTL/inf-1)*100:null,du=usdOK?(valTL/uNow/usd-1)*100:null,first=lots[0].date;
+  const tile=(l,v,n)=>v==null?"":`<div><small>${l}</small><b class="num ${v>=0?"pos-t":"neg-t"}">${pctS(v)}</b>${n?`<em>${n}</em>`:""}</div>`;
+  const msg=re==null?"":re>=0?"Enflasyonun üstünde kazandırmış: alım gücün arttı.":"Enflasyonun gerisinde kalmış: kâğıt üstünde "+(nom>=0?"kâr görünse de":"zarar var ve")+" alım gücün azaldı.";
+  let out=`<div class="label sh-sec" style="margin:12px 0 6px">Senin gerçek kazancın</div>
+    <div class="kr-rets kr-real">${tile("TL olarak",nom,"maliyetine göre")}${tile("Enflasyondan arındırılmış",re,"reel")}${tile("Dolar bazında",du,"")}</div>
+    <p class="kr-sum">İlk alım ${fmtDate(first)}. Her alım kendi tarihindeki enflasyon ve dolarla hesaplandı.${msg?" "+msg:""}</p>`;
+  if(lots.length>=2){const sh=lots.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8),cur=h.cur==="TRY"?"₺":esc(h.cur);
+    out+=`<div class="label sh-sec" style="margin:12px 0 6px">Alım alım durum</div><div class="kr-lots">${sh.map(l=>{const d=l.px>0?(ep.p/l.px-1)*100:null;
+      return `<div><span>${fmtDate(l.date)}</span><span class="num">${fmtN(l.q,l.q%1?2:0)} adet · ${fmtN(l.px,l.px<10?4:2)} ${cur}</span><b class="num ${d==null?"":d>=0?"pos-t":"neg-t"}">${d==null?"—":pctS(d)}</b></div>`}).join("")}</div>
+      ${lots.length>8?`<p class="kr-sum">Son 8 alım gösteriliyor (toplam ${lots.length}).</p>`:""}`}
+  return out}
 function karne(h,pf){
-  const k=techKey(h),t=k&&tech&&tech.s&&tech.s[k];if(!t)return "";
+  const k=techKey(h),t=k&&tech&&tech.s&&tech.s[k];
+  if(!t){const ex=karnePos(h);return ex?`<details class="karne" ${view.karneOpen!==false?"open":""}><summary><span class="label sh-sec" style="margin:0">Varlık karnesi</span></summary>${ex}<p class="kr-note">Geçmişin özetidir; gelecekteki getiriyi göstermez ve yatırım tavsiyesi değildir.</p></details>`:""}
   const P=v=>(v>=0?"+":"−")+"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0),A=v=>"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0),F=[];   // [yön, metin]: 1 olumlu, -1 olumsuz, 0 nötr
   const last=t.last,calm=h.kind==="ppf"||(t.vol!=null&&t.vol<5);   // para piyasası fonu, dolar gibi düzenli ilerleyenlerde kısa vadeli göstergeler yanıltır
   if(t.ma200){const d=(last/t.ma200-1)*100;F.push([d>=0?1:-1,`Uzun vadeli eğilim ${d>=0?"yukarı":"aşağı"}: fiyat 200 günlük ortalamanın ${A(d)} ${d>=0?"üstünde":"altında"}.`])}
@@ -2488,7 +2530,9 @@ function karne(h,pf){
     ${chart}
     ${rets.length?`<div class="kr-rets">${rets.map(([l,v])=>`<div><small>${l}</small><b class="num ${v>=0?"pos-t":"neg-t"}">${P(v)}</b></div>`).join("")}</div>`:""}
     <ul class="kr-list">${F.map(row).join("")}</ul>
+    ${karneBench(h,t)}
     ${M.length?`<div class="label sh-sec" style="margin:10px 0 4px">Senin pozisyonun</div><ul class="kr-list">${M.map(row).join("")}</ul>`:""}
+    ${karnePos(h)}
     <p class="kr-note">${k.startsWith("fon:")||k.startsWith("ppf:")?"TEFAS":k.startsWith("gold:")||k.startsWith("fx:")?"Piyasa":"Yahoo Finance"} verisi, son ${t.n} işlem günü · ${fmtDate(t.d)} itibarıyla. Bu karne geçmiş fiyat hareketinin özetidir; gelecekteki getiriyi göstermez ve yatırım tavsiyesi değildir.</p>
   </details>`;
 }
