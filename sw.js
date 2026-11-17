@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v49";
+const V = "emanet-v50";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
@@ -110,10 +110,12 @@ async function notify(kindForced, test) {
         if (u0 > 0 && u > 0) { const d = h.q * (u - u0); pl += d; b += h.q * u0; if (!top || Math.abs(d) > Math.abs(top.d)) top = { d, n: h.n, p: (u / u0 - 1) * 100 }; mv.push({ n: h.n, p: (u / u0 - 1) * 100, d }); }
       }
       const has = b > 0, pc = has ? pl / b * 100 : 0;
-      return { n: p.n, main: p.main, v, has, pl, pc, b, top, mv, chg: has ? (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")") : "" };
+      v += +p.bes || 0; // BES yalnızca toplam değerde
+      return { n: p.n, main: p.main, v, bes: +p.bes || 0, lst: p.hs.length > 0, has, pl, pc, b, top, mv, chg: has ? (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")") : "" };
     });
-    const pick = ls => ({ m: ls.find(l => l.main) || ls[0], rest: ls.filter(l => !l.main && l.has) });
-    const val = m => m.n + (snap.hide ? "" : " · " + tl(m.v));
+    const pick = ls => ({ m: ls.find(l => l.main && l.lst) || ls.find(l => l.lst) || ls[0], rest: ls.filter(l => !l.main && l.has) });
+    const besN = x => x.bes ? " (BES dahil)" : "";
+    const val = m => m.n + (snap.hide ? "" : " · " + tl(m.v) + besN(m));
     // en yakın uygun geçmiş kayıt: hedef gün sayısı kadar eski olana en yakın
     const back = (target, min, max) => closes.filter(c => { const g = dayGap(c.d, today); return g >= min && g <= max; }).sort((a, b) => Math.abs(dayGap(a.d, today) - target) - Math.abs(dayGap(b.d, today) - target))[0] || null;
 
@@ -164,27 +166,28 @@ async function notify(kindForced, test) {
       if (kind === "daily" || kind === "big") {
         const { m, rest } = pick(since(dref)), gap = dref ? dayGap(dref.d, today) : 0;
         if (kind === "big") {
-          if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))), [snap.hide ? "" : "Toplam " + tl(m.v), big1(m.mv)].filter(Boolean).join(" · "));
+          if (m.has) show("hareket", (m.pl >= 0 ? "📈 " : "📉 ") + "Portföy " + (gap > 3 ? "son " + gap + " günde " : "bugün ") + (m.pl >= 0 ? "yükseldi " : "düştü ") + m.chg, [val(m), m.top ? "En çok etkileyen: " + m.top.n + " " + arrow(m.top.p) + pct(m.top.p) : ""].filter(Boolean).join("\n"), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "bugün"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))), [snap.hide ? "" : "Toplam " + tl(m.v) + besN(m), big1(m.mv)].filter(Boolean).join(" · "));
           else show("hareket", "Portföyde büyük hareket", val(m) + "\nAyrıntı için dokunun.", open);
         } else if (m.has) {
           // gün sonu: başlıkta ana portföyün değişimi; altında toplam değer, en çok yükselen/düşen ve (portföy özeti ayrı değilse) diğer portföyler
           const mv = mergeMv(m.mv).sort((a, b) => b.p - a.p), up = mv[0], dn = mv[mv.length - 1];
           const lines = [];
-          if (!snap.hide) lines.push("Toplam değer " + tl(m.v));
+          if (!snap.hide) lines.push("Toplam değer " + tl(m.v) + besN(m));
           if (up && up.p > 0.005) lines.push("En çok yükselen  " + up.n + " " + sp(up.p));
           if (dn && dn.p < -0.005 && dn !== up) lines.push("En çok düşen  " + dn.n + " " + sp(dn.p));
           if (!P.ps && rest.length) lines.push(...rest.map(l => dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
           show("gun-sonu", (m.pl >= 0 ? "📈 " : "📉 ") + m.n + (gap > 3 ? " son " + gap + " günde " : " bugün ") + m.chg, lines.join("\n") || val(m), open, await chartImg((m.pl >= 0 ? "+" : "−") + pct(m.pc), m.n + " · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), movers(m.mv), m.pl >= 0, snap.hide ? undefined : sg(m.pl) + tl(Math.abs(m.pl))),
-            [snap.hide ? "" : "Toplam " + tl(m.v), big1(m.mv)].filter(Boolean).join(" · ") + (!P.ps && rest.length ? "\n" + rest.map(l => dot(l.pc, l.has) + " " + l.n + " " + sp(l.pc)).join(" · ") : ""));
+            [snap.hide ? "" : "Toplam " + tl(m.v) + besN(m), big1(m.mv)].filter(Boolean).join(" · ") + (!P.ps && rest.length ? "\n" + rest.map(l => dot(l.pc, l.has) + " " + l.n + " " + sp(l.pc)).join(" · ") : ""));
         } else show("gun-sonu", "Emanet · Gün sonu", val(m) + "\nGünlük değişim yarından itibaren hesaplanır.", open);
       }
       if (kind === "pfs") {
         // tüm portföylerin günlük değişimi tek bildirimde, her portföy bir satır
-        const ls = since(dref), gap = dref ? dayGap(dref.d, today) : 0, hs = ls.filter(l => l.has);
+        const all = since(dref), ls = all.filter(l => l.lst), gap = dref ? dayGap(dref.d, today) : 0, hs = ls.filter(l => l.has);
+        const totV = all.reduce((a, l) => a + l.v, 0), totB = all.reduce((a, l) => a + l.bes, 0);
         const pl = hs.reduce((a, l) => a + l.pl, 0), base = hs.reduce((a, l) => a + l.b, 0), pc = base ? pl / base * 100 : 0;
         const when = gap > 3 ? "son " + gap + " günde" : "bugün";
         if (hs.length) show("portfoyler", "📊 Portföyler " + when + " " + (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")"),
-          ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(ls.reduce((a, l) => a + l.v, 0))), open,
+          ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(totV) + (totB ? " (BES dahil)" : "")), open,
           await chartImg(sp(pc), "Portföyler · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), ls.map(l => ({ n: l.n, p: l.has ? l.pc : 0, d: l.has ? l.pl : 0 })), pl >= 0, snap.hide ? undefined : sg(pl) + tl(Math.abs(pl))),
           ls.map(l => dot(l.pc, l.has) + " " + l.n + " " + (l.has ? sp(l.pc) : "—")).join(" · "));
         else show("portfoyler", "📊 Portföyler", ls.map(l => l.n + (snap.hide ? "" : "  " + tl(l.v))).join("\n") + "\nGünlük değişim yarından itibaren hesaplanır.", open);
@@ -199,7 +202,7 @@ async function notify(kindForced, test) {
         rest.slice(0, 3).forEach(l => lines.push(dot(l.pc, l.has) + " " + l.n + "  " + l.chg));
         show("gun-ici", (m.has ? (m.pl >= 0 ? "📈 " : "📉 ") : "") + m.n + " · saat " + T.hm + (m.has ? " " + m.chg : ""), lines.join("\n"), open,
           await chartImg(m.has ? sp(m.pc) : T.hm, m.n + " · saat " + T.hm, movers(m.mv), m.has ? m.pl >= 0 : null, m.has && !snap.hide ? sg(m.pl) + tl(Math.abs(m.pl)) : undefined),
-          [snap.hide ? "" : "Toplam " + tl(m.v), big1(m.mv)].filter(Boolean).join(" · ") + (rest.length ? "\n" + rest.slice(0, 3).map(l => dot(l.pc, l.has) + " " + l.n + " " + (l.has ? sp(l.pc) : "—")).join(" · ") : ""));
+          [snap.hide ? "" : "Toplam " + tl(m.v) + besN(m), big1(m.mv)].filter(Boolean).join(" · ") + (rest.length ? "\n" + rest.slice(0, 3).map(l => dot(l.pc, l.has) + " " + l.n + " " + (l.has ? sp(l.pc) : "—")).join(" · ") : ""));
       }
       if (kind === "weekly") {
         const ref = back(7, 5, 10), w = snap.per && snap.per.w;

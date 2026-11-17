@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.92";
+const APP_VERSION="2.93";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1685,7 +1685,9 @@ async function notifSnap(){
       ref:ref&&ref.h?{d:ref.d,u:Object.fromEntries(Object.entries(ref.h).map(([k,v])=>[k,v.u]))}:null,
       pfs:state.portfolios.map(p=>({n:p.name,main:!!mp&&p.id===mp.id,hs:p.holdings.filter(h=>+h.qty>0&&h.kind!=="bes").map(h=>{
         const sy=(h.symbol||"").toUpperCase().trim(),gk=h.cur==="TRY"?(h.kind==="altin"?goldKey(h):h.kind==="gumus"?"gumus":null):null;
-        return{id:h.id,n:sy||h.name,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}})})).filter(p=>p.hs.length)};
+        return{id:h.id,n:sy||h.name,q:+h.qty,cur:h.cur,last:effPrice(h).p,g:gk||undefined,k:!gk&&sy?[h.kind+":"+sy].concat(h.kind==="abd"?["hisse:"+sy]:[]):undefined,buy:h.buyDate||undefined,cu:costIn(h,"TRY")/+h.qty}}),
+        // BES: günlük değişime ve en çok yükselen/düşene girmez, yalnızca toplam değere eklenir (TL)
+        bes:Math.round(p.holdings.filter(h=>+h.qty>0&&h.kind==="bes").reduce((a,h)=>a+hVal(h)*rate(S().base),0))||undefined})).filter(p=>p.hs.length||p.bes)};
     await(await caches.open(NK)).put(notifKey(),new Response(JSON.stringify(snap),{headers:{"content-type":"application/json"}}));
   }catch(e){}
   notifSync();
