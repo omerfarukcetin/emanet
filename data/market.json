@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-17T08:31:26.543Z",
+ "updatedAt": "2026-11-17T08:33:11.423Z",
  "fx": {
   "EUR": 55.5156,
   "USD": 50.4261
  },
  "gold": {
-  "ata": 42312,
+  "ata": 42297,
   "aziz": null,
-  "ceyrek": 10344,
-  "cumhuriyet": 42312,
-  "gram": 6271.68,
-  "gumus": 77.12,
-  "hamit": 42312,
-  "resat": 42312,
-  "resatAlis": 41393.79,
-  "resatSatis": 41956.86,
-  "tam": 41211,
-  "yarim": 20681,
+  "ceyrek": 10340,
+  "cumhuriyet": 42297,
+  "gram": 6268.94,
+  "gumus": 77.04,
+  "hamit": 42297,
+  "resat": 42297,
+  "resatAlis": 41376.02,
+  "resatSatis": 41939.02,
+  "tam": 41197,
+  "yarim": 20674,
   "resatKaynak": "altin.in",
-  "ayar22": 5927.64,
+  "ayar22": 5925.61,
   "ayar18": 5075,
-  "ayar14": 4612.73
+  "ayar14": 4611.33
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 6.84
   },
   "hisse:SOKE": {
-   "p": 7.13,
+   "p": 7.1,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:29.000Z",
+   "t": "2026-11-17T08:17:53.000Z",
    "pc": 7.28
   },
   "hisse:BALSU": {
-   "p": 6.68,
+   "p": 6.65,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:44.000Z",
+   "t": "2026-11-17T08:17:52.000Z",
    "pc": 6.87
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 36.12
   },
   "hisse:OPT25": {
-   "p": 49.1,
+   "p": 49.04,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:00.000Z",
+   "t": "2026-11-17T08:17:27.000Z",
    "pc": 49.45
   },
   "fon:KPA": {
@@ -92,19 +92,19 @@
   "hisse:FZLGY": {
    "p": 8.13,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:51.000Z",
+   "t": "2026-11-17T08:17:50.000Z",
    "pc": 7.78
   },
   "hisse:BIMAS": {
-   "p": 394.25,
+   "p": 394,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:55.000Z",
+   "t": "2026-11-17T08:18:00.000Z",
    "pc": 394.5
   },
   "hisse:FROTO": {
-   "p": 72.4,
+   "p": 72.25,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:49.000Z",
+   "t": "2026-11-17T08:17:59.000Z",
    "pc": 73
   },
   "abd:OWL": {
@@ -118,7 +118,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ENR: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
