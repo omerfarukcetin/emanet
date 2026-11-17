@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-17T08:30:27.069Z",
+ "updatedAt": "2026-11-17T08:31:26.543Z",
  "fx": {
   "EUR": 55.5156,
   "USD": 50.4261
@@ -13,8 +13,8 @@
   "gumus": 77.12,
   "hamit": 42312,
   "resat": 42312,
-  "resatAlis": 41371.08,
-  "resatSatis": 41934.08,
+  "resatAlis": 41393.79,
+  "resatSatis": 41956.86,
   "tam": 41211,
   "yarim": 20681,
   "resatKaynak": "altin.in",
@@ -32,13 +32,13 @@
   "hisse:SOKE": {
    "p": 7.13,
    "cur": "TRY",
-   "t": "2026-11-17T08:14:35.000Z",
+   "t": "2026-11-17T08:15:29.000Z",
    "pc": 7.28
   },
   "hisse:BALSU": {
-   "p": 6.69,
+   "p": 6.68,
    "cur": "TRY",
-   "t": "2026-11-17T08:14:56.000Z",
+   "t": "2026-11-17T08:15:44.000Z",
    "pc": 6.87
   },
   "ppf:KLU": {
@@ -90,21 +90,21 @@
    "pc": 1.465173
   },
   "hisse:FZLGY": {
-   "p": 8.15,
+   "p": 8.13,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:13.000Z",
+   "t": "2026-11-17T08:15:51.000Z",
    "pc": 7.78
   },
   "hisse:BIMAS": {
-   "p": 394.5,
+   "p": 394.25,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:14.000Z",
+   "t": "2026-11-17T08:15:55.000Z",
    "pc": 394.5
   },
   "hisse:FROTO": {
-   "p": 72.35,
+   "p": 72.4,
    "cur": "TRY",
-   "t": "2026-11-17T08:15:16.000Z",
+   "t": "2026-11-17T08:15:49.000Z",
    "pc": 73
   },
   "abd:OWL": {
@@ -118,6 +118,7 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "ENR: fon fiyatı alınamadı (fetch failed)"
  ]
 }
