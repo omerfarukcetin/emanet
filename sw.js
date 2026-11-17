@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v50";
+const V = "emanet-v51";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon.svg", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];
@@ -114,7 +114,7 @@ async function notify(kindForced, test) {
       return { n: p.n, main: p.main, v, bes: +p.bes || 0, lst: p.hs.length > 0, has, pl, pc, b, top, mv, chg: has ? (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")") : "" };
     });
     const pick = ls => ({ m: ls.find(l => l.main && l.lst) || ls.find(l => l.lst) || ls[0], rest: ls.filter(l => !l.main && l.has) });
-    const besN = x => x.bes ? " (BES dahil)" : "";
+    const besN = x => "";
     const val = m => m.n + (snap.hide ? "" : " · " + tl(m.v) + besN(m));
     // en yakın uygun geçmiş kayıt: hedef gün sayısı kadar eski olana en yakın
     const back = (target, min, max) => closes.filter(c => { const g = dayGap(c.d, today); return g >= min && g <= max; }).sort((a, b) => Math.abs(dayGap(a.d, today) - target) - Math.abs(dayGap(b.d, today) - target))[0] || null;
@@ -187,7 +187,7 @@ async function notify(kindForced, test) {
         const pl = hs.reduce((a, l) => a + l.pl, 0), base = hs.reduce((a, l) => a + l.b, 0), pc = base ? pl / base * 100 : 0;
         const when = gap > 3 ? "son " + gap + " günde" : "bugün";
         if (hs.length) show("portfoyler", "📊 Portföyler " + when + " " + (snap.hide ? sp(pc) : sg(pl) + tl(Math.abs(pl)) + " (" + sp(pc) + ")"),
-          ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(totV) + (totB ? " (BES dahil)" : "")), open,
+          ls.map(l => dot(l.pc, l.has) + " " + l.n + "  " + (l.has ? l.chg : "değişim yok")).join("\n") + (snap.hide ? "" : "\nToplam " + tl(totV) + ""), open,
           await chartImg(sp(pc), "Portföyler · " + (gap > 3 ? "son " + gap + " gün" : "gün sonu"), ls.map(l => ({ n: l.n, p: l.has ? l.pc : 0, d: l.has ? l.pl : 0 })), pl >= 0, snap.hide ? undefined : sg(pl) + tl(Math.abs(pl))),
           ls.map(l => dot(l.pc, l.has) + " " + l.n + " " + (l.has ? sp(l.pc) : "—")).join(" · "));
         else show("portfoyler", "📊 Portföyler", ls.map(l => l.n + (snap.hide ? "" : "  " + tl(l.v))).join("\n") + "\nGünlük değişim yarından itibaren hesaplanır.", open);
