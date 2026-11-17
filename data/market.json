@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-17T06:51:25.190Z",
+ "updatedAt": "2026-11-17T07:00:53.907Z",
  "fx": {
-  "EUR": 55.5664,
-  "USD": 50.4207
+  "EUR": 55.5656,
+  "USD": 50.4294
  },
  "gold": {
-  "ata": 42351,
+  "ata": 42347,
   "aziz": null,
-  "ceyrek": 10354,
-  "cumhuriyet": 42351,
-  "gram": 6276.18,
-  "gumus": 76.95,
-  "hamit": 42351,
-  "resat": 42351,
-  "resatAlis": 41334.46,
-  "resatSatis": 41999.44,
-  "tam": 41249,
-  "yarim": 20701,
+  "ceyrek": 10352,
+  "cumhuriyet": 42347,
+  "gram": 6276.13,
+  "gumus": 77.06,
+  "hamit": 42347,
+  "resat": 42347,
+  "resatAlis": 41373.57,
+  "resatSatis": 41973.6,
+  "tam": 41245,
+  "yarim": 20699,
   "resatKaynak": "altin.in",
-  "ayar22": 5933.23,
-  "ayar18": 5080,
-  "ayar14": 4616.6
+  "ayar22": 5932.61,
+  "ayar18": 5075,
+  "ayar14": 4616.17
  },
  "quotes": {
   "abd:LPTH": {
@@ -112,8 +112,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)",
-  "GSP: fon fiyatı alınamadı (fetch failed)"
+  "ZPO: fon fiyatı alınamadı (fetch failed)"
  ]
 }
