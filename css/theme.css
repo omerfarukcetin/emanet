@@ -1320,3 +1320,18 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .tk-list.dense .tk-v b{min-width:96px;text-align:right}
 .tk-list.dense .tk-c{min-width:68px}
 @media (max-width:380px){.tk-list.dense .tk-n small{display:none}.tk-list.dense .tk-v b{min-width:84px}}
+
+/* 2.99 · takibe ekle: yazdıkça arama */
+.tk-q{width:100%;font-size:1rem;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+.tk-q:focus{outline:2px solid var(--accent);border-color:transparent}
+.tk-kf{margin:10px 0 6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.tk-kf .chip{padding:6px 12px;font-size:var(--fs-act)}
+.tk-res{display:flex;flex-direction:column;min-height:120px}
+.tk-hit{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 4px;border:0;border-top:1px solid var(--line);background:none;color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.tk-hit:first-child{border-top:0}
+.tk-hit b{font-size:var(--fs-row);font-weight:800;min-width:56px}
+.tk-hit span{font-size:var(--fs-sub);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-hit em{font-style:normal;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.tk-hit:hover,.tk-hit:focus-visible{background:var(--surface-2);border-radius:10px}
+.tk-man{margin-top:10px;display:grid;gap:6px}
+.tk-hint{padding:8px 2px}

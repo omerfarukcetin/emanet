@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.98";
+const APP_VERSION="2.99";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1369,7 +1369,7 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
   const mk=ids.map(id=>MKT.find(m=>m.id===id)).filter(Boolean).map(m=>{const ch=serChg(mktSeries(m.id),P);if(!ch)return `<div class="tk-row wait"><div class="tk-n"><b>${esc(m.n)}</b><small>veri birkaç dakika içinde gelir</small></div></div>`;
     if(m.id==="gram"&&market&&market.gold&&+market.gold.gram>0&&P==="1g")ch.v=+market.gold.gram;
     return row(m.n,m.u,ch,m.d,m.id==="gram"||m.id==="usd"||m.id==="eur"?"TRY":/^(xau|xag|brent|btc)$/.test(m.id)?"USD":"",null)}).join("");
-  const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,KINDS[f.k]||f.k,ch,null,ch.cur,f)}).join("");
+  const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,f.n||KINDS[f.k]||f.k,ch,null,ch.cur,f)}).join("");
   const upd=bench&&bench.updatedAt?new Date(bench.updatedAt):null;
   return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Piyasa</h2><div class="seg" role="group" aria-label="Değişim dönemi">${TK_P.map(([k,l])=>`<button data-act="tkp" data-k="${k}" aria-pressed="${P===k}">${l}</button>`).join("")}</div></div>
     <div class="${lc}">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
@@ -1377,11 +1377,34 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
     ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Düzenle</button></span></div>`
       :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
-function tkAdd(){formSheet({title:"Takibe ekle",submit:"Ekle",fields:[{id:"k",label:"Tür",type:"select",value:"hisse",options:[["hisse","Hisse (BIST)"],["abd","ABD hissesi"],["fon","Yatırım fonu (TEFAS)"],["ppf","Para piyasası fonu"],["kripto","Kripto"]]},
-  {id:"s",label:"Kod",value:"",ph:"Örn. THYAO, AAPL, TTE, BTC"}],
-  onSave:v=>{const s=v.s.trim().toUpperCase().replace(/\.IS$/,"");if(!/^[A-Z0-9.\-]{1,12}$/.test(s))return"Kodu harf ve rakamla yazın (örn. THYAO).";
-    state.follow=state.follow||[];if(state.follow.some(f=>f.k===v.k&&f.s===s))return"Bu kod zaten listede.";
-    state.follow.push({k:v.k,s,c:v.k==="abd"?"USD":v.k==="kripto"?"USD":"TRY"});view.tab="takip";commit(s+" takibe eklendi · fiyatı birkaç dakika içinde gelir")}})}
+/* kod rehberi (data/symbols.json, günde bir yenilenir): {hisse:[[kod,ad]],abd:[...],fon:[...],kripto:[...]} */
+let syms=null,symsBusy=null;
+function loadSyms(){if(syms)return Promise.resolve(syms);if(symsBusy)return symsBusy;
+  symsBusy=(async()=>{for(const u of marketUrls().map(x=>x.replace("market.json","symbols.json"))){try{const d=await getJSON(u);if(d&&(d.hisse||d.kripto)){syms=d;return d}}catch(e){}}return null})().finally(()=>{symsBusy=null});return symsBusy}
+const SYM_K=[["","Tümü"],["hisse","BIST"],["abd","ABD"],["fon","Fon"],["kripto","Kripto"]];
+const ppfName=n=>/para piyasas/i.test(trLow(n));
+function symSearch(q,kf){q=trLow(q.trim());if(!q||!syms)return[];const res=[];
+  for(const k of ["hisse","abd","fon","kripto"]){if(kf&&kf!==k)continue;for(const[c,n]of syms[k]||[]){const lc=trLow(c),ln=trLow(n);let sc=-1;
+    if(lc===q)sc=0;else if(lc.startsWith(q))sc=1+lc.length/100;else if(ln.startsWith(q))sc=2;else if((" "+ln).includes(" "+q))sc=3;else if(q.length>=3&&ln.includes(q))sc=4;
+    if(sc>=0)res.push({sc:sc+(k==="kripto"&&sc<2?.05:0)+(k==="fon"?.1:0),k:k==="fon"&&ppfName(n)?"ppf":k,c,n})}}
+  return res.sort((a,b)=>a.sc-b.sc).slice(0,12)}
+function tkAdd(){let kf="";
+  openSheet(`<h3>Takibe ekle</h3>
+    <input id="tkQ" class="tk-q" placeholder="Kod ya da ad: ETH, Ethereum, THYAO, Apple" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search">
+    <div class="chips tk-kf" role="group" aria-label="Tür">${SYM_K.map(([k,l])=>`<button class="chip" data-kf="${k}" aria-pressed="${!k}">${l}</button>`).join("")}</div>
+    <div id="tkRes" class="tk-res" aria-live="polite"></div>`,sh=>{
+    const qi=sh.querySelector("#tkQ"),box=sh.querySelector("#tkRes");
+    const add=(k,c,n)=>{state.follow=state.follow||[];if(state.follow.some(f=>f.k===k&&f.s===c)){toast(c+" zaten listede");return}
+      state.follow.push({k,s:c,n:n||undefined,c:k==="abd"||k==="kripto"?"USD":"TRY"});closeSheet();view.tab="takip";commit(c+" takibe eklendi"+(market&&market.quotes&&market.quotes[k+":"+c]?"":" · fiyatı birkaç dakika içinde gelir"))};
+    const draw=()=>{const q=qi.value.trim(),r=symSearch(q,kf),code=q.toUpperCase().replace(/\.IS$/,"");
+      if(!q){box.innerHTML=`<div class="sub tk-hint">${syms?"Yazdıkça eşleşen hisseler, fonlar ve kriptolar listelenir.":"Kod rehberi yükleniyor…"}</div>`;return}
+      box.innerHTML=r.map(x=>`<button class="tk-hit" data-k="${x.k}" data-c="${esc(x.c)}" data-n="${esc(x.n)}"><b>${esc(x.c)}</b><span>${esc(x.n)}</span><em>${esc({hisse:"BIST",abd:"ABD",fon:"Fon",ppf:"PPF",kripto:"Kripto"}[x.k])}</em></button>`).join("")
+        +(/^[A-Z0-9.\-]{1,12}$/.test(code)&&!r.some(x=>x.c===code)?`<div class="tk-man"><span class="sub">Listede yoksa “${esc(code)}” kodunu yine de ekle:</span><div class="chips">${[["hisse","BIST"],["abd","ABD"],["fon","Fon"],["kripto","Kripto"]].map(([k,l])=>`<button class="chip" data-mk="${k}">${l}</button>`).join("")}</div></div>`:"");
+      box.querySelectorAll(".tk-hit").forEach(b=>b.onclick=()=>add(b.dataset.k,b.dataset.c,b.dataset.n));
+      box.querySelectorAll("[data-mk]").forEach(b=>b.onclick=()=>add(b.dataset.mk,code,""))};
+    qi.addEventListener("input",draw);
+    sh.querySelectorAll("[data-kf]").forEach(b=>b.onclick=()=>{kf=b.dataset.kf;sh.querySelectorAll("[data-kf]").forEach(x=>x.setAttribute("aria-pressed",x===b));draw()});
+    draw();setTimeout(()=>qi.focus(),80);loadSyms().then(draw)})}
 function tkEdit(){const ids=S().mkt||MKT_DEF,fol=state.follow||[];
   openSheet(`<h3>Takip listesini düzenle</h3><div class="label" style="margin-top:4px">Piyasa satırları</div>
     <div class="tk-pick">${MKT.map(m=>`<label class="chk-row"><input type="checkbox" value="${m.id}" ${ids.includes(m.id)?"checked":""}><span>${esc(m.n)} <small class="sub">${esc(m.u)}</small></span></label>`).join("")}</div>
