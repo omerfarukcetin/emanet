@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.94";
+const APP_VERSION="2.95";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -435,7 +435,8 @@ function histCard(ids,title){
   return `<section class="card fold open"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><button class="foldh" data-act="histtoggle" aria-expanded="true" style="width:auto"><h2>${esc(title)}</h2>${CH}</button>${segU}</div>${body}${all.length>=2?`<div style="margin-top:12px">${segR}</div>`:""}${histHasCash(ids)?`<div class="sub" style="margin-top:8px">Nakit ve mevduat bu grafiğe dahil değildir; yalnızca yatırımların değeri izlenir.</div>`:""}</section>`;
 }
 function commit(msg){snapshot();state.updatedAt=Date.now();lastLocalWrite=state.updatedAt;cacheLocal();applyPrefs();render();if(msg)toast(msg);scheduleSave();syncWatch()}
-function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if(+h.qty>0&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));return out}
+function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if(+h.qty>0&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));
+  (state.follow||[]).forEach(f=>{const k=f.k+":"+f.s;if(!seen[k]){seen[k]=1;out.push({k:f.k,s:f.s,c:f.c})}});return out}
 /* İzlenen kodlar: giriş yapıldıysa ortak izleme listesine eklenir; fiyat işi (GitHub Actions) bu listeyi okur. */
 async function syncWatch(){
   ensureFx();
@@ -657,7 +658,8 @@ async function loadMarket(announce){
 let bench=null,tech=null;
 async function loadTech(){for(const u of marketUrls().map(x=>x.replace("market.json","tech.json"))){try{const d=await getJSON(u);if(d&&d.s){tech=d;return}}catch(e){}}}
 async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){if(d.prev&&d.prev.p&&+d.prev.p["gold:gram"]>0)for(const[k,f]of Object.entries(AYAR))if(!(+d.prev.p["gold:"+k]>0))d.prev.p["gold:"+k]=d.prev.p["gold:gram"]*f;const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
-async function loadBench(){for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){bench=d;if(ready&&view.tab==="portfoy")render();return}}catch(e){}}}
+let benchBusy=false;
+async function loadBench(){if(benchBusy)return;benchBusy=true;try{for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){d._at=Date.now();bench=d;if(ready&&(view.tab==="portfoy"||view.tab==="takip"))render();return}}catch(e){}}}finally{benchBusy=false}}
 async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
@@ -776,11 +778,11 @@ function handleGo(){
   if(goDone)return;goDone=true;
   let g=null;try{g=new URLSearchParams(location.search).get("go");if(g)history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   if(!g||!state||!state.portfolios)return;
-  if(TABS.some(t=>t[0]===g)){view.tab=g;render();return}
+  if(TABS.some(t=>t[0]===g)||g==="takip"){view.tab=g;render();return}
   setTimeout(()=>{if(g==="out"||g==="in"||g==="save")txSheet(null,{type:g});else if(g==="buy"||g==="sell")pickHolding(g);else if(g==="add")addMenu();else if(g==="quick"){addMenu();setTimeout(()=>{const q=document.getElementById("qaIn");if(q)q.focus()},120)}},60);
 }
 /* bildirimden gelen bağlantı (#zekat gibi) ilgili sekmeyi açar */
-function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)){view.tab=h;try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}return true}return false}
+function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)||h==="takip"){view.tab=h;try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}return true}return false}
 window.addEventListener("hashchange",()=>{if(hashTab()&&ready)render()});
 async function boot(){
   hashTab();
@@ -964,24 +966,24 @@ const emptyBtn=(act,label)=>`<button class="btn primary sm" data-act="${act}">${
 function li(o){
   return `<div class="row li${o.rowCls?" "+o.rowCls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
-const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${[["akis","Bütçe"],["borc","Borç ve alacak"]].map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
+const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${(view.tab==="portfoy"||view.tab==="takip"?[["portfoy","Portföy"],["takip","Takip listesi"]]:[["akis","Bütçe"],["borc","Borç ve alacak"]]).map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
   injectShared();
   /* telefonda 5 öğe: Özet, Portföy, +, Bütçe, Zekât. Borç, Bütçe ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
-  const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())));
+  const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())))||(k==="portfoy"&&view.tab==="takip");
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
   $("#nav").innerHTML=TABS.slice(0,2).map(tabBtn).join("")+`<button class="nav-add" id="navAdd" aria-label="Ekle">${I.plus}<span>Ekle</span></button>`+TABS.slice(2).map(tabBtn).join("")+`<button data-tab="ayarlar" class="only-wide nav-set" ${view.tab==="ayarlar"?'aria-current="page"':""}>${ic(I.sliders,20)}<span>Ayarlar</span></button>`;
-  $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":view.tab==="rapor"?"Rapor":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
+  $("#screenTitle").textContent=view.tab==="ayarlar"?"Ayarlar":view.tab==="rapor"?"Rapor":view.tab==="takip"?"Takip":(TABS.find(t=>t[0]===view.tab)||["","Emanet"])[1];
   const m=$("#main"), fab=$("#fab");
   if(!ready&&!state){m.innerHTML='<div class="skel" aria-label="Verileriniz yükleniyor" role="status"><i class="sk-hero"></i><i></i><i></i></div>';fab.hidden=true;return}
   if(!state||(!state.updatedAt&&!state.portfolios.length&&!state.tx.length&&!state.debts.length)){
     if(!state)state=emptyState();
     if(view.tab!=="ayarlar"){m.innerHTML=onboarding();fab.hidden=true;return}
   }
-  const R={ozet:rOzet,portfoy:rPortfoy,akis:rAkis,borc:rBorc,zekat:rZekat,ayarlar:rAyarlar,rapor:rRapor}[view.tab]||rOzet;
+  const R={ozet:rOzet,portfoy:rPortfoy,takip:rTakip,akis:rAkis,borc:rBorc,zekat:rZekat,ayarlar:rAyarlar,rapor:rRapor}[view.tab]||rOzet;
   const prevN=motionBefore(m);
   const nv0=$(".setnav"),nx=nv0?nv0.scrollLeft:null;
-  m.innerHTML=(view.tab==="akis"||view.tab==="borc"?subTabs():"")+R();
+  m.innerHTML=(["akis","borc","portfoy","takip"].includes(view.tab)?subTabs():"")+R();
   if(view.tab==="ayarlar"){const nv=$(".setnav");if(nv){if(nx!=null)nv.scrollLeft=nx;else setNavFix(0)}}
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   /* + her sekmede aynı menüyü açar (ayarlar ve rapor dışında) */
@@ -1339,6 +1341,53 @@ function donut(parts){
     <div class="legend">${parts.map((p,i)=>`<div class="li" role="button" tabindex="0" data-dn="${i}"><span class="sw2" style="background:var(${p.c})"></span><span class="n">${esc(p.n)}</span><span class="p">%${fmtN(p.v/total*100,1)}</span><span class="a">${fmt(p.v)}</span></div>`).join("")}</div></div>`;
 }
 
+/* ---------- takip listesi: yalnızca fiyat ve değişim (portföye girmez) ----------
+   Piyasa satırları bench.json'daki günlük serilerden (10 dakikada bir yenilenir), eklenen kodlar market.json'dan gelir. */
+const MKT=[{id:"xu100",n:"BIST 100",u:"puan"},{id:"xu030",n:"BIST 30",u:"puan"},{id:"usd",n:"Dolar",u:"USD/TL",d:4},{id:"eur",n:"Euro",u:"EUR/TL",d:4},
+  {id:"gram",n:"Gram altın",u:"TL"},{id:"xau",n:"Ons altın",u:"USD"},{id:"xag",n:"Ons gümüş",u:"USD",d:3},{id:"spx",n:"S&P 500",u:"ABD · puan"},
+  {id:"ndx",n:"Nasdaq",u:"ABD · puan"},{id:"dji",n:"Dow Jones",u:"ABD · puan"},{id:"brent",n:"Brent petrol",u:"USD/varil"},{id:"btc",n:"Bitcoin",u:"USD"}];
+const MKT_DEF=["xu100","usd","eur","gram","xau","spx","ndx"];
+const TK_P=[["1g","Gün"],["1h","Hafta"],["1a","Ay"],["1y","Yıl"]],TK_DAYS={"1g":1,"1h":7,"1a":30,"1y":365};
+function mktSeries(id){if(!bench)return null;if(id!=="gram")return bench[id]||null;
+  const a=bench.xau,b=bench.usd;if(!a||!b)return null;const o={};Object.keys(a).forEach(d=>{const u=b[d]||b[Object.keys(b).filter(x=>x<=d).pop()];if(u)o[d]=a[d]*u/31.1035});return o}
+function serChg(o,P){const ks=Object.keys(o||{}).sort();if(ks.length<2)return null;const last=ks[ks.length-1],v=o[last];
+  // piyasa henüz açılmadıysa bugünün satırı dünkü kapanışın aynısıdır: günlük değişim bir önceki günle
+  let v0;if(P==="1g"){v0=o[ks[ks.length-2]];if(ks.length>2&&Math.abs(v/v0-1)<1e-5)v0=o[ks[ks.length-3]]}else{const lim=addDays(last,-TK_DAYS[P]);const k0=ks.filter(k=>k<=lim).pop();v0=k0?o[k0]:null}
+  const sp=ks.filter(k=>k>=addDays(last,P==="1y"?-365:-30)).map(k=>o[k]);return{v,c:v0?(v/v0-1)*100:null,d:last,sp}}
+function sparkSvg(arr,up){if(!arr||arr.length<2)return"";const mn=Math.min(...arr),mx=Math.max(...arr),W=64,H=24,r=mx-mn||1;
+  const pts=arr.map((v,i)=>(i/(arr.length-1)*W).toFixed(1)+","+(H-2-(v-mn)/r*(H-4)).toFixed(1)).join(" ");
+  return `<svg class="tk-sp" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(${up==null?"--muted":up?"--pos":"--neg"})" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`}
+function folChg(f,P){const q=market&&market.quotes&&market.quotes[f.k+":"+f.s],lq=live&&live.quotes&&live.quotes[f.k+":"+f.s],T=tech&&tech.s&&tech.s[f.k+":"+f.s];
+  const v=(lq&&+lq.p)||(q&&+q.p)||(T&&+T.last)||null,pc=(lq&&+lq.pc)||(q&&+q.pc);
+  let c=null;if(P==="1g")c=v&&pc?(v/pc-1)*100:null;else if(T&&T.sp&&T.sp.length>1){const lim=addDays(todayISO(),-TK_DAYS[P]),r=T.sp.filter(x=>x[0]<=lim).pop();c=r&&v?(v/r[1]-1)*100:P==="1a"?T.r1m:P==="1y"?T.r1y:null}
+  const sp=T&&T.sp?T.sp.slice(P==="1y"?0:-7).map(x=>x[1]).concat(v?[v]:[]):null;return{v,c,sp,cur:(q&&q.cur)||f.c}}
+function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);const P=view.tkP||"1g",ids=S().mkt||MKT_DEF,fol=state.follow||[];
+  const row=(n,u,ch,dec,cur,del)=>{const up=ch.c==null?null:ch.c>=0;
+    return `<div class="tk-row"><div class="tk-n"><b>${esc(n)}</b><small>${esc(u)}</small></div>${sparkSvg(ch.sp,up)}
+      <div class="tk-v"><b class="num">${ch.v!=null?(cur==="TRY"?"₺":cur==="USD"?"$":"")+fmtN(ch.v,ch.v>=1000?(dec==null?2:Math.min(dec,2)):dec==null?2:dec):"—"}</b><span class="tk-c ${up==null?"":up?"pos":"neg"}">${ch.c==null?"—":(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</span></div></div>`};
+  const mk=ids.map(id=>MKT.find(m=>m.id===id)).filter(Boolean).map(m=>{const ch=serChg(mktSeries(m.id),P);if(!ch)return `<div class="tk-row wait"><div class="tk-n"><b>${esc(m.n)}</b><small>veri birkaç dakika içinde gelir</small></div></div>`;
+    if(m.id==="gram"&&market&&market.gold&&+market.gold.gram>0&&P==="1g")ch.v=+market.gold.gram;
+    return row(m.n,m.u,ch,m.d,m.id==="gram"||m.id==="usd"||m.id==="eur"?"TRY":/^(xau|xag|brent|btc)$/.test(m.id)?"USD":"",null)}).join("");
+  const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,KINDS[f.k]||f.k,ch,null,ch.cur,f)}).join("");
+  const upd=bench&&bench.updatedAt?new Date(bench.updatedAt):null;
+  return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Piyasa</h2><div class="seg" role="group" aria-label="Değişim dönemi">${TK_P.map(([k,l])=>`<button data-act="tkp" data-k="${k}" aria-pressed="${P===k}">${l}</button>`).join("")}</div></div>
+    <div class="tk-list">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
+    <div class="card-foot"><span class="sub">${upd?"Güncellendi "+String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+" · BIST ~15 dk gecikmeli":"Yükleniyor…"}</span><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></div></section>
+  <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
+    ${fol.length?`<div class="tk-list">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><button class="btn ghost sm" data-act="tkedit">Düzenle</button></div>`
+      :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
+function tkAdd(){formSheet({title:"Takibe ekle",submit:"Ekle",fields:[{id:"k",label:"Tür",type:"select",value:"hisse",options:[["hisse","Hisse (BIST)"],["abd","ABD hissesi"],["fon","Yatırım fonu (TEFAS)"],["ppf","Para piyasası fonu"],["kripto","Kripto"]]},
+  {id:"s",label:"Kod",value:"",ph:"Örn. THYAO, AAPL, TTE, BTC"}],
+  onSave:v=>{const s=v.s.trim().toUpperCase().replace(/\.IS$/,"");if(!/^[A-Z0-9.\-]{1,12}$/.test(s))return"Kodu harf ve rakamla yazın (örn. THYAO).";
+    state.follow=state.follow||[];if(state.follow.some(f=>f.k===v.k&&f.s===s))return"Bu kod zaten listede.";
+    state.follow.push({k:v.k,s,c:v.k==="abd"?"USD":v.k==="kripto"?"USD":"TRY"});view.tab="takip";commit(s+" takibe eklendi · fiyatı birkaç dakika içinde gelir")}})}
+function tkEdit(){const ids=S().mkt||MKT_DEF,fol=state.follow||[];
+  openSheet(`<h3>Takip listesini düzenle</h3><div class="label" style="margin-top:4px">Piyasa satırları</div>
+    <div class="tk-pick">${MKT.map(m=>`<label class="chk-row"><input type="checkbox" value="${m.id}" ${ids.includes(m.id)?"checked":""}><span>${esc(m.n)} <small class="sub">${esc(m.u)}</small></span></label>`).join("")}</div>
+    ${fol.length?`<div class="label" style="margin-top:14px">Takip ettiklerim</div><div class="list">${fol.map((f,i)=>`<div class="tk-del"><span><b>${esc(f.s)}</b> <small class="sub">${esc(KINDS[f.k]||f.k)}</small></span><button class="icon-btn sm" data-i="${i}" aria-label="${esc(f.s)} kaldır">${ic(I.trash,16)}</button></div>`).join("")}</div>`:""}
+    <div class="actions eq"><button class="btn primary" id="tkSave">Kaydet</button></div>`,sh=>{
+      const rm=new Set();sh.querySelectorAll(".tk-del button").forEach(b=>b.onclick=()=>{rm.add(+b.dataset.i);b.closest(".tk-del").remove()});
+      sh.querySelector("#tkSave").onclick=()=>{S().mkt=MKT.map(m=>m.id).filter(id=>sh.querySelector(`.tk-pick input[value="${id}"]`).checked);state.follow=fol.filter((_,i)=>!rm.has(i));closeSheet();commit("Takip listesi güncellendi")}})}
 function rPortfoy(){
   const ows=owners();if(view.owner!=="all"&&!ows.includes(view.owner))view.owner="all";
   if(view.pf==null)view.pf=(ozPf()||{}).id||"all";
@@ -3039,6 +3088,9 @@ document.addEventListener("click",e=>{
   if(a==="txtype"){view.txType=t.dataset.k;render();return}
   if(a==="edit-tx")return txSheet(state.tx.find(x=>x.id===id));
   if(a==="calday")return calDay(t.dataset.d);
+  if(a==="tkp"){view.tkP=t.dataset.k;render();return}
+  if(a==="tkadd")return tkAdd();
+  if(a==="tkedit")return tkEdit();
   if(a==="rec-new")return recSheet();
   if(a==="tx-add")return txSheet();
   if(a==="rec-edit")return recSheet(state.recurring.find(x=>x.id===id));

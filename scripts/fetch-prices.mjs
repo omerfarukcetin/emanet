@@ -259,11 +259,13 @@ else {
 if (errors.length) console.log("Notlar:\n- " + errors.join("\n- "));
 
 // ---------- karşılaştırma serileri: günlük kapanışlar (data/bench.json) ----------
-// Uygulamadaki "getiri karşılaştırması" bu dosyayı okur: BIST 100, dolar, euro, ons altın ve gümüş (USD), S&P 500 (USD).
+// Uygulamadaki "getiri karşılaştırması" ve "Takip listesi" bu dosyayı okur: BIST 100/30, dolar, euro, ons altın ve gümüş, S&P 500, Nasdaq, Dow Jones, Brent, Bitcoin.
 // Her seri için ilk çalışmada iki yıllık geçmiş alınır, sonra yalnızca son günler eklenir. Alınamayan seriye dokunulmaz.
 {
   const BF = "data/bench.json", B = await readJSON(BF, {}), out = { ...B };
-  const SERIES = [["xu100", "XU100.IS"], ["usd", "USDTRY=X"], ["eur", "EURTRY=X"], ["xau", "GC=F"], ["xag", "SI=F"], ["spx", "^GSPC"]];
+  const SERIES = [["xu100", "XU100.IS"], ["usd", "USDTRY=X"], ["eur", "EURTRY=X"], ["xau", "GC=F"], ["xag", "SI=F"], ["spx", "^GSPC"],
+    // takip listesi için ek seriler
+    ["xu030", "XU030.IS"], ["ndx", "^IXIC"], ["dji", "^DJI"], ["brent", "BZ=F"], ["btc", "BTC-USD"]];
   let changed = false;
   for (const [key, sym] of SERIES) {
     try {

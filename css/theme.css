@@ -1287,3 +1287,21 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .cal-note{margin-top:8px;font-size:var(--fs-sub);color:var(--muted);line-height:1.5}
 .cal-note b{color:var(--fg);font-weight:600}
 @media (min-width:900px){.cd small{font-size:.68rem}.cd b{font-size:.86rem}}
+
+/* 2.95 · takip listesi */
+.tk-list{display:flex;flex-direction:column}
+.tk-row{display:grid;grid-template-columns:minmax(0,1fr) 64px auto;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.tk-row:first-child{border-top:0}
+.tk-row.wait{grid-template-columns:1fr;opacity:.6}
+.tk-n{min-width:0}
+.tk-n b{display:block;font-size:var(--fs-row);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-n small{display:block;font-size:var(--fs-sub);color:var(--muted)}
+.tk-v{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:92px}
+.tk-v b{font-size:var(--fs-row);font-weight:700}
+.tk-c{font-size:var(--fs-sub);font-weight:700;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-variant-numeric:tabular-nums}
+.tk-c.pos{color:var(--pos);background:color-mix(in srgb,var(--pos) 13%,transparent)}
+.tk-c.neg{color:var(--neg);background:color-mix(in srgb,var(--neg) 13%,transparent)}
+.tk-sp{display:block}
+.tk-pick{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.tk-del{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+@media (max-width:360px){.tk-row{grid-template-columns:minmax(0,1fr) auto}.tk-sp{display:none}}
