@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.02";
+const APP_VERSION="3.03";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1127,6 +1127,8 @@ function kindOrderSheet(present){
 }
 /* Özet kartlarının sırası ve görünürlüğü (Ayarlar > Görünüm ya da Özet'in altındaki bağlantı) */
 const OZ_CARDS=[["attn","Bugün dikkat"],["piyasa","Piyasa şeridi"],["assets","Varlıklar"],["fam","Aile özeti"],["flow","Nakit akışı"],["goals","Birikim hedefleri"],["due","Yaklaşan vadeler"]];
+/* kayan şerit: parmak üstündeyken dursun */
+["pointerdown","pointerup","pointercancel","pointerleave"].forEach(ev=>document.addEventListener(ev,e=>{const st=e.target.closest&&e.target.closest(".pstrip.move");if(st)st.classList.toggle("hold",ev==="pointerdown")},{passive:true}));
 function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k));OZ_CARDS.forEach(([k],i)=>{if(!o.includes(k)){const prev=i?OZ_CARDS[i-1][0]:null,j=prev?o.indexOf(prev):-1;if(j>=0)o.splice(j+1,0,k);else o.push(k)}});return o}
 /* özetteki piyasa şeridi: takip listesindeki piyasa satırları ve takip edilen kodlar; dokununca takip listesi açılır */
 function piyasaStrip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);
@@ -1135,8 +1137,11 @@ function piyasaStrip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loa
     items.push({n:m.n,v:ch.v,c:ch.c,cur:id==="gram"||id==="usd"||id==="eur"?"₺":/^(xau|xag|brent|btc)$/.test(id)?"$":"",d:m.d})});
   (state.follow||[]).forEach(f=>{const ch=folChg(f,"1g");if(ch.v!=null)items.push({n:f.s,v:ch.v,c:ch.c,cur:ch.cur==="TRY"?"₺":ch.cur==="USD"?"$":""})});
   if(!items.length)return"";
-  return `<section class="card pstrip" data-tab="takip" role="link" tabindex="0" aria-label="Piyasa · takip listesini aç"><div class="ps-row">${items.map(x=>{const up=x.c==null?null:x.c>=0;
-    return `<span class="ps-i"><b>${esc(x.n)}</b><span class="num">${x.cur}${fmtN(x.v,x.v>=1000?(x.d&&x.d<2?x.d:2):x.d==null?2:x.d)}</span><em class="${up==null?"":up?"pos":"neg"}">${x.c==null?"—":(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2)}</em></span>`}).join("")}</div><span class="ps-go" aria-hidden="true">${ic(I.right,16)}</span></section>`}
+  const html=items.map(x=>{const up=x.c==null?null:x.c>=0;
+    return `<span class="ps-i"><b>${esc(x.n)}</b><span class="num">${x.cur}${fmtN(x.v,x.v>=1000?(x.d&&x.d<2?x.d:2):x.d==null?2:x.d)}</span><em class="${up==null?"":up?"pos":"neg"}">${x.c==null?"—":(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2)}</em></span>`}).join("");
+  // kayan bant (isteğe bağlı): içerik iki kez yazılır, yarısı kadar kayınca başa sarar; dokununca durur
+  const mv=S().psMove===true;
+  return `<section class="card pstrip${mv?" move":""}" data-tab="takip" role="link" tabindex="0" aria-label="Piyasa · takip listesini aç"><div class="ps-row">${mv?`<div class="ps-track" style="--dur:${Math.max(16,items.length*5)}s"><span class="ps-half">${html}</span><span class="ps-half" aria-hidden="true">${html}</span></div>`:html}</div><span class="ps-go" aria-hidden="true">${ic(I.right,16)}</span></section>`}
 function ozCardsSheet(){
   const o=ozOrder(),hide=new Set(S().ozHide||[]);
   openSheet(`<h3>Özet kartları</h3><div class="sub" style="margin-bottom:10px">Okları kullanarak sırayı değiştirin; anahtarla kartı gizleyin ya da gösterin.</div>
@@ -2068,6 +2073,7 @@ document.addEventListener("change",e=>{
   if(e.target.dataset&&e.target.dataset.np==="tsAdd"){const v=e.target.value;if(v){const p=notifPrefs();notifPrefSet("ts",[...p.ts,v].sort())}return}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
   if(e.target.id==="useLimit"){const v=+e.target.value;S().useLimit=v||undefined;commit(v?"Günlük sınır "+v+" dakika":"Kullanım sınırı kapatıldı");usageCheck();return}
+  if(e.target.id==="psMove"){S().psMove=e.target.checked;commit(e.target.checked?"Piyasa şeridi kayacak":"Piyasa şeridi sabit");return}
   if(e.target.id==="pfTint"){S().pfTint=e.target.checked;commit(e.target.checked?"Kart rengi kişiye göre":"Kart rengi tek renk");return}
   if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
   if(e.target.id==="autoDark"){S().theme=e.target.checked?"system":"light";commit()}
@@ -2172,6 +2178,7 @@ function rAyarlar(){
     <div class="set-row"><div class="lbl"><b>Özet kartları</b><small>Özet sayfasındaki kartların sırası ve hangilerinin görüneceği</small></div><button class="btn sm" data-act="ozcards">Düzenle</button></div>
     <div class="set-row"><div class="lbl"><b>Günlük kullanım sınırı</b><small>Süre dolunca uygulama ertesi güne kadar kilitlenir; bildirimler gelmeye devam eder. Süre her cihazda ayrı sayılır.${+s.useLimit?` Bugün bu cihazda ${Math.floor(usageToday()/60)} dk kullandın.`:""}</small></div><select class="inline-in" style="width:auto;font-family:var(--f-body)" id="useLimit" aria-label="Günlük kullanım sınırı">${[[0,"Kapalı"],[5,"5 dk"],[10,"10 dk"],[15,"15 dk"],[20,"20 dk"],[30,"30 dk"],[45,"45 dk"],[60,"1 saat"]].map(([v,l])=>`<option value="${v}" ${(+s.useLimit||0)===v?"selected":""}>${l}</option>`).join("")}</select></div>
     ${state.portfolios.length>1?`<div class="set-row"><div class="lbl"><b>Kart rengi kişiye göre</b><small>Üstteki büyük kart, seçili portföyün renginde olur (Aile özetindeki renk)</small></div><label class="toggle"><input type="checkbox" id="pfTint" ${s.pfTint!==false?"checked":""}><span></span></label></div>`:""}
+    <div class="set-row"><div class="lbl"><b>Piyasa şeridi kaysın</b><small>Özetteki piyasa şeridi televizyondaki gibi yavaşça kayar; parmağını üstüne koyunca durur</small></div><label class="toggle"><input type="checkbox" id="psMove" ${s.psMove===true?"checked":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Sade görünüm</b><small>Yİ-ÜFE, getiri karşılaştırması, hedef dağılım ve vergi raporu gizlenir; tutarlar, varlıklar ve bütçe kalır</small></div><label class="toggle"><input type="checkbox" id="simpleView" ${s.simple?"checked":""}><span></span></label></div>
     <div class="set-row"><div class="lbl"><b>Yazı boyutu</b></div>${seg("fontSize",[["s","Küçük"],["m","Normal"],["l","Büyük"],["xl","Çok büyük"]])}</div>
     ${tog("compact","Sıkı yerleşim","Kartlar arası boşluğu azaltır")}

@@ -1354,3 +1354,11 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .tk-list.dense .tk-row{grid-template-columns:minmax(0,1fr) 40px auto;gap:8px}
 .tk-list.dense .tk-sp{width:40px}
 @media (max-width:360px){.tk-list.dense .tk-sp{display:block}}
+
+/* 3.03 · kayan piyasa şeridi (isteğe bağlı) */
+.pstrip.move .ps-row{overflow:hidden}
+.ps-track{display:flex;flex:none;width:max-content;animation:psMarq var(--dur,30s) linear infinite}
+.ps-half{display:flex;gap:16px;padding-right:28px;flex:none}
+.pstrip.move.hold .ps-track,.pstrip.move:hover .ps-track{animation-play-state:paused}
+@keyframes psMarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ps-track{animation:none}.pstrip.move .ps-row{overflow-x:auto}.ps-half+.ps-half{display:none}}
