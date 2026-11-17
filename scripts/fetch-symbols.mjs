@@ -51,6 +51,29 @@ const tasks = {
       } catch (e) { console.log("TEFAS", t, e.message); }
       await sleep(1500);
     }
+    // Yeni TEFAS (/api/funds/*): sitenin kendi betiklerinden uç adlarını bulup liste döndüreni dener
+    const H = { "user-agent": UA, accept: "application/json, text/plain, */*", "content-type": "application/json", origin: "https://www.tefas.gov.tr", referer: "https://www.tefas.gov.tr/", "accept-language": "tr-TR,tr;q=0.9" };
+    const html = await (await fetch("https://www.tefas.gov.tr/", { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text();
+    const srcs = [...new Set([...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m => new URL(m[1], "https://www.tefas.gov.tr/").href))].slice(0, 25);
+    const names = new Set();
+    for (const u of srcs) { try { const t = await (await fetch(u, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(20000) })).text(); for (const m of t.matchAll(/api\/funds\/([A-Za-z0-9]+)/g)) names.add(m[1]); for (const m of t.matchAll(/["'`]\/?funds\/([A-Za-z0-9]+)["'`]/g)) names.add(m[1]); } catch { } }
+    console.log("TEFAS uçları:", [...names].join(", ") || "(bulunamadı)", "· betik:", srcs.length);
+    const cand = [...names].sort((a, b) => (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(b) ? 1 : 0) - (/list|tum|ara|search|fonlar|unvan|karsilas/i.test(a) ? 1 : 0)).slice(0, 10);
+    for (const n of cand) {
+      for (const body of [{ dil: "TR" }, { dil: "TR", fonTipi: "YAT" }, { dil: "TR", fonTurKod: "", fonTipi: "YAT", sFonTur: "" }]) {
+        try {
+          const r = await fetch("https://www.tefas.gov.tr/api/funds/" + n, { method: "POST", headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+          const tx = await r.text(); let d; try { d = JSON.parse(tx); } catch { console.log(" ", n, r.status, "json değil"); break; }
+          const rows = Array.isArray(d) ? d : d?.resultList || d?.data || [];
+          console.log(" ", n, r.status, JSON.stringify(body), "→", Array.isArray(rows) ? rows.length + " satır " + JSON.stringify(rows[0] || {}).slice(0, 160) : typeof rows);
+          if (Array.isArray(rows) && rows.length > 100) {
+            const kc = Object.keys(rows[0]).find(k => /kod|code/i.test(k)), kn = Object.keys(rows[0]).find(k => /unvan|ad|name|title/i.test(k) && k !== kc);
+            if (kc && kn) return rows.map(x => [clean(x[kc]).toUpperCase(), clean(x[kn])]).filter(([c, n]) => ok(c) && n);
+          }
+        } catch (e) { console.log(" ", n, e.message); }
+        await sleep(1200);
+      }
+    }
     throw new Error("TEFAS listesi alınamadı");
   },
   // Kripto: piyasa değerine göre ilk 500
