@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.00";
+const APP_VERSION="3.01";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1094,6 +1094,7 @@ function rOzet(){
   P.goals=`${onMain?goalsCard().replace('<section class="card"','<section class="card side"'):""}`;
   P.due=`${onMain&&upcoming.length?`<section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Yaklaşan vadeler</h2><button class="btn ghost sm" data-tab="borc">Tümü${ic(I.right,14)}</button></div><div class="list">${upcoming.map(debtRow).join("")}</div></section>`:""}`;
   P.fam=mp&&others>0?familyCard(mp):"";
+  P.piyasa=piyasaStrip();
   const ord=ozOrder(),hide=new Set(S().ozHide||[]);
   return top+ord.filter(k=>!hide.has(k)).map(k=>P[k]+(k==="assets"?P.note:"")).join("")+`<div class="oz-edit"><button class="btn ghost sm" data-act="ozcards">${ic(I.sliders,14)}Özet kartlarını düzenle</button></div>`;
 }
@@ -1125,8 +1126,17 @@ function kindOrderSheet(present){
     sh.querySelector("[data-done]").onclick=closeSheet});
 }
 /* Özet kartlarının sırası ve görünürlüğü (Ayarlar > Görünüm ya da Özet'in altındaki bağlantı) */
-const OZ_CARDS=[["attn","Bugün dikkat"],["assets","Varlıklar"],["fam","Aile özeti"],["flow","Nakit akışı"],["goals","Birikim hedefleri"],["due","Yaklaşan vadeler"]];
-function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k));OZ_CARDS.forEach(([k])=>{if(!o.includes(k))o.push(k)});return o}
+const OZ_CARDS=[["attn","Bugün dikkat"],["piyasa","Piyasa şeridi"],["assets","Varlıklar"],["fam","Aile özeti"],["flow","Nakit akışı"],["goals","Birikim hedefleri"],["due","Yaklaşan vadeler"]];
+function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k));OZ_CARDS.forEach(([k],i)=>{if(!o.includes(k)){const prev=i?OZ_CARDS[i-1][0]:null,j=prev?o.indexOf(prev):-1;if(j>=0)o.splice(j+1,0,k);else o.push(k)}});return o}
+/* özetteki piyasa şeridi: takip listesindeki piyasa satırları ve takip edilen kodlar; dokununca takip listesi açılır */
+function piyasaStrip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);
+  const ids=S().mkt||MKT_DEF,items=[];
+  ids.forEach(id=>{const m=MKT.find(x=>x.id===id);if(!m)return;const ch=serChg(mktSeries(id),"1g");if(!ch)return;if(id==="gram"&&market&&market.gold&&+market.gold.gram>0)ch.v=+market.gold.gram;
+    items.push({n:m.n,v:ch.v,c:ch.c,cur:id==="gram"||id==="usd"||id==="eur"?"₺":/^(xau|xag|brent|btc)$/.test(id)?"$":"",d:m.d})});
+  (state.follow||[]).forEach(f=>{const ch=folChg(f,"1g");if(ch.v!=null)items.push({n:f.s,v:ch.v,c:ch.c,cur:ch.cur==="TRY"?"₺":ch.cur==="USD"?"$":""})});
+  if(!items.length)return"";
+  return `<section class="card pstrip" data-tab="takip" role="link" tabindex="0" aria-label="Piyasa · takip listesini aç"><div class="ps-row">${items.map(x=>{const up=x.c==null?null:x.c>=0;
+    return `<span class="ps-i"><b>${esc(x.n)}</b><span class="num">${x.cur}${fmtN(x.v,x.v>=1000?(x.d&&x.d<2?x.d:2):x.d==null?2:x.d)}</span><em class="${up==null?"":up?"pos":"neg"}">${x.c==null?"—":(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2)}</em></span>`}).join("")}</div><span class="ps-go" aria-hidden="true">${ic(I.right,16)}</span></section>`}
 function ozCardsSheet(){
   const o=ozOrder(),hide=new Set(S().ozHide||[]);
   openSheet(`<h3>Özet kartları</h3><div class="sub" style="margin-bottom:10px">Okları kullanarak sırayı değiştirin; anahtarla kartı gizleyin ya da gösterin.</div>

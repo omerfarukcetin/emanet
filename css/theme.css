@@ -1335,3 +1335,15 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .tk-hit:hover,.tk-hit:focus-visible{background:var(--surface-2);border-radius:10px}
 .tk-man{margin-top:10px;display:grid;gap:6px}
 .tk-hint{padding:8px 2px}
+
+/* 3.01 · özette piyasa şeridi */
+.card.pstrip{display:flex;align-items:center;gap:6px;padding:10px 8px 10px 14px;cursor:pointer}
+.pstrip .ps-row{display:flex;gap:16px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.pstrip .ps-row::-webkit-scrollbar{display:none}
+.ps-i{display:grid;grid-template-columns:auto auto;column-gap:6px;row-gap:1px;flex:none;align-items:baseline}
+.ps-i b{grid-column:1/-1;font-size:var(--fs-sub);font-weight:700;color:var(--muted);white-space:nowrap}
+.ps-i .num{font-size:var(--fs-row);font-weight:700;white-space:nowrap}
+.ps-i em{font-style:normal;font-size:var(--fs-sub);font-weight:700;color:var(--muted);white-space:nowrap}
+.ps-i em.pos{color:var(--pos)}.ps-i em.neg{color:var(--neg)}
+.pstrip .ps-go{flex:none;color:var(--muted);display:flex}
+.pstrip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
