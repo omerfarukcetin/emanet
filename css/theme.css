@@ -1362,3 +1362,10 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .pstrip.move.hold .ps-track,.pstrip.move:hover .ps-track{animation-play-state:paused}
 @keyframes psMarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.ps-track{animation:none}.pstrip.move .ps-row{overflow-x:auto}.ps-half+.ps-half{display:none}}
+
+/* 3.04 · canlı fiyat değişince kısa süre yeşil/kırmızı yanar */
+@keyframes flUp{0%,35%{background:color-mix(in srgb,var(--pos) 30%,transparent);color:var(--pos)}100%{background:transparent}}
+@keyframes flDn{0%,35%{background:color-mix(in srgb,var(--neg) 30%,transparent);color:var(--neg)}100%{background:transparent}}
+.fl-up{animation:flUp 1.8s ease-out;border-radius:6px}
+.fl-dn{animation:flDn 1.8s ease-out;border-radius:6px}
+@media (prefers-reduced-motion:reduce){.fl-up,.fl-dn{animation-duration:.01s}}

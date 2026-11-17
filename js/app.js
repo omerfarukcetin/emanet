@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.03";
+const APP_VERSION="3.04";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -608,9 +608,13 @@ function liveApply(m){
   Object.entries(live.gold||{}).forEach(([k,v])=>{if(!/^resat/.test(k)&&okNear(+v,+r.gold[k]))r.gold[k]=+v});
   r.liveAt=live.t;return r;
 }
+/* ekrandaki fiyatlar: [data-pk] anahtarı → değer. Canlı yenilemeden önce alınır, sonra değişenler kısa süre yeşil/kırmızı yanar */
+function priceMap(){const o={};document.querySelectorAll("#main [data-pk]").forEach(el=>{const v=parseFloat(el.dataset.pv);if(isFinite(v))o[el.dataset.pk]=v});return o}
+function flashDiff(o){if(S().hide)return;document.querySelectorAll("#main [data-pk]").forEach(el=>{const a=o[el.dataset.pk],b=parseFloat(el.dataset.pv);
+  if(isFinite(a)&&isFinite(b)&&Math.abs(b-a)>Math.abs(a)*1e-7){el.classList.remove("fl-up","fl-dn");void el.offsetWidth;el.classList.add(b>a?"fl-up":"fl-dn")}})}
 async function liveTick(){
   if(!ready||!state||!CFG.supabaseUrl||!AUTO()||document.visibilityState!=="visible"||liveFail>=3)return;
-  const keys=watchItems().filter(i=>["hisse","abd","kripto"].includes(i.k)).map(i=>i.k+":"+i.s);
+  const keys=watchItems().filter(i=>["hisse","abd","kripto"].includes(i.k)).map(i=>i.k+":"+i.s).concat((S().mkt||MKT_DEF).map(id=>MKT_Y[id]).filter(Boolean).map(y=>"y:"+y));
   try{
     const r=await fetch(CFG.supabaseUrl.replace(/\/$/,"")+"/functions/v1/fiyat?k="+encodeURIComponent(keys.join(",")),{headers:{apikey:CFG.supabaseKey},cache:"no-store"});
     if(!r.ok){liveFail++;return}
@@ -618,7 +622,7 @@ async function liveTick(){
     const before=JSON.stringify([market&&market.quotes,market&&market.fx,market&&market.gold]);
     live=d;let base=null;try{base=JSON.parse(localStorage.getItem(MK)||"null")}catch(e){}
     market=liveApply(base&&base.updatedAt?base:market);if(market&&market.gold)market.gold=goldDerive({...market.gold});
-    if(JSON.stringify([market.quotes,market.fx,market.gold])!==before)render();
+    if(JSON.stringify([market.quotes,market.fx,market.gold])!==before||view.tab==="takip"||view.tab==="ozet"){const pv=priceMap();render();flashDiff(pv)}
     else{const el=document.querySelector(".vh-t small");if(el)el.textContent=priceLabel()}
   }catch(e){liveFail++}
 }
@@ -983,7 +987,10 @@ function render(){
   const R={ozet:rOzet,portfoy:rPortfoy,takip:rTakip,akis:rAkis,borc:rBorc,zekat:rZekat,ayarlar:rAyarlar,rapor:rRapor}[view.tab]||rOzet;
   const prevN=motionBefore(m);
   const nv0=$(".setnav"),nx=nv0?nv0.scrollLeft:null;
+  // kayan şerit yeniden çizilince baştan başlamasın: animasyonun konumu korunur
+  let psT=null;try{const a0=$(".ps-track");const an=a0&&a0.getAnimations&&a0.getAnimations()[0];if(an)psT=an.currentTime}catch(e){}
   m.innerHTML=(["akis","borc","portfoy","takip"].includes(view.tab)?subTabs():"")+R();
+  if(psT!=null){try{const a1=$(".ps-track");const an=a1&&a1.getAnimations&&a1.getAnimations()[0];if(an)an.currentTime=psT}catch(e){}}
   if(view.tab==="ayarlar"){const nv=$(".setnav");if(nv){if(nx!=null)nv.scrollLeft=nx;else setNavFix(0)}}
   const F={portfoy:["Varlık ekle",()=>holdingSheet()],akis:["İşlem ekle",()=>txSheet()],borc:["Kayıt ekle",()=>debtSheet()],zekat:["Ödeme ekle",()=>zakatSheet()],ozet:["İşlem ekle",()=>txSheet()]}[view.tab];
   /* + her sekmede aynı menüyü açar (ayarlar ve rapor dışında) */
@@ -1133,12 +1140,12 @@ function ozOrder(){const o=(S().ozOrder||[]).filter(k=>OZ_CARDS.some(c=>c[0]===k
 /* özetteki piyasa şeridi: takip listesindeki piyasa satırları ve takip edilen kodlar; dokununca takip listesi açılır */
 function piyasaStrip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);
   const ids=S().mkt||MKT_DEF,items=[];
-  ids.forEach(id=>{const m=MKT.find(x=>x.id===id);if(!m)return;const ch=serChg(mktSeries(id),"1g");if(!ch)return;if(id==="gram"&&market&&market.gold&&+market.gold.gram>0)ch.v=+market.gold.gram;
-    items.push({n:m.n,v:ch.v,c:ch.c,cur:id==="gram"||id==="usd"||id==="eur"?"₺":/^(xau|xag|brent|btc)$/.test(id)?"$":"",d:m.d})});
-  (state.follow||[]).forEach(f=>{const ch=folChg(f,"1g");if(ch.v!=null)items.push({n:f.s,v:ch.v,c:ch.c,cur:ch.cur==="TRY"?"₺":ch.cur==="USD"?"$":""})});
+  ids.forEach(id=>{const m=MKT.find(x=>x.id===id);if(!m)return;const ch=mktChg(id,"1g");if(!ch)return;
+    items.push({k:id,n:m.n,v:ch.v,c:ch.c,cur:id==="gram"||id==="usd"||id==="eur"?"₺":/^(xau|xag|brent|btc)$/.test(id)?"$":"",d:m.d})});
+  (state.follow||[]).forEach(f=>{const ch=folChg(f,"1g");if(ch.v!=null)items.push({k:f.k+":"+f.s,n:f.s,v:ch.v,c:ch.c,cur:ch.cur==="TRY"?"₺":ch.cur==="USD"?"$":""})});
   if(!items.length)return"";
   const html=items.map(x=>{const up=x.c==null?null:x.c>=0;
-    return `<span class="ps-i"><b>${esc(x.n)}</b><span class="num">${x.cur}${fmtN(x.v,x.v>=1000?(x.d&&x.d<2?x.d:2):x.d==null?2:x.d)}</span><em class="${up==null?"":up?"pos":"neg"}">${x.c==null?"—":(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2)}</em></span>`}).join("");
+    return `<span class="ps-i"><b>${esc(x.n)}</b><span class="num" data-pk="ps:${esc(x.k)}" data-pv="${+x.v}">${x.cur}${fmtN(x.v,x.v>=1000?(x.d&&x.d<2?x.d:2):x.d==null?2:x.d)}</span><em class="${up==null?"":up?"pos":"neg"}">${x.c==null?"—":(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2)}</em></span>`}).join("");
   // kayan bant (isteğe bağlı): içerik iki kez yazılır, yarısı kadar kayınca başa sarar; dokununca durur
   const mv=S().psMove===true;
   return `<section class="card pstrip${mv?" move":""}" data-tab="takip" role="link" tabindex="0" aria-label="Piyasa · takip listesini aç"><div class="ps-row">${mv?`<div class="ps-track" style="--dur:${Math.max(16,items.length*5)}s"><span class="ps-half">${html}</span><span class="ps-half" aria-hidden="true">${html}</span></div>`:html}</div><span class="ps-go" aria-hidden="true">${ic(I.right,16)}</span></section>`}
@@ -1362,13 +1369,19 @@ const MKT=[{id:"xu100",n:"BIST 100",u:"endeks"},{id:"xu030",n:"BIST 30",u:"endek
   {id:"gram",n:"Gram altın",u:"TL"},{id:"xau",n:"Ons altın",u:"USD"},{id:"xag",n:"Ons gümüş",u:"USD",d:3},{id:"spx",n:"S&P 500",u:"ABD"},
   {id:"ndx",n:"Nasdaq",u:"ABD"},{id:"dji",n:"Dow Jones",u:"ABD"},{id:"brent",n:"Brent petrol",u:"USD/varil"},{id:"btc",n:"Bitcoin",u:"USD"}];
 const MKT_DEF=["xu100","usd","eur","gram","xau","spx","ndx"];
+const MKT_Y={xu100:"XU100.IS",xu030:"XU030.IS",usd:"USDTRY=X",eur:"EURTRY=X",xau:"GC=F",xag:"SI=F",spx:"^GSPC",ndx:"^IXIC",dji:"^DJI",brent:"BZ=F",btc:"BTC-USD"};
+/* canlı akıştan gelen piyasa değeri (uygulama açıkken 30 sn'de bir); yoksa null */
+function mktLive(id){const q=live&&live.quotes&&live.quotes["y:"+MKT_Y[id]];return q&&+q.p>0?{p:+q.p,pc:+q.pc||0}:null}
+function mktChg(id,P){const ch=serChg(mktSeries(id),P);if(!ch)return null;
+  if(id==="gram"){if(market&&market.gold&&+market.gold.gram>0)ch.v=+market.gold.gram;if(ch.v0)ch.c=(ch.v/ch.v0-1)*100;return ch}
+  const L=mktLive(id);if(L){ch.v=L.p;if(P==="1g"&&L.pc)ch.c=(L.p/L.pc-1)*100;else if(ch.v0)ch.c=(L.p/ch.v0-1)*100}return ch}
 const TK_P=[["1g","Gün"],["1h","Hafta"],["1a","Ay"],["1y","Yıl"]],TK_DAYS={"1g":1,"1h":7,"1a":30,"1y":365};
 function mktSeries(id){if(!bench)return null;if(id!=="gram")return bench[id]||null;
   const a=bench.xau,b=bench.usd;if(!a||!b)return null;const o={};Object.keys(a).forEach(d=>{const u=b[d]||b[Object.keys(b).filter(x=>x<=d).pop()];if(u)o[d]=a[d]*u/31.1035});return o}
 function serChg(o,P){const ks=Object.keys(o||{}).sort();if(ks.length<2)return null;const last=ks[ks.length-1],v=o[last];
   // piyasa henüz açılmadıysa bugünün satırı dünkü kapanışın aynısıdır: günlük değişim bir önceki günle
   let v0;if(P==="1g"){v0=o[ks[ks.length-2]];if(ks.length>2&&Math.abs(v/v0-1)<1e-5)v0=o[ks[ks.length-3]]}else{const lim=addDays(last,-TK_DAYS[P]);const k0=ks.filter(k=>k<=lim).pop();v0=k0?o[k0]:null}
-  const sp=ks.filter(k=>k>=addDays(last,P==="1y"?-365:-30)).map(k=>o[k]);return{v,c:v0?(v/v0-1)*100:null,d:last,sp}}
+  const sp=ks.filter(k=>k>=addDays(last,P==="1y"?-365:-30)).map(k=>o[k]);return{v,v0,c:v0?(v/v0-1)*100:null,d:last,sp}}
 function sparkSvg(arr,up){if(!arr||arr.length<2)return`<span class="tk-sp" aria-hidden="true"></span>`; // grafik yoksa da yer tutar, fiyat sütunu kaymaz
 const mn=Math.min(...arr),mx=Math.max(...arr),W=64,H=24,r=mx-mn||1;
   const pts=arr.map((v,i)=>(i/(arr.length-1)*W).toFixed(1)+","+(H-2-(v-mn)/r*(H-4)).toFixed(1)).join(" ");
@@ -1378,17 +1391,16 @@ function folChg(f,P){const q=market&&market.quotes&&market.quotes[f.k+":"+f.s],l
   let c=null;if(P==="1g")c=v&&pc?(v/pc-1)*100:null;else if(T&&T.sp&&T.sp.length>1){const lim=addDays(todayISO(),-TK_DAYS[P]),r=T.sp.filter(x=>x[0]<=lim).pop();c=r&&v?(v/r[1]-1)*100:P==="1a"?T.r1m:P==="1y"?T.r1y:null}
   const sp=T&&T.sp?T.sp.slice(P==="1y"?0:-7).map(x=>x[1]).concat(v?[v]:[]):null;return{v,c,sp,cur:(q&&q.cur)||f.c}}
 function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);const P=view.tkP||"1g",ids=S().mkt||MKT_DEF,fol=state.follow||[],dn=S().tkView!=="rahat",lc="tk-list"+(dn?" dense":"");
-  const row=(n,u,ch,dec,cur,del)=>{const up=ch.c==null?null:ch.c>=0;
+  const row=(n,u,ch,dec,cur,pk)=>{const up=ch.c==null?null:ch.c>=0;
     return `<div class="tk-row"><div class="tk-n"><b>${esc(n)}</b><small>${esc(u)}</small></div>${sparkSvg(ch.sp,up)}
-      <div class="tk-v"><b class="num">${ch.v!=null?(cur==="TRY"?"₺":cur==="USD"?"$":"")+fmtN(ch.v,ch.v>=1000?(dec==null?2:Math.min(dec,2)):dec==null?2:dec):"—"}</b><span class="tk-c ${up==null?"":up?"pos":"neg"}">${ch.c==null?"—":(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</span></div></div>`};
-  const mk=ids.map(id=>MKT.find(m=>m.id===id)).filter(Boolean).map(m=>{const ch=serChg(mktSeries(m.id),P);if(!ch)return `<div class="tk-row wait"><div class="tk-n"><b>${esc(m.n)}</b><small>veri birkaç dakika içinde gelir</small></div></div>`;
-    if(m.id==="gram"&&market&&market.gold&&+market.gold.gram>0&&P==="1g")ch.v=+market.gold.gram;
-    return row(m.n,m.u,ch,m.d,m.id==="gram"||m.id==="usd"||m.id==="eur"?"TRY":/^(xau|xag|brent|btc)$/.test(m.id)?"USD":"",null)}).join("");
-  const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,f.n||KINDS[f.k]||f.k,ch,null,ch.cur,f)}).join("");
-  const upd=bench&&bench.updatedAt?new Date(bench.updatedAt):null;
+      <div class="tk-v"><b class="num" data-pk="tk:${esc(pk)}" data-pv="${ch.v!=null?+ch.v:""}">${ch.v!=null?(cur==="TRY"?"₺":cur==="USD"?"$":"")+fmtN(ch.v,ch.v>=1000?(dec==null?2:Math.min(dec,2)):dec==null?2:dec):"—"}</b><span class="tk-c ${up==null?"":up?"pos":"neg"}">${ch.c==null?"—":(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</span></div></div>`};
+  const mk=ids.map(id=>MKT.find(m=>m.id===id)).filter(Boolean).map(m=>{const ch=mktChg(m.id,P);if(!ch)return `<div class="tk-row wait"><div class="tk-n"><b>${esc(m.n)}</b><small>veri birkaç dakika içinde gelir</small></div></div>`;
+    return row(m.n,m.u,ch,m.d,m.id==="gram"||m.id==="usd"||m.id==="eur"?"TRY":/^(xau|xag|brent|btc)$/.test(m.id)?"USD":"",m.id)}).join("");
+  const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,f.n||KINDS[f.k]||f.k,ch,null,ch.cur,f.k+":"+f.s)}).join("");
+  const upd=live&&live.t&&Object.keys(live.quotes||{}).some(k=>k.startsWith("y:"))?new Date(live.t):bench&&bench.updatedAt?new Date(bench.updatedAt):null,isLive=upd&&live&&live.t&&+upd===+new Date(live.t);
   return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Piyasa</h2><div class="seg" role="group" aria-label="Değişim dönemi">${TK_P.map(([k,l])=>`<button data-act="tkp" data-k="${k}" aria-pressed="${P===k}">${l}</button>`).join("")}</div></div>
     <div class="${lc}">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
-    <div class="card-foot"><span class="sub">${upd?String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+" · BIST 15 dk gecikmeli":"Yükleniyor…"}</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview" aria-label="Görünümü değiştir">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></span></div></section>
+    <div class="card-foot"><span class="sub">${isLive?"Canlı · ":""}${upd?String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+(isLive?":"+String(upd.getSeconds()).padStart(2,"0"):"")+" · BIST 15 dk gecikmeli":"Yükleniyor…"}</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview" aria-label="Görünümü değiştir">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></span></div></section>
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
     ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Düzenle</button></span></div>`
       :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
@@ -1602,7 +1614,7 @@ function vHead(hs,ctx){
 }
 function assetTable(hs,total,o){
   o=o||{};const ctx=o.ctx||"pf",m=colMode();
-  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.symbol?h.symbol.toUpperCase():h.name)}<small class="num">${(()=>{const ep=effPrice(h);return S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur))})()}${h.broker?` · ${esc(h.broker)}`:""}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
+  const hrow=(h,sub,x=cellData([h],total))=>`<div class="arow ${sub?"sub":""}"${heat(x)} title="${esc(h.name)}" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf?h._pf.id:o.pf}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(${KIND_COLOR[h.kind]||"--c7"})"></i><span class="t">${esc(h.symbol?h.symbol.toUpperCase():h.name)}<small class="num" data-pk="h:${h.id}" data-pv="${+effPrice(h).p}">${(()=>{const ep=effPrice(h);return S().hide?"••":fmtN(ep.p,ep.p<10?4:2)+" "+(h.cur==="TRY"?"₺":esc(h.cur))})()}${h.broker?` · ${esc(h.broker)}`:""}</small></span>${priceFlag(h)}</span>${vcell(x,h)}</div>`;
   const head="";
   const sorted=hs.slice().sort((a,b)=>hVal(b)-hVal(a));
   if(o.group===false)return `<div class="atbl compact">${head}${sorted.map(h=>hrow(h,false)).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
