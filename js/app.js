@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.96";
+const APP_VERSION="2.97";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1354,7 +1354,8 @@ function serChg(o,P){const ks=Object.keys(o||{}).sort();if(ks.length<2)return nu
   // piyasa henüz açılmadıysa bugünün satırı dünkü kapanışın aynısıdır: günlük değişim bir önceki günle
   let v0;if(P==="1g"){v0=o[ks[ks.length-2]];if(ks.length>2&&Math.abs(v/v0-1)<1e-5)v0=o[ks[ks.length-3]]}else{const lim=addDays(last,-TK_DAYS[P]);const k0=ks.filter(k=>k<=lim).pop();v0=k0?o[k0]:null}
   const sp=ks.filter(k=>k>=addDays(last,P==="1y"?-365:-30)).map(k=>o[k]);return{v,c:v0?(v/v0-1)*100:null,d:last,sp}}
-function sparkSvg(arr,up){if(!arr||arr.length<2)return"";const mn=Math.min(...arr),mx=Math.max(...arr),W=64,H=24,r=mx-mn||1;
+function sparkSvg(arr,up){if(!arr||arr.length<2)return`<span class="tk-sp" aria-hidden="true"></span>`; // grafik yoksa da yer tutar, fiyat sütunu kaymaz
+const mn=Math.min(...arr),mx=Math.max(...arr),W=64,H=24,r=mx-mn||1;
   const pts=arr.map((v,i)=>(i/(arr.length-1)*W).toFixed(1)+","+(H-2-(v-mn)/r*(H-4)).toFixed(1)).join(" ");
   return `<svg class="tk-sp" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(${up==null?"--muted":up?"--pos":"--neg"})" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`}
 function folChg(f,P){const q=market&&market.quotes&&market.quotes[f.k+":"+f.s],lq=live&&live.quotes&&live.quotes[f.k+":"+f.s],T=tech&&tech.s&&tech.s[f.k+":"+f.s];
