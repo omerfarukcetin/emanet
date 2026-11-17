@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.07";
+const APP_VERSION="3.08";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -741,10 +741,65 @@ async function onLogin(user){
   await pull(true);
   ready=true;applyPrefs();if(state&&state.updatedAt)snapshotSave();render();handleGo();loadShares();setTimeout(()=>{fillFx();syncWatch()},0);
 }
+/* ---------- uygulama kilidi (yalnızca bu cihaz) ----------
+   PIN'in kendisi saklanmaz; tuzlanmış SHA-256 özeti tutulur. Parmak izi/yüz tanıma, telefonun kendi doğrulamasıyla (WebAuthn) yapılır.
+   Kilit ayarı hesaba eşitlenmez: her cihaz kendi kilidini kurar. Bildirimler kilitten etkilenmez. */
+const LK="emanet-lock";
+const lockCfg=()=>{try{const c=JSON.parse(localStorage.getItem(LK)||"null");return c&&c.h?c:null}catch(e){return null}};
+const lockSave=c=>{try{c?localStorage.setItem(LK,JSON.stringify(c)):localStorage.removeItem(LK)}catch(e){}};
+const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))),unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function pinHash(pin,salt){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(salt+":"+pin));return b64(d)}
+async function bioAvail(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+async function bioCreate(){const ch=crypto.getRandomValues(new Uint8Array(32)),uid=crypto.getRandomValues(new Uint8Array(16));
+  const c=await navigator.credentials.create({publicKey:{challenge:ch,rp:{name:"Emanet",id:location.hostname},user:{id:uid,name:"emanet-kilit",displayName:"Emanet kilidi"},
+    pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"discouraged"},timeout:60000,attestation:"none"}});
+  return c?b64(c.rawId):null}
+async function bioCheck(id){const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:"public-key",id:unb64(id),transports:["internal"]}],userVerification:"required",timeout:60000,rpId:location.hostname}});return !!a}
+let lockedNow=false,hiddenAt=0;
+function lockShow(){const c=lockCfg();if(!c){lockHide();return}lockedNow=true;document.documentElement.classList.add("locked");
+  if(document.getElementById("applock"))return;try{document.getElementById("sheet")&&closeSheet()}catch(e){}
+  const d=document.createElement("div");d.id="applock";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label","Emanet kilitli");
+  d.innerHTML=`<div class="lk-in"><div class="lk-ic">${ic(I.lock,28)}</div><h2>Emanet kilitli</h2><p class="lk-msg" id="lkMsg">PIN'ini gir</p>
+    <div class="lk-dots" id="lkDots">${"<i></i>".repeat(c.len||4)}</div>
+    <div class="lk-pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join("")}${c.bio?`<button data-k="bio" aria-label="Parmak izi ya da yüz tanıma ile aç">${ic(I.finger,26)}</button>`:"<span></span>"}<button data-k="0">0</button><button data-k="del" aria-label="Sil">${ic(I.left,22)}</button></div>
+    <button class="lk-forgot" id="lkForgot">PIN'i unuttum</button></div>`;
+  document.body.appendChild(d);let pin="",busy=false;const dots=d.querySelectorAll(".lk-dots i"),msg=d.querySelector("#lkMsg");
+  const paint=()=>dots.forEach((x,i)=>x.classList.toggle("on",i<pin.length));
+  const wait=()=>{const c2=lockCfg();return c2&&c2.until&&Date.now()<c2.until?Math.ceil((c2.until-Date.now())/1000):0};
+  const tryPin=async()=>{if(busy)return;const w=wait();if(w){msg.textContent=w+" saniye bekle";pin="";paint();return}busy=true;const c2=lockCfg();
+    if(await pinHash(pin,c2.s)===c2.h){c2.bad=0;delete c2.until;lockSave(c2);lockHide()}
+    else{c2.bad=(c2.bad||0)+1;if(c2.bad>=5){c2.until=Date.now()+30000;c2.bad=0}lockSave(c2);d.querySelector(".lk-dots").classList.add("shake");setTimeout(()=>d.querySelector(".lk-dots")&&d.querySelector(".lk-dots").classList.remove("shake"),450);
+      msg.textContent=c2.until?"Çok fazla deneme, 30 saniye bekle":"Yanlış PIN";pin="";paint()}busy=false};
+  const bio=async()=>{const c2=lockCfg();if(!c2||!c2.bio)return;try{if(await bioCheck(c2.bio))lockHide()}catch(e){msg.textContent="Parmak izi olmadı, PIN'i gir"}};
+  const key=k=>{if(k==="bio")return bio();if(k==="del"){pin=pin.slice(0,-1);paint();return}if(pin.length>=(lockCfg().len||4))return;pin+=k;paint();if(pin.length===(lockCfg().len||4))setTimeout(tryPin,90)};
+  d.querySelectorAll(".lk-pad button").forEach(b=>b.onclick=()=>key(b.dataset.k));
+  d.addEventListener("keydown",e=>{if(/^[0-9]$/.test(e.key))key(e.key);else if(e.key==="Backspace")key("del")});d.tabIndex=-1;setTimeout(()=>d.focus(),50);
+  d.querySelector("#lkForgot").onclick=()=>{msg.innerHTML=cloudOn()?`PIN'i sıfırlamak için çıkış yapıp yeniden giriş yap; verilerin hesabında durur. <button class="btn sm" id="lkOut" style="margin-top:8px">Çıkış yap</button>`:"Veriler yalnızca bu cihazda olduğu için PIN sıfırlanamaz. Yedek dosyan varsa uygulama verilerini silip yedeği yükleyebilirsin.";
+    const o=document.getElementById("lkOut");if(o)o.onclick=()=>{lockSave(null);lockHide();signOut()}};
+  if(c.bio)setTimeout(bio,350)}
+function lockHide(){lockedNow=false;document.documentElement.classList.remove("locked");const d=document.getElementById("applock");if(d)d.remove()}
+document.addEventListener("visibilitychange",()=>{const c=lockCfg();if(!c)return;
+  if(document.visibilityState==="hidden"){hiddenAt=Date.now();if(!(c.delay>0))document.documentElement.classList.add("locked")}
+  else if(!lockedNow){if(Date.now()-hiddenAt>=(c.delay||0)*1000)lockShow();else document.documentElement.classList.remove("locked")}});
+function lockSetup(){const c=lockCfg();
+  formSheet({title:c?"PIN'i değiştir":"Uygulama kilidi",submit:"Kaydet",fields:[
+    ...(c?[{id:"old",label:"Şu anki PIN",type:"password",value:"",ph:"••••"}]:[]),
+    {id:"p1",label:"Yeni PIN (4–6 rakam)",type:"password",value:"",ph:"••••"},{id:"p2",label:"Yeni PIN (tekrar)",type:"password",value:"",ph:"••••"}],
+    extra:`<div class="note">PIN yalnızca bu cihazda, şifrelenmiş özet olarak saklanır. Unutursan çıkış yapıp yeniden giriş yaparak sıfırlayabilirsin; verilerin hesabında kalır.</div>`,
+    onOpen:form=>{form.querySelectorAll("input[type=password]").forEach(i=>{i.inputMode="numeric";i.autocomplete="off";i.maxLength=6;i.pattern="[0-9]*"})},
+    onSave:async v=>{if(c&&await pinHash(v.old||"",c.s)!==c.h)return"Şu anki PIN yanlış.";if(!/^[0-9]{4,6}$/.test(v.p1))return"PIN 4–6 rakam olmalı.";if(v.p1!==v.p2)return"İki PIN aynı değil.";
+      const salt=b64(crypto.getRandomValues(new Uint8Array(16)));lockSave({...(c||{delay:60}),h:await pinHash(v.p1,salt),s:salt,len:v.p1.length,bad:0});render();toast(c?"PIN değiştirildi":"Uygulama kilidi açıldı");
+      if(!c&&await bioAvail())setTimeout(()=>{if(confirm("Parmak izi ya da yüz tanımayla da açılsın mı?"))lockBio(true)},300)}})}
+async function lockBio(on){const c=lockCfg();if(!c)return;if(!on){delete c.bio;lockSave(c);render();toast("Parmak izi kapatıldı");return}
+  try{const id=await bioCreate();if(id){c.bio=id;lockSave(c);render();toast("Parmak izi / yüz tanıma açıldı")}}catch(e){toast("Parmak izi kurulamadı: telefonda ekran kilidi ve parmak izi tanımlı olmalı")}}
+async function lockOff(){const c=lockCfg();if(!c)return;
+  formSheet({title:"Kilidi kapat",submit:"Kapat",fields:[{id:"old",label:"PIN",type:"password",value:"",ph:"••••"}],
+    onOpen:form=>{const i=form.elements.old;i.inputMode="numeric";i.maxLength=6},
+    onSave:async v=>{if(await pinHash(v.old||"",c.s)!==c.h)return"PIN yanlış.";lockSave(null);render();toast("Uygulama kilidi kapatıldı")}})}
 async function signOut(){
   try{clearTimeout(saveTimer);await flush()}catch(e){}
   try{await sb.auth.signOut()}catch(e){}
-  sbUser=null;state=null;try{localStorage.removeItem(LS);localStorage.removeItem(OWN)}catch(e){}
+  sbUser=null;state=null;try{localStorage.removeItem(LS);localStorage.removeItem(OWN)}catch(e){}lockSave(null);lockHide();
   view.tab="ozet";showAuth();
 }
 /* ---------- günlük kullanım sınırı ----------
@@ -921,6 +976,8 @@ const I={
   hex:sv('<path d="M12 3.500l7.4 4.250v8.500L12 20.500l-7.4-4.250v-8.500z"/><path d="M12 8.500l3 1.750v3.500L12 15.500l-3-1.750v-3.500z"/>'),
   umbrella:sv('<path d="M3.5 12a8.5 8.5 0 0 1 17 0z"/><path d="M12 12v6.500a2 2 0 0 1-4 0M12 3.500v-1"/>'),
   clock:sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  lock:sv('<rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>'),
+  finger:sv('<path d="M7 11a5 5 0 0 1 10 0v1.5c0 2.4-.6 4.7-1.7 6.8"/><path d="M12 11v2.5c0 2.8-.9 5.4-2.4 7.5"/><path d="M4.6 15.5c.3-1.3.4-2.7.4-4.5a7 7 0 0 1 12.2-4.7"/><path d="M9.5 11c0 4-1.1 6.4-2.6 8.3"/><path d="M19 9.6c.1.5.1.9.1 1.4"/>'),
   bell:sv('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),
   user:sv('<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
   search:sv('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
@@ -2122,6 +2179,8 @@ document.addEventListener("change",e=>{
   if(e.target.dataset&&e.target.dataset.np==="tsAdd"){const v=e.target.value;if(v){const p=notifPrefs();notifPrefSet("ts",[...p.ts,v].sort())}return}
   if(e.target.dataset&&e.target.dataset.np){const k=e.target.dataset.np;notifPrefSet(k,e.target.type==="checkbox"?e.target.checked:k==="bm"?+e.target.value:e.target.value)}
   if(e.target.id==="useLimit"){const v=+e.target.value;S().useLimit=v||undefined;commit(v?"Günlük sınır "+v+" dakika":"Kullanım sınırı kapatıldı");usageCheck();return}
+  if(e.target.id==="lockDelay"){const c=lockCfg();if(c){c.delay=+e.target.value;lockSave(c);toast("Kaydedildi")}return}
+  if(e.target.id==="lockBio"){lockBio(e.target.checked);return}
   if(e.target.id==="psMove"){S().psMove=e.target.checked;commit(e.target.checked?"Piyasa şeridi kayacak":"Piyasa şeridi sabit");return}
   if(e.target.id==="pfTint"){S().pfTint=e.target.checked;commit(e.target.checked?"Kart rengi kişiye göre":"Kart rengi tek renk");return}
   if(e.target.id==="simpleView"){S().simple=e.target.checked;commit(e.target.checked?"Sade görünüm açıldı":"Ayrıntılı görünüm açıldı");return}
@@ -2268,6 +2327,10 @@ function rAyarlar(){
   G.veri=`<section class="card"><div class="set-group">
     ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Hesap</b><small>${esc(sbUser.email||"")} · veriler hesabınızda saklanır, diğer cihazlarınızda da açılır</small></div><button class="btn sm" data-act="signout">Çıkış yap</button></div>`
       :`<div class="set-row"><div class="lbl"><b>Kayıt yeri</b><small>Yalnızca bu cihazda. ${sb?"Giriş yaparsanız verileriniz hesabınıza taşınır ve diğer cihazlarınızda da açılır.":"Bulut eşitleme henüz kurulmadı; yedek almayı unutmayın."}</small></div>${sb?`<button class="btn sm primary" data-act="signin">Giriş yap</button>`:""}</div>`}
+    ${(()=>{const c=lockCfg();return `<div class="set-row"><div class="lbl"><b>Uygulama kilidi</b><small>${c?"Açık · "+(c.len||4)+" haneli PIN"+(c.bio?" ve parmak izi / yüz tanıma":"")+". Yalnızca bu cihazda geçerli; bildirimler etkilenmez.":"Açılışta PIN ya da parmak izi sorar. Yalnızca bu cihazda geçerli."}</small></div>${c?`<button class="btn sm" data-act="lockoff">Kapat</button>`:`<button class="btn sm primary" data-act="lockset">Aç</button>`}</div>
+      ${c?`<div class="set-row"><div class="lbl"><b>Ne zaman kilitlensin</b><small>Uygulamadan çıkınca</small></div><select id="lockDelay" aria-label="Kilitlenme süresi">${[[0,"Hemen"],[60,"1 dakika sonra"],[300,"5 dakika sonra"],[900,"15 dakika sonra"]].map(([k,l])=>`<option value="${k}" ${(c.delay||0)===k?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="set-row"><div class="lbl"><b>Parmak izi / yüz tanıma</b><small>${c.bio?"Açık":"PIN yerine telefonun kendi doğrulamasıyla aç"}</small></div><label class="toggle"><input type="checkbox" id="lockBio" ${c.bio?"checked":""}><span></span></label></div>
+      <div class="set-row"><div class="lbl"><b>PIN'i değiştir</b></div><button class="btn sm" data-act="lockset">Değiştir</button></div>`:""}`})()}
     ${cloudOn()?`<div class="set-row"><div class="lbl"><b>Otomatik yedek</b><small>Her günün son hâli hesabınızda saklanır (35 gün). Yanlışlıkla silinen bir şeyi buradan geri getirebilirsiniz.</small></div><button class="btn sm" data-act="backups">Yedekleri göster</button></div>`:""}
     <div class="set-row"><div class="lbl"><b>Yedek</b><small>Tüm veriler JSON dosyası olarak</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="export">Yedeği indir</button><label class="btn sm" for="importIn" style="cursor:pointer">Yedek yükle</label><input type="file" id="importIn" accept="application/json,.json" hidden></div></div>
     <div class="set-row"><div class="lbl"><b>Excel'e aktar</b><small>Excel ve Google E-Tablolar'da açılan CSV dosyaları</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="csv-h">Varlıklar</button><button class="btn sm" data-act="csv-t">Gelir-gider</button></div></div>
@@ -2354,7 +2417,7 @@ function formSheet({title,fields,onSave,onDelete,extra="",onChange,onOpen}){
     form.querySelectorAll("[data-dq]").forEach(b=>b.onclick=()=>{const inp=b.closest(".field").querySelector("input");inp.value=addDays(todayISO(),+b.dataset.dq);inp.dispatchEvent(new Event("input",{bubbles:true}));inp.dispatchEvent(new Event("change",{bubbles:true}))});
     sh.querySelectorAll("[data-seg]").forEach(g=>g.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;g.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));form.elements[g.dataset.seg].value=b.dataset.v;onChange&&onChange(form,g.dataset.seg)}));
     form.addEventListener("change",e=>onChange&&onChange(form,e.target.name));
-    form.addEventListener("submit",e=>{e.preventDefault();calcAll(form);const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const err=onSave(vals);if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()});
+    form.addEventListener("submit",e=>{e.preventDefault();calcAll(form);const vals={};[...form.elements].forEach(el=>{if(el.name)vals[el.name]=el.value});const fin=err=>{if(err){sh.querySelector("#sfErr").textContent=err}else closeSheet()};const r=onSave(vals);if(r&&typeof r.then==="function")r.then(fin,e=>fin(String(e&&e.message||e)));else fin(r)});
     if(onDelete){const d=sh.querySelector("#sfDel");d.onclick=()=>{if(d.dataset.c){withUndo(onDelete);closeSheet()}else{d.dataset.c="1";d.textContent="Evet, sil";d.classList.add("solid")}}}
     onOpen&&onOpen(form,sh);
   });
@@ -3292,6 +3355,8 @@ document.addEventListener("click",e=>{
   if(a==="csv-h")return exportCSV("varliklar");
   if(a==="csv-t")return exportCSV("islemler");
   if(a==="signout")return signOut();
+  if(a==="lockset")return lockSetup();
+  if(a==="lockoff")return lockOff();
   if(a==="signin"){try{localStorage.removeItem(GUEST)}catch(e){}return showAuth()}
   if(a==="owner"){view.owner=t.dataset.k;view.pf="all";render();return}
   if(a==="zowner"){view.zOwner=t.dataset.k;render();return}
@@ -3361,5 +3426,6 @@ function setNavFix(x){const nv=$(".setnav");if(!nv)return;nv.scrollLeft=x||0;con
   if(l<nv.scrollLeft||l+on.offsetWidth>nv.scrollLeft+nv.clientWidth||!x)nv.scrollTo({left:want,behavior:x?"smooth":"auto"})}
 function withUndo(fn){const snap=JSON.stringify(pure());fn();const t=$("#toast");toast(t.hidden?"Silindi":t.textContent,snap)}
 
+if(lockCfg())lockShow();
 applyPrefs();render();boot();
 })();

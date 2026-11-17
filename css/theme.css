@@ -1394,3 +1394,24 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .stx summary b{font-size:var(--fs-h2);font-weight:800;white-space:nowrap}
 .stx .stx-kv{margin-top:10px}
 .stx .stx-kv>div.tot{font-weight:700;border-top:1px solid var(--line);padding-top:8px}
+
+/* 3.08 · uygulama kilidi */
+html.locked body>*:not(#applock){visibility:hidden!important}
+#applock{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom));background:var(--bg);outline:none}
+#applock .lk-in{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+#applock .lk-ic{display:grid;place-items:center;width:60px;height:60px;border-radius:20px;background:color-mix(in srgb,var(--accent) 14%,var(--surface));color:var(--accent);margin-bottom:6px}
+#applock h2{margin:0;font-size:1.25rem}
+#applock .lk-msg{margin:0;color:var(--muted);min-height:1.4em;line-height:1.45;font-size:.9rem}
+.lk-dots{display:flex;gap:14px;margin:14px 0 18px}
+.lk-dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);transition:background .12s,border-color .12s}
+.lk-dots i.on{background:var(--fg);border-color:var(--fg)}
+.lk-dots.shake{animation:lkShake .4s}
+@keyframes lkShake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.lk-pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 22px;justify-content:center}
+.lk-pad button{width:72px;height:72px;border-radius:50%;border:0;background:var(--surface);color:var(--fg);font:inherit;font-size:1.6rem;font-weight:600;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 0 var(--line)}
+.lk-pad button:active{background:color-mix(in srgb,var(--accent) 18%,var(--surface))}
+.lk-pad button[data-k=bio],.lk-pad button[data-k=del]{background:none;box-shadow:none;color:var(--muted)}
+.lk-pad button[data-k=bio]{color:var(--accent)}
+.lk-pad span{width:72px}
+.lk-forgot{margin-top:18px;border:0;background:none;color:var(--muted);font:inherit;font-size:.85rem;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.lk-dots.shake{animation:none}}
