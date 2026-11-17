@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.95";
+const APP_VERSION="2.96";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1343,9 +1343,9 @@ function donut(parts){
 
 /* ---------- takip listesi: yalnızca fiyat ve değişim (portföye girmez) ----------
    Piyasa satırları bench.json'daki günlük serilerden (10 dakikada bir yenilenir), eklenen kodlar market.json'dan gelir. */
-const MKT=[{id:"xu100",n:"BIST 100",u:"puan"},{id:"xu030",n:"BIST 30",u:"puan"},{id:"usd",n:"Dolar",u:"USD/TL",d:4},{id:"eur",n:"Euro",u:"EUR/TL",d:4},
-  {id:"gram",n:"Gram altın",u:"TL"},{id:"xau",n:"Ons altın",u:"USD"},{id:"xag",n:"Ons gümüş",u:"USD",d:3},{id:"spx",n:"S&P 500",u:"ABD · puan"},
-  {id:"ndx",n:"Nasdaq",u:"ABD · puan"},{id:"dji",n:"Dow Jones",u:"ABD · puan"},{id:"brent",n:"Brent petrol",u:"USD/varil"},{id:"btc",n:"Bitcoin",u:"USD"}];
+const MKT=[{id:"xu100",n:"BIST 100",u:"endeks"},{id:"xu030",n:"BIST 30",u:"endeks"},{id:"usd",n:"Dolar",u:"USD/TL",d:4},{id:"eur",n:"Euro",u:"EUR/TL",d:4},
+  {id:"gram",n:"Gram altın",u:"TL"},{id:"xau",n:"Ons altın",u:"USD"},{id:"xag",n:"Ons gümüş",u:"USD",d:3},{id:"spx",n:"S&P 500",u:"ABD"},
+  {id:"ndx",n:"Nasdaq",u:"ABD"},{id:"dji",n:"Dow Jones",u:"ABD"},{id:"brent",n:"Brent petrol",u:"USD/varil"},{id:"btc",n:"Bitcoin",u:"USD"}];
 const MKT_DEF=["xu100","usd","eur","gram","xau","spx","ndx"];
 const TK_P=[["1g","Gün"],["1h","Hafta"],["1a","Ay"],["1y","Yıl"]],TK_DAYS={"1g":1,"1h":7,"1a":30,"1y":365};
 function mktSeries(id){if(!bench)return null;if(id!=="gram")return bench[id]||null;
@@ -1361,7 +1361,7 @@ function folChg(f,P){const q=market&&market.quotes&&market.quotes[f.k+":"+f.s],l
   const v=(lq&&+lq.p)||(q&&+q.p)||(T&&+T.last)||null,pc=(lq&&+lq.pc)||(q&&+q.pc);
   let c=null;if(P==="1g")c=v&&pc?(v/pc-1)*100:null;else if(T&&T.sp&&T.sp.length>1){const lim=addDays(todayISO(),-TK_DAYS[P]),r=T.sp.filter(x=>x[0]<=lim).pop();c=r&&v?(v/r[1]-1)*100:P==="1a"?T.r1m:P==="1y"?T.r1y:null}
   const sp=T&&T.sp?T.sp.slice(P==="1y"?0:-7).map(x=>x[1]).concat(v?[v]:[]):null;return{v,c,sp,cur:(q&&q.cur)||f.c}}
-function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);const P=view.tkP||"1g",ids=S().mkt||MKT_DEF,fol=state.follow||[];
+function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBench,0);const P=view.tkP||"1g",ids=S().mkt||MKT_DEF,fol=state.follow||[],dn=S().tkView!=="rahat",lc="tk-list"+(dn?" dense":"");
   const row=(n,u,ch,dec,cur,del)=>{const up=ch.c==null?null:ch.c>=0;
     return `<div class="tk-row"><div class="tk-n"><b>${esc(n)}</b><small>${esc(u)}</small></div>${sparkSvg(ch.sp,up)}
       <div class="tk-v"><b class="num">${ch.v!=null?(cur==="TRY"?"₺":cur==="USD"?"$":"")+fmtN(ch.v,ch.v>=1000?(dec==null?2:Math.min(dec,2)):dec==null?2:dec):"—"}</b><span class="tk-c ${up==null?"":up?"pos":"neg"}">${ch.c==null?"—":(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</span></div></div>`};
@@ -1371,10 +1371,10 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
   const fl=fol.map(f=>{const ch=folChg(f,P);return row(f.s,KINDS[f.k]||f.k,ch,null,ch.cur,f)}).join("");
   const upd=bench&&bench.updatedAt?new Date(bench.updatedAt):null;
   return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Piyasa</h2><div class="seg" role="group" aria-label="Değişim dönemi">${TK_P.map(([k,l])=>`<button data-act="tkp" data-k="${k}" aria-pressed="${P===k}">${l}</button>`).join("")}</div></div>
-    <div class="tk-list">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
-    <div class="card-foot"><span class="sub">${upd?"Güncellendi "+String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+" · BIST ~15 dk gecikmeli":"Yükleniyor…"}</span><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></div></section>
+    <div class="${lc}">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
+    <div class="card-foot"><span class="sub">${upd?String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+" · BIST 15 dk gecikmeli":"Yükleniyor…"}</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview" aria-label="Görünümü değiştir">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></span></div></section>
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
-    ${fol.length?`<div class="tk-list">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><button class="btn ghost sm" data-act="tkedit">Düzenle</button></div>`
+    ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><button class="btn ghost sm" data-act="tkedit">Düzenle</button></div>`
       :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
 function tkAdd(){formSheet({title:"Takibe ekle",submit:"Ekle",fields:[{id:"k",label:"Tür",type:"select",value:"hisse",options:[["hisse","Hisse (BIST)"],["abd","ABD hissesi"],["fon","Yatırım fonu (TEFAS)"],["ppf","Para piyasası fonu"],["kripto","Kripto"]]},
   {id:"s",label:"Kod",value:"",ph:"Örn. THYAO, AAPL, TTE, BTC"}],
@@ -3090,6 +3090,7 @@ document.addEventListener("click",e=>{
   if(a==="calday")return calDay(t.dataset.d);
   if(a==="tkp"){view.tkP=t.dataset.k;render();return}
   if(a==="tkadd")return tkAdd();
+  if(a==="tkview"){S().tkView=S().tkView==="rahat"?"sik":"rahat";commit();return}
   if(a==="tkedit")return tkEdit();
   if(a==="rec-new")return recSheet();
   if(a==="tx-add")return txSheet();

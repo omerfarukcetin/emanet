@@ -1305,3 +1305,18 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 .tk-pick{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
 .tk-del{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
 @media (max-width:360px){.tk-row{grid-template-columns:minmax(0,1fr) auto}.tk-sp{display:none}}
+
+/* 2.96 · takip listesi sıkı görünüm (varsayılan): tek satır, küçük grafik */
+.tk-list.dense .tk-row{grid-template-columns:minmax(0,1fr) 44px auto;gap:10px;padding:7px 0}
+.tk-list.dense .tk-n{display:flex;align-items:baseline;gap:6px;min-width:0}
+.tk-list.dense .tk-n b{flex:none;max-width:60%}
+.tk-list.dense .tk-n small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-list.dense .tk-sp{width:44px;height:16px}
+.tk-list.dense .tk-v{flex-direction:row;align-items:center;gap:8px;min-width:0}
+.tk-list.dense .tk-c{min-width:62px;text-align:center}
+.tk-list.dense .tk-row.wait{padding:7px 0}
+.tk-tools{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.card-foot:has(.tk-tools){flex-wrap:wrap;gap:6px}
+.tk-list.dense .tk-v b{min-width:96px;text-align:right}
+.tk-list.dense .tk-c{min-width:68px}
+@media (max-width:380px){.tk-list.dense .tk-n small{display:none}.tk-list.dense .tk-v b{min-width:84px}}
