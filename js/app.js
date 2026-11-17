@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.97";
+const APP_VERSION="2.98";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1375,7 +1375,7 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
     <div class="${lc}">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
     <div class="card-foot"><span class="sub">${upd?String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+" · BIST 15 dk gecikmeli":"Yükleniyor…"}</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview" aria-label="Görünümü değiştir">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></span></div></section>
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
-    ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><button class="btn ghost sm" data-act="tkedit">Düzenle</button></div>`
+    ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Düzenle</button></span></div>`
       :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
 function tkAdd(){formSheet({title:"Takibe ekle",submit:"Ekle",fields:[{id:"k",label:"Tür",type:"select",value:"hisse",options:[["hisse","Hisse (BIST)"],["abd","ABD hissesi"],["fon","Yatırım fonu (TEFAS)"],["ppf","Para piyasası fonu"],["kripto","Kripto"]]},
   {id:"s",label:"Kod",value:"",ph:"Örn. THYAO, AAPL, TTE, BTC"}],
