@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="2.91";
+const APP_VERSION="2.92";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -777,7 +777,7 @@ function handleGo(){
   let g=null;try{g=new URLSearchParams(location.search).get("go");if(g)history.replaceState(null,"",location.pathname+location.hash)}catch(e){}
   if(!g||!state||!state.portfolios)return;
   if(TABS.some(t=>t[0]===g)){view.tab=g;render();return}
-  setTimeout(()=>{if(g==="out"||g==="in"||g==="save")txSheet(null,{type:g});else if(g==="buy"||g==="sell")pickHolding(g);else if(g==="add")addMenu()},60);
+  setTimeout(()=>{if(g==="out"||g==="in"||g==="save")txSheet(null,{type:g});else if(g==="buy"||g==="sell")pickHolding(g);else if(g==="add")addMenu();else if(g==="quick"){addMenu();setTimeout(()=>{const q=document.getElementById("qaIn");if(q)q.focus()},120)}},60);
 }
 /* bildirimden gelen bağlantı (#zekat gibi) ilgili sekmeyi açar */
 function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)){view.tab=h;try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}return true}return false}
@@ -1416,7 +1416,8 @@ const plCol=()=>S().plCol&&S().plCol!=="pct"?(S().plCur==="USD"?"usd":"tl"):"pct
 const CHV=`<svg class="chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`;
 let _fold=null;
 const foldMap=()=>{if(!_fold){try{_fold=JSON.parse(localStorage.getItem("emanet-fold")||"{}")||{}}catch(e){_fold={}}}return _fold};
-const foldOpen=k=>k in foldMap()?!!foldMap()[k]:wide();
+const FOLD_DEF={takvim:true};
+const foldOpen=k=>k in foldMap()?!!foldMap()[k]:(k in FOLD_DEF?FOLD_DEF[k]:wide());
 function foldCard(key,html,sum){
   if(!html)return html;
   const m=html.match(/<h2([^>]*)>([\s\S]*?)<\/h2>/),cls=(html.match(/<section class="([^"]*)"/)||[])[1]||"card";if(!m)return html;
@@ -1541,6 +1542,33 @@ function eqvCard(v,hs){
     <div class="sub" style="margin-top:10px">Dolar ve euro maliyeti, her alımın TL tutarının o günkü kura bölünmesiyle bulunur.${missing?` ${missing} varlığın alış günü kuru henüz yok; bunlarda geçici olarak güncel kur kullanıldı.`:""}</div>
   </section>`;
 }
+/* ---------- harcama takvimi: ayın her günü, harcamanın yoğunluğuna göre renkli; güne dokununca o günün işlemleri ---------- */
+const WDAYS=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"],WDAYS_L=["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
+const kfmt=v=>v>=1e6?fmtN(v/1e6,1)+"M":v>=1e4?fmtN(Math.round(v/1e3),0)+"b":v>=1e3?fmtN(v/1e3,1)+"b":fmtN(Math.round(v),0);
+function calCard(m){const[y,mo]=m.split("-").map(Number),dim=new Date(y,mo,0).getDate(),first=(new Date(y,mo-1,1).getDay()+6)%7,today=todayISO();
+  const out={},inc={},cnt={};monthTx(m).forEach(t=>{if(t.type==="out"){out[t.date]=(out[t.date]||0)+toBase(t.amount,t.cur);cnt[t.date]=(cnt[t.date]||0)+1}else if(t.type==="in")inc[t.date]=(inc[t.date]||0)+toBase(t.amount,t.cur)});
+  const vals=Object.values(out).filter(v=>v>0).sort((a,b)=>a-b);if(!vals.length&&!Object.keys(inc).length)return"";
+  // renk, o günün ayın harcama günleri içindeki sırasına göre (5 kademe); tek büyük gün (kira gibi) diğerlerini soldurmasın diye
+  const lv=v=>{if(!(v>0))return 0;const r=vals.filter(x=>x<=v).length;return Math.max(1,Math.ceil(r/vals.length*5))};
+  const hide=S().hide,cells=[];for(let i=0;i<first;i++)cells.push(`<span class="cd pad" aria-hidden="true"></span>`);
+  for(let d=1;d<=dim;d++){const ds=m+"-"+String(d).padStart(2,"0"),v=out[ds]||0,l=lv(v),fut=ds>today;
+    cells.push(`<button class="cd l${l}${ds===today?" today":""}${fut?" fut":""}" data-act="calday" data-d="${ds}" aria-label="${d} ${MONTHS[mo-1]}: ${v?fmt(v,null,{dec:0})+" harcama":"harcama yok"}${inc[ds]?", gelir var":""}"><b>${d}</b>${v&&!hide?`<small class="num">${kfmt(v*rate(S().base))}</small>`:""}${inc[ds]?`<i class="in" aria-hidden="true"></i>`:""}</button>`)}
+  const tot=vals.reduce((a,v)=>a+v,0),busy=Object.entries(out).sort((a,b)=>b[1]-a[1])[0],days=Object.keys(out).length;
+  const wk=[0,0,0,0,0,0,0];Object.entries(out).forEach(([d,v])=>{wk[(new Date(d+"T12:00:00").getDay()+6)%7]+=v});const wmax=wk.indexOf(Math.max(...wk));
+  const sum=busy?`<span class="sub">en yoğun ${+busy[0].slice(8)} ${MONTHS[mo-1].slice(0,3)}</span>`:"";
+  return foldCard("takvim",`<section class="card"><div class="sec" style="margin-bottom:10px"><h2>Harcama takvimi</h2><span class="sub">${days} günde harcama</span></div>
+    <div class="cal" role="group" aria-label="${MONTHS[mo-1]} ${y} harcama takvimi">${WDAYS.map(w=>`<span class="cw">${w}</span>`).join("")}${cells.join("")}</div>
+    <div class="cal-leg"><span>Az</span>${[1,2,3,4,5].map(i=>`<i class="cd l${i}"></i>`).join("")}<span>Çok</span><span class="cl-in"><i class="in"></i>gelir</span></div>
+    ${busy?`<div class="cal-note">En yoğun gün <b>${+busy[0].slice(8)} ${MONTHS[mo-1]} ${WDAYS_L[(new Date(busy[0]+"T12:00:00").getDay()+6)%7]}</b>${hide?"":` · <b class="num">${fmt(busy[1],null,{dec:0})}</b>`}. En çok harcadığın gün <b>${WDAYS_L[wmax]}</b>${days>1&&!hide?` · harcama yapılan günlerde ortalama <b class="num">${fmt(tot/days,null,{dec:0})}</b>`:""}.</div>`:""}
+  </section>`,sum)}
+function calDay(ds){const ls=state.tx.filter(t=>t.date===ds).sort((a,b)=>(a.type==="in")-(b.type==="in"));
+  const o=ls.filter(t=>t.type==="out").reduce((a,t)=>a+toBase(t.amount,t.cur),0),i=ls.filter(t=>t.type==="in").reduce((a,t)=>a+toBase(t.amount,t.cur),0);
+  const d=new Date(ds+"T12:00:00");
+  openSheet(`<h3>${d.getDate()} ${MONTHS[d.getMonth()]} ${WDAYS_L[(d.getDay()+6)%7]}</h3>
+    <div class="tiles"><div><span class="label">Harcama</span><b class="num neg-t">${fmt(o,null,{dec:o%1?2:0})}</b></div>${i?`<div><span class="label">Gelir</span><b class="num pos-t">${fmt(i,null,{dec:0})}</b></div>`:`<div><span class="label">İşlem</span><b class="num">${ls.length}</b></div>`}</div>
+    ${ls.length?`<div class="list" style="margin-top:12px">${ls.map(txRow).join("")}</div>`:`<div class="empty" style="margin-top:12px">${emptyIc(I.calendar||I.repeat)}<b>Bu gün kayıt yok</b></div>`}
+    <div class="actions eq"><button class="btn primary" id="calAdd">${ic(I.plus)}Bu güne harcama ekle</button></div>`,sh=>{
+      sh.querySelector("#calAdd").onclick=()=>{txSheet(null,{type:"out"});const f=document.querySelector("#sheet form");if(f&&f.elements.date)f.elements.date.value=ds}})}
 function rAkis(){
   const m=view.month;const [y,mo]=m.split("-").map(Number);
   let list=monthTx(m).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
@@ -1610,6 +1638,7 @@ function rAkis(){
       <div class="sub" style="margin-top:8px">Kartla yapılan harcamalar gider olarak o aya yazılır; kart ödemesi tekrar gider sayılmaz, yalnızca kart borcunu düşürür.</div>`
       :`<div class="empty">${emptyIc(I.card)}<b>Kart eklenmedi</b>Kart ekleyince harcamaları karta bağlayabilir, taksitleri aylara bölebilir ve kart borcunu izleyebilirsiniz.</div>`}
   </section>
+  ${calCard(m)}
   <section class="card">
     <div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Kategoriler ve bütçe</h2><span><button class="btn ghost sm" data-act="budget">${budTot?"Bütçeyi düzenle":"Bütçe belirle"}</button></span></div>
     ${catArr.length?`<div style="display:flex;flex-direction:column;gap:12px">${catArr.map(([c,v])=>{const lim=+bud[c]||0;const over=lim&&v>lim,near=lim&&v>lim*.9,pv=prevCats[c]||0,dp=pv?(v-pv)/pv*100:null;
@@ -3007,6 +3036,7 @@ document.addEventListener("click",e=>{
   if(a==="month"){const[y,m]=view.month.split("-").map(Number);const d=new Date(y,m-1+(+t.dataset.d),1);view.month=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");render();return}
   if(a==="txtype"){view.txType=t.dataset.k;render();return}
   if(a==="edit-tx")return txSheet(state.tx.find(x=>x.id===id));
+  if(a==="calday")return calDay(t.dataset.d);
   if(a==="rec-new")return recSheet();
   if(a==="tx-add")return txSheet();
   if(a==="rec-edit")return recSheet(state.recurring.find(x=>x.id===id));

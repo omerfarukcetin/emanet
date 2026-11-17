@@ -29,14 +29,29 @@
   ],
   "shortcuts": [
     {
+      "name": "Hızlı ekle (tek satır)",
+      "short_name": "Hızlı ekle",
+      "description": "market 450 garanti gibi tek satırla ekle",
+      "url": "./?go=quick",
+      "icons": [
+        {
+          "src": "icons/sc-quick.png",
+          "sizes": "192x192",
+          "type": "image/png",
+          "purpose": "any maskable"
+        }
+      ]
+    },
+    {
       "name": "Harcama ekle",
       "short_name": "Harcama",
       "url": "./?go=out",
       "icons": [
         {
-          "src": "icons/icon-192.png",
+          "src": "icons/sc-out.png",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/png",
+          "purpose": "any maskable"
         }
       ]
     },
@@ -46,9 +61,10 @@
       "url": "./?go=in",
       "icons": [
         {
-          "src": "icons/icon-192.png",
+          "src": "icons/sc-in.png",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/png",
+          "purpose": "any maskable"
         }
       ]
     },
@@ -58,21 +74,10 @@
       "url": "./?go=buy",
       "icons": [
         {
-          "src": "icons/icon-192.png",
+          "src": "icons/sc-buy.png",
           "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Bütçe",
-      "short_name": "Bütçe",
-      "url": "./?go=akis",
-      "icons": [
-        {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/png",
+          "purpose": "any maskable"
         }
       ]
     }

@@ -1263,3 +1263,27 @@ button.bn-row:focus-visible{outline:2px solid var(--accent)}
 /* 2.91 · borç ödemesini bütçeye yaz */
 .chk-row{display:flex;align-items:center;gap:10px;margin:4px 0 2px;font-size:var(--fs-row);cursor:pointer}
 .chk-row input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+
+/* 2.92 · harcama takvimi */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .cw{text-align:center;font-size:.68rem;font-weight:600;color:var(--muted);padding-bottom:2px}
+.cd{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;aspect-ratio:1/1.05;min-height:0;padding:2px;border:0;border-radius:10px;background:var(--surface-2);color:var(--fg);font:inherit;cursor:pointer;line-height:1.1}
+.cd.pad{background:none;cursor:default}
+.cd b{font-size:.8rem;font-weight:700}
+.cd small{font-size:.6rem;font-weight:600;opacity:.85;letter-spacing:-.01em}
+.cd.l1{background:color-mix(in srgb,var(--neg) 12%,var(--surface-2))}
+.cd.l2{background:color-mix(in srgb,var(--neg) 26%,var(--surface-2))}
+.cd.l3{background:color-mix(in srgb,var(--neg) 44%,var(--surface-2))}
+.cd.l4{background:color-mix(in srgb,var(--neg) 66%,var(--surface-2));color:#fff}
+.cd.l5{background:var(--neg);color:#fff}
+.cd.fut{opacity:.45}
+.cd.today{box-shadow:inset 0 0 0 2px var(--fg)}
+.cd .in{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--pos);box-shadow:0 0 0 1.5px var(--surface)}
+.cd:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.cal-leg{display:flex;align-items:center;gap:4px;margin-top:10px;font-size:var(--fs-sub);color:var(--muted)}
+.cal-leg .cd{width:14px;height:14px;aspect-ratio:auto;border-radius:4px;padding:0;cursor:default}
+.cal-leg .cl-in{display:inline-flex;align-items:center;gap:5px;margin-left:auto}
+.cal-leg .cl-in .in{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--pos)}
+.cal-note{margin-top:8px;font-size:var(--fs-sub);color:var(--muted);line-height:1.5}
+.cal-note b{color:var(--fg);font-weight:600}
+@media (min-width:900px){.cd small{font-size:.68rem}.cd b{font-size:.86rem}}
