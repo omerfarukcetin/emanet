@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-17T08:00:54.620Z",
+ "updatedAt": "2026-11-17T08:10:55.498Z",
  "fx": {
-  "EUR": 55.4837,
-  "USD": 50.426
+  "EUR": 55.4822,
+  "USD": 50.4227
  },
  "gold": {
-  "ata": 42343,
+  "ata": 42299,
   "aziz": null,
-  "ceyrek": 10351,
-  "cumhuriyet": 42343,
-  "gram": 6275.97,
-  "gumus": 77.09,
-  "hamit": 42343,
-  "resat": 42343,
-  "resatAlis": 41406.15,
-  "resatSatis": 41988.15,
-  "tam": 41241,
-  "yarim": 20697,
+  "ceyrek": 10341,
+  "cumhuriyet": 42299,
+  "gram": 6269.33,
+  "gumus": 77.04,
+  "hamit": 42299,
+  "resat": 42299,
+  "resatAlis": 41364.01,
+  "resatSatis": 41928.01,
+  "tam": 41199,
+  "yarim": 20675,
   "resatKaynak": "altin.in",
-  "ayar22": 5932.08,
-  "ayar18": 5080,
-  "ayar14": 4615.8
+  "ayar22": 5925.91,
+  "ayar18": 5075,
+  "ayar14": 4611.54
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 6.84
   },
   "hisse:SOKE": {
-   "p": 7.22,
+   "p": 7.17,
    "cur": "TRY",
-   "t": "2026-11-17T07:44:52.000Z",
+   "t": "2026-11-17T07:55:04.000Z",
    "pc": 7.28
   },
   "hisse:BALSU": {
-   "p": 6.85,
+   "p": 6.78,
    "cur": "TRY",
-   "t": "2026-11-17T07:45:13.000Z",
+   "t": "2026-11-17T07:55:22.000Z",
    "pc": 6.87
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 36.12
   },
   "hisse:OPT25": {
-   "p": 49.46,
+   "p": 49.22,
    "cur": "TRY",
-   "t": "2026-11-17T07:45:15.000Z",
+   "t": "2026-11-17T07:55:04.000Z",
    "pc": 49.45
   },
   "fon:KPA": {
@@ -90,27 +90,28 @@
    "pc": 1.465173
   },
   "hisse:FZLGY": {
-   "p": 7.95,
+   "p": 7.99,
    "cur": "TRY",
-   "t": "2026-11-17T07:45:16.000Z",
+   "t": "2026-11-17T07:55:26.000Z",
    "pc": 7.78
   },
   "hisse:BIMAS": {
-   "p": 399.25,
+   "p": 397.25,
    "cur": "TRY",
-   "t": "2026-11-17T07:45:18.000Z",
+   "t": "2026-11-17T07:55:26.000Z",
    "pc": 394.5
   },
   "hisse:FROTO": {
-   "p": 72.95,
+   "p": 72.8,
    "cur": "TRY",
-   "t": "2026-11-17T07:45:18.000Z",
+   "t": "2026-11-17T07:55:28.000Z",
    "pc": 73
   }
  },
  "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "KLU: fon fiyatı alınamadı (fetch failed)"
  ]
 }
