@@ -1387,8 +1387,9 @@ const ppfName=n=>/para piyasas/i.test(trLow(n));
 const fold=x=>trLow(x).replace(/[şŞ]/g,"s").replace(/[ıİ]/g,"i").replace(/[ğĞ]/g,"g").replace(/[üÜ]/g,"u").replace(/[öÖ]/g,"o").replace(/[çÇ]/g,"c").replace(/[âÂ]/g,"a");
 function symSearch(q,kf){q=fold(q.trim());if(!q||!syms)return[];const res=[];
   for(const k of ["hisse","abd","fon","kripto"]){if(kf&&kf!==k)continue;for(const[c,n]of syms[k]||[]){const lc=fold(c),ln=fold(n);let sc=-1;
-    if(lc===q)sc=0;else if(lc.startsWith(q))sc=1+lc.length/100;else if(ln.startsWith(q))sc=2;else if((" "+ln).includes(" "+q))sc=3;else if(q.length>=3&&ln.includes(q))sc=4;
-    if(sc>=0)res.push({sc:sc+(k==="kripto"&&sc<2?.05:0)+(k==="fon"?.1:0),k:k==="fon"&&ppfName(n)?"ppf":k,c,n})}}
+    if(lc===q)sc=0;else if(lc.startsWith(q))sc=1+lc.length/100;else if(ln.startsWith(q))sc=2;else if((" "+ln).includes(" "+q))sc=3;else if(q.length>=4&&ln.includes(q))sc=4;
+    // eşit puanda sıra: BIST, kripto, ABD, fon (ETH yazınca önce Ethereum gelsin, ABD'deki ETH fonu sonra)
+    if(sc>=0)res.push({sc:sc+{hisse:0,kripto:.01,abd:.02,fon:.03}[k],k:k==="fon"&&ppfName(n)?"ppf":k,c,n})}}
   return res.sort((a,b)=>a.sc-b.sc).slice(0,12)}
 function tkAdd(){let kf="";
   openSheet(`<h3>Takibe ekle</h3>
