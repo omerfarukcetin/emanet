@@ -1415,3 +1415,8 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .lk-pad span{width:72px}
 .lk-forgot{margin-top:18px;border:0;background:none;color:var(--muted);font:inherit;font-size:.85rem;text-decoration:underline;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.lk-dots.shake{animation:none}}
+
+/* 3.09 · satışta hızlı miktar */
+.qchips{display:flex;gap:6px;margin-top:6px}
+.qchips button{flex:1;padding:6px 0;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;font-size:var(--fs-act);font-weight:600;cursor:pointer}
+.qchips button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
