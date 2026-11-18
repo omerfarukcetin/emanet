@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.10";
+const APP_VERSION="3.11";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1025,7 +1025,7 @@ window.matchMedia("(min-width:1160px)").addEventListener("change",()=>{if(state)
 const emptyIc=svg=>`<span class="empty-ic" aria-hidden="true">${ic(svg,26)}</span>`;
 const emptyBtn=(act,label)=>`<button class="btn primary sm" data-act="${act}">${ic(I.plus,16)}${label}</button>`;
 function li(o){
-  return `<div class="row li${o.rowCls?" "+o.rowCls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
+  return `<div class="row li${o.rowCls?" "+o.rowCls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"${o.pf?` data-pf="${o.pf}"`:""}`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
 const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${(view.tab==="portfoy"||view.tab==="takip"?[["portfoy","Portföy"],["takip","Takip listesi"]]:[["akis","Bütçe"],["borc","Borç ve alacak"]]).map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
 function render(){
@@ -1138,7 +1138,7 @@ function rOzet(){
     ${bk?`<div class="bk-sum"><div><b>${esc(bk)}</b><small>${hsB.length} varlık · portföydeki payı %${fmtN(t.v?vB/t.v*100:0,1)}</small></div><div class="r"><b class="num">${money(vB)}</b><small class="num ${vB>=cB?"pos-t":"neg-t"}">${S().hide?"••":fmt(vB-cB,null,{dec:0})} (${fmtPct(cB?(vB-cB)/cB*100:0)})</small></div></div>`:""}`:"";
   P.assets=`${mp?`<section class="card">
     ${vHead(hsB,"ozet")}${bkBar}
-    ${kinds.length||mp.holdings.length?assetTable(hsB,bk?vB:t.v,{ctx:"ozet",pf:mp.id,closed:bk?[]:mp.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:mp}))})
+    ${kinds.length||mp.holdings.length?assetTable(hsB,bk?vB:t.v,{ctx:"ozet",pf:mp.id,closed:[]})
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
   </section>`
   :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}`;
@@ -1574,13 +1574,14 @@ function rPortfoy(){
   ${multi?pfListCard(vis,v):""}
   ${multi?vis.map(p=>{const ph=p.holdings.filter(h=>+h.qty>0).map(h=>({...h,_pf:p})).sort((a,b)=>hVal(b)-hVal(a)),pc=p.holdings.filter(h=>!(+h.qty>0)).map(h=>({...h,_pf:p})),pt=pfTotals(p);
     return `<section class="card pf-group"><div class="sec"><button class="btn ghost" data-act="pf" data-id="${p.id}" style="padding:0;color:var(--fg);display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:var(${pfColor(p)})"></span><h2 style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</h2>${mainPf()===p?`<span class="pill">Ana</span>`:""}</button><div class="end" style="text-align:right"><div class="num">${fmt(pt.v)}</div><span class="pill ${pt.pl>=0?"pos":"neg"}">${fmtPct(pt.plp)}</span></div></div>
-      ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:pc}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
+      ${ph.length||pc.length?assetTable(ph,pt.v,{group:false,closed:[]}):`<div class="sub" style="padding:8px 0">Bu portföyde varlık yok.</div>`}</section>`}).join("")
   :hs.length||closed.length?"":`<section class="card">
     ${`<div class="empty">${emptyIc(I.portfoy)}<b>${state.portfolios.length?"Bu portföyde varlık yok":"Önce bir portföy oluşturun"}</b>${state.portfolios.length?"Hisse, fon, altın, döviz veya nakit ekleyebilirsiniz.":""}</div><div style="text-align:center">${state.portfolios.length?`<button class="btn primary" data-act="add-h">Varlık ekle</button>`:`<button class="btn primary" data-act="new-pf">Portföy oluştur</button>`}</div>`}
   </section>`}
   ${cur&&hs.length?foldCard("hedef",targetCard(cur,hs),cur.target&&Object.keys(cur.target).length?(x=>`<span class="sub">sapma ${fmtN(x,1)} puan</span>`)(targetPlan(cur,hs,0).rows.reduce((a,r)=>a+Math.abs(r.cp-r.t),0)/2):""):""}
   ${parts.length?foldCard("dagilim",`<section class="card"><div class="sec" style="margin-bottom:12px"><h2>Dağılım</h2><div class="seg" role="group" aria-label="Dağılım türü">${[["kind","Kategori"],["item","Varlık"],...(hs.some(h=>h.broker)?[["broker","Kurum"]]:[])].map(([k,l])=>`<button data-act="dgmode" data-k="${k}" aria-pressed="${(view.dgMode||"kind")===k}">${l}</button>`).join("")}</div></div>${donut(view.dgMode==="item"?itemParts(hs):view.dgMode==="broker"&&hs.some(h=>h.broker)?brokerParts(hs):parts)}</section>`,`<span class="sub">${esc(parts[0].n.replace(/\s*\(.*\)/,""))} %${fmtN(parts[0].v/parts.reduce((a,q)=>a+q.v,0)*100,0)}</span>`):""}
   ${hs.length?histCard((cur?[cur]:vis).map(p=>p.id),"Değer geçmişi"):""}
+  ${closed.length?foldCard("kapanan",closedCard(closed,multi),`<span class="sub">${closed.length} varlık</span>`):""}
   ${hs.length?foldCard("bench",benchCard((cur?[cur]:vis).map(p=>p.id)),(b=>b?`<span class="num ${b.items[0].v>=0?"pos-t":"neg-t"}">${fmtPct(b.items[0].v)}</span>`:"")(benchCalc((cur?[cur]:vis).map(p=>p.id),view.hRange||90))):""}
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
     if(!all.length)return"";all.sort((a,b)=>(b.t.date||"").localeCompare(a.t.date||""));const N=view.trN||15;
@@ -1718,6 +1719,14 @@ function assetTable(hs,total,o){
   return `<div class="atbl compact">${cats.map(c=>{const open=kIsOpen(ctx,c.k),x=cellData(c.list,total);
     return `<div class="arow cat"${heat(x)} role="button" tabindex="0" data-act="kopen" data-k="${ctx}:${c.k}" aria-expanded="${open}"><span class="an">${kindBadge(c.k)}<span class="t">${esc((KINDS[c.k]||c.k).replace(/\s*\(.*\)/,""))}<small>%${fmtN(x.share,0)} · ${c.list.length} varlık</small></span><span class="chev ${open?"open":""}">${ic(I.right,14)}</span></span>${vcell(x,null,c.list.length)}</div>${open?c.list.map(h=>hrow(h,true).replace('class="arow sub"',view.kJust===ctx+":"+c.k?'class="arow sub enter"':'class="arow sub"')).join(""):""}`}).join("")}${(o.closed||[]).map(closedRow).join("")}</div>`;
 }
+/* kapanan pozisyonlar (tamamı satılmış): Portföy sayfasında ayrı kart; her satırda son satış tarihi, gerçekleşen K/Z ve enflasyondan arındırılmış sonuç */
+function closedCard(list,multi){const rows=list.map(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h,rr=realizedReal(ph),last=(ph.trades||[]).filter(t=>t.type==="sell").map(t=>t.date).sort().pop();
+    const P=rr.reduce((a,x)=>a+x.proc,0),C=rr.reduce((a,x)=>a+x.cost,0),inf=rr.every(x=>x.re!=null)&&rr.length?rr.reduce((a,x)=>a+x.cost*(1+x.nom/100)/(1+x.re/100),0):0;
+    return{h,ph,last:last||"",pl:toBase(+ph.realized||0,ph.cur),re:inf>0?(P/inf-1)*100:null}}).sort((a,b)=>b.last.localeCompare(a.last));
+  const tot=rows.reduce((a,r)=>a+r.pl,0);
+  return `<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Kapanan pozisyonlar</h2><span class="num ${tot>=0?"pos-t":"neg-t"}" style="font-weight:800">${S().hide?"••":(tot>=0?"+":"")+fmt(tot)}</span></div>
+    <div class="list">${rows.map(r=>li({act:"edit-h",id:r.h.id,pf:r.h._pf.id,mark:kindBadge(r.h.kind),title:esc(r.h.name),sub:[r.last?fmtDate(r.last)+" satıldı":"satıldı",multi?esc(r.h._pf.name):"",r.re!=null?"reel "+pctS(r.re):""].filter(Boolean).join(" · "),amount:(r.pl>=0?"+":"")+fmt(r.pl),cls:r.pl>=0?"pos-t":"neg-t"})).join("")}</div>
+    <p class="kr-sum">Tamamı satılan varlıklar burada durur. “Reel”, enflasyondan arındırılmış sonuçtur. Dokununca satışların ayrıntısı açılır.</p></section>`}
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
 function pfListCard(vis,total){
   const tots=vis.map(p=>({p,t:pfTotals(p)})).sort((a,b)=>b.t.v-a.t.v);
