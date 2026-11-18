@@ -52,6 +52,8 @@ async function rss(url) {
     // Google News başlığın sonuna " - Kaynak" ekler
     if (s && t.endsWith(" - " + s)) t = t.slice(0, -(s.length + 3));
     else if (!s) { const i = t.lastIndexOf(" - "); if (i > 20) { s = t.slice(i + 3); t = t.slice(0, i); } }
+    t = t.replace(/\s+\|\s+[^|]{3,45}$/, "");                       // "… | Türkiye Ekonomisi Haberleri" gibi bölüm adları
+    if (/^https?:\/\//.test(s)) { try { s = new URL(s).hostname.replace(/^www\./, ""); } catch { } }
     const d = Date.parse(tag(it, "pubDate"));
     return { t, s, u: tag(it, "link"), d: isFinite(d) ? new Date(d).toISOString() : null };
   }).filter(x => x.t && x.u && /^https?:\/\//.test(x.u));
@@ -61,7 +63,11 @@ const sources = q => [
   `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&setlang=tr-TR&cc=TR`
 ];
 const key = t => t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]+/g, " ").trim().slice(0, 60);
-const out = { updatedAt: new Date().toISOString(), t: {}, th: {} };
+// "kaç TL oldu" türü rutin fiyat başlıkları: bilgi taşımadıkları için öne çıkanlara alınmaz (r:1)
+const ROUTINE = /kaç tl|kaç lira|ne kadar|güncel|açılış|kapanış|canlı|son dakika .* fiyat|fiyatları \d|\b\d{1,2} (ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\b|\d{1,2}\.\d{1,2}\.\d{4}/i;
+const STOP = new Set("altın altını altında gümüş gümüşte bitcoin bitcoin'de borsa borsada dolar doların petrol brent fiyat fiyatı fiyatları fiyatlar ons gram bugün sonra yüzde için ile olan oldu daha kadar haber haberleri dakika yatırımcı yatırımcısı piyasa piyasalar piyasada türkiye ekonomisi".split(" "));
+const toks = t => new Set(t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9' ]+/g, " ").split(/\s+/).map(w => w.replace(/'.*$/, "")).filter(w => w.length >= 4 && !STOP.has(w)));
+const out = { updatedAt: new Date().toISOString(), t: {}, th: {} }, pools = {};
 for (const [k, [q, must]] of Object.entries(TOPICS)) {
   let items = null, err = "";
   for (const u of sources(q)) { try { const l = await rss(u); if (l.filter(x => must.test(x.t)).length >= 3) { items = l; break; } } catch (e) { err = e.message; } }
@@ -69,12 +75,21 @@ for (const [k, [q, must]] of Object.entries(TOPICS)) {
   const lim = Date.now() - 48 * 3600e3, seen = new Set();
   const rel = items.filter(x => must.test(x.t) && !/\bKAP\b|\*\*\*/.test(x.t)).filter(x => !x.d || Date.parse(x.d) >= lim).filter(x => { const kk = key(x.t); if (seen.has(kk)) return false; seen.add(kk); return true; })
     .sort((a, b) => (b.d || "").localeCompare(a.d || ""));
-  const list = rel.slice(0, 10);
+  pools[k] = rel.slice(0, 40);
+  const list = pools[k];
   // tema sayımı: son 24 saatin başlıkları (yoksa hepsi)
   const recent = rel.slice(0, 40).filter(x => x.d && Date.parse(x.d) >= Date.now() - 24 * 3600e3), pool = recent.length >= 3 ? recent : rel.slice(0, 40);
   const th = THEMES.map(([l, re]) => [l, pool.filter(x => re.test(x.t)).length]).filter(x => x[1] >= 2 && x[1] >= pool.length * 0.08).sort((a, b) => b[1] - a[1]).slice(0, 4);
   out.t[k] = list; out.th[k] = th;
   console.log(`${k}: ${list.length} başlık · ${th.map(x => x[0] + " " + x[1]).join(", ") || "tema yok"}`);
   await new Promise(r => setTimeout(r, 700));
+}
+// önem: aynı gelişmeyi kaç farklı başlık anlatıyor (tüm konular birlikte, son 24 saat). Her konuya en önemli 12 başlık yazılır.
+const all = [...new Map(Object.values(pools).flat().map(x => [key(x.t), x])).values()].filter(x => !x.d || Date.parse(x.d) >= Date.now() - 24 * 3600e3).map(x => ({ x, w: toks(x.t) }));
+const sim = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n >= 2 && n / (a.size + b.size - n) >= 0.25; };
+for (const [k, l] of Object.entries(pools)) {
+  for (const x of l) { const w = toks(x.t); x.n = all.filter(o => o.x.t !== x.t && sim(w, o.w)).length; if (ROUTINE.test(x.t)) x.r = 1; }
+  const age = x => x.d ? (Date.now() - Date.parse(x.d)) / 3600e3 : 24;
+  out.t[k] = l.slice().sort((a, b) => ((b.r ? 0 : 10) + b.n * 2 - age(b) / 4) - ((a.r ? 0 : 10) + a.n * 2 - age(a) / 4)).slice(0, 12);
 }
 await fs.writeFile(OUT, JSON.stringify(out) + "\n");

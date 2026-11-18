@@ -1450,3 +1450,16 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .nw-it .sub{font-size:var(--fs-sub)}
 .nw-it:hover .nw-t,.nw-it:focus-visible .nw-t{text-decoration:underline}
 .nw-foot{margin:10px 0 0;font-size:.75rem;line-height:1.4}
+/* 3.14 · piyasa gündemi: tek kart */
+.nw-sum{display:flex;flex-direction:column;margin-bottom:12px}
+.nw-row{display:grid;grid-template-columns:5.6em 4.6em 1fr;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:var(--fs-sub)}
+.nw-row.nw-hd{border-top:0;padding-top:0;color:var(--muted);font-size:.72rem;font-weight:600}
+.nw-row b{font-weight:700}
+.nw-row .num{text-align:right;font-weight:700}
+.nw-row .nw-why{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nw-row.hot .nw-why{color:var(--fg);font-weight:600}
+.nw-row.hot b::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--neg);margin-left:5px;vertical-align:middle}
+.nw-h{margin:4px 0 2px;font-size:var(--fs-sub);font-weight:700;color:var(--muted)}
+.nw-tags{display:flex;gap:4px;flex-wrap:wrap}
+.nw-tags i{font-style:normal;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
+.nw-it.hot .nw-tags i{background:color-mix(in srgb,var(--neg) 12%,var(--surface));color:var(--neg)}

@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.13";
+const APP_VERSION="3.14";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -673,17 +673,29 @@ const NEWS_T=[{k:"altin",n:"Altın",m:"xau"},{k:"gumus",n:"Gümüş",m:"xag"},{k
 const NEWS_SH={xau:2,xag:3,btc:4,xu100:2.5,usd:1.5,brent:3};
 function sharpMoves(){if(!bench)return[];return NEWS_T.map(x=>{const ch=mktChg(x.m,"1g");return ch&&ch.c!=null&&Math.abs(ch.c)>=NEWS_SH[x.m]?{...x,c:ch.c}:null}).filter(Boolean)}
 function ago(iso){const m=Math.round((Date.now()-Date.parse(iso))/6e4);if(!(m>=0))return"";return m<60?Math.max(1,m)+" dk önce":m<24*60?Math.round(m/60)+" sa önce":Math.round(m/1440)+" gün önce"}
+/* tek kart: üstte her piyasanın günlük değişimi + başlıklarda öne çıkan sebep; altta tüm konulardan en dikkat çekici başlıklar.
+   önem puanı: aynı gelişmeyi anlatan başlık sayısı (n), konunun bugün sert hareket etmesi, başlığın bir sebep anlatması, tazelik.
+   aynı gelişmenin farklı sitelerdeki başlıkları tek satırda toplanır. */
+const NW_WHY=/neden|nedeni|etkisi|etkiled|beklenti|\bfed\b|faiz|enflasyon|tutanak|savaş|gerilim|ateşkes|tarife|gümrük|opec|\barz\b|stok|kâr satış|kar satış|tasfiye|yasa[ğk]|düzenleme|rezerv|\betf\b|bilanço|tcmb|merkez bankası|veri/i;
+const nwToks=t=>new Set(fold(t).replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(w=>w.length>=4&&!/^(altin|gumus|bitcoin|borsa|dolar|petrol|brent|fiyat|fiyati|fiyatlari|bugun|yuzde|icin|daha|kadar|haber|haberleri|piyasa|piyasalar|turkiye|ekonomisi|istanbul)$/.test(w)));
+const nwSim=(a,b)=>{let n=0;for(const w of a)if(b.has(w))n++;return n>=2&&n/(a.size+b.size-n)>=.25};
+function newsTop(sm,max){if(!news||!news.t)return[];const by=new Map();
+  NEWS_T.forEach(T=>(news.t[T.k]||[]).forEach(x=>{const k=fold(x.t).replace(/[^a-z0-9]+/g,"");const e=by.get(k);if(e){if(!e.tags.includes(T.n))e.tags.push(T.n);if(sm.some(y=>y.k===T.k))e.hot=true}else by.set(k,{...x,tags:[T.n],hot:sm.some(y=>y.k===T.k)})}));
+  const age=x=>x.d?(Date.now()-Date.parse(x.d))/36e5:24;
+  const L=[...by.values()].filter(x=>!x.r&&age(x)<=30).map(x=>({...x,w:nwToks(x.t),sc:(+x.n||0)*2+(x.hot?6:0)+(NW_WHY.test(x.t)?3:0)-age(x)/4})).sort((a,b)=>b.sc-a.sc);
+  const out=[];for(const x of L){const twin=out.find(o=>nwSim(o.w,x.w));if(twin){twin.more=(twin.more||0)+1;x.tags.forEach(t=>{if(!twin.tags.includes(t))twin.tags.push(t)});continue}out.push(x);if(out.length>=max)break}
+  return out}
 function newsCard(){if(newsStale())setTimeout(loadNews,0);
-  const sm=sharpMoves(),k=view.nwT||(sm[0]&&sm[0].k)||"altin",T=NEWS_T.find(x=>x.k===k)||NEWS_T[0];
-  const list=news&&news.t&&news.t[T.k]||[],th=news&&news.th&&news.th[T.k]||[],all=view.nwAll===T.k,ch=bench?mktChg(T.m,"1g"):null,sh=sm.find(x=>x.k===T.k);
-  const chip=x=>{const c=bench?mktChg(x.m,"1g"):null,hot=sm.some(y=>y.k===x.k);return `<button class="chip${hot?" hot":""}" data-act="nwt" data-k="${x.k}" aria-pressed="${x.k===T.k}">${x.n}${c&&c.c!=null?` <span class="${c.c>=0?"pos-t":"neg-t"}">${(c.c>=0?"+":"−")+"%"+fmtN(Math.abs(c.c),1)}</span>`:""}</button>`};
-  return `<section class="card" id="newsCard"><div class="sec" style="margin-bottom:8px"><h2>Piyasa haberleri</h2>${news&&news.updatedAt?`<span class="sub">${ago(news.updatedAt)}</span>`:""}</div>
-    <div class="chips nw-chips" role="group" aria-label="Konu">${NEWS_T.map(chip).join("")}</div>
-    ${sh?`<div class="nw-alert ${sh.c<0?"neg":"pos"}"><b>Sert hareket</b><span>${esc(T.n)} bugün ${(sh.c>=0?"+":"−")+"%"+fmtN(Math.abs(sh.c),2)}</span></div>`:ch&&ch.c!=null?`<div class="sub nw-day">${esc(T.n)} bugün ${(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</div>`:""}
-    ${th.length?`<div class="nw-th"><span class="sub">Başlıklarda öne çıkan konular</span><div>${th.map(([l,n])=>`<span class="nw-tag">${esc(l)} <small>${n}</small></span>`).join("")}</div></div>`:""}
-    ${!news?`<div class="sub" style="padding:10px 0">Haberler yükleniyor…</div>`:list.length?`<div class="nw-list">${list.slice(0,all?10:5).map(x=>`<a class="nw-it" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer"><span class="nw-t">${esc(x.t)}</span><span class="sub">${esc(x.s||"")}${x.d?(x.s?" · ":"")+ago(x.d):""}</span></a>`).join("")}</div>
-      ${list.length>5?`<button class="btn ghost sm" data-act="nwall" data-k="${T.k}" style="margin-top:6px">${all?"Daha az göster":"Tüm başlıklar ("+list.length+")"}</button>`:""}`:`<div class="sub" style="padding:10px 0">Son iki günde bu konuda başlık bulunamadı.</div>`}
-    <p class="sub nw-foot">Başlıklar haber sitelerinden otomatik derlenir; konu etiketleri başlıklardaki kelimelerin sayımıdır. Yorum ya da al-sat tavsiyesi değildir.</p></section>`}
+  const sm=sharpMoves(),all=!!view.nwAll,top=newsTop(sm,all?15:6);
+  const row=T=>{const ch=bench?mktChg(T.m,"1g"):null,c=ch&&ch.c,hot=sm.some(y=>y.k===T.k),th=news&&news.th&&news.th[T.k]||[];
+    return `<div class="nw-row${hot?" hot":""}"><b>${esc(T.n)}</b><span class="num ${c==null?"":c>=0?"pos-t":"neg-t"}">${c==null?"—":(c>=0?"+":"−")+"%"+fmtN(Math.abs(c),2)}</span><span class="nw-why">${th.length?th.slice(0,2).map(x=>esc(x[0])).join(" · "):"—"}</span></div>`};
+  return `<section class="card" id="newsCard"><div class="sec" style="margin-bottom:8px"><h2>Piyasa gündemi</h2>${news&&news.updatedAt?`<span class="sub">${ago(news.updatedAt)}</span>`:""}</div>
+    ${sm.length?`<div class="nw-alert ${sm[0].c<0?"neg":"pos"}"><b>Sert hareket</b><span>${sm.map(x=>esc(x.n)+" "+(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),1)).join(" · ")}</span></div>`:""}
+    <div class="nw-sum"><div class="nw-row nw-hd"><span>Piyasa</span><span>Bugün</span><span>Başlıklarda öne çıkan</span></div>${NEWS_T.map(row).join("")}</div>
+    <h3 class="nw-h">Dikkat çeken gelişmeler</h3>
+    ${!news?`<div class="sub" style="padding:10px 0">Haberler yükleniyor…</div>`:top.length?`<div class="nw-list">${top.map(x=>`<a class="nw-it${x.hot?" hot":""}" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer"><span class="nw-tags">${x.tags.map(t=>`<i>${esc(t)}</i>`).join("")}</span><span class="nw-t">${esc(x.t.replace(/\s+\|\s+[^|]{3,45}$/,""))}</span><span class="sub">${esc(/^https?:/.test(x.s||"")?(x.s.split("/")[2]||"").replace(/^www\./,""):x.s||"")}${x.d?(x.s?" · ":"")+ago(x.d):""}${x.more?" · +"+x.more+" benzer başlık":""}</span></a>`).join("")}</div>
+      <button class="btn ghost sm" data-act="nwall" style="margin-top:6px">${all?"Daha az göster":"Daha fazla gelişme"}</button>`:`<div class="sub" style="padding:10px 0">Son bir günde öne çıkan bir gelişme yok.</div>`}
+    <p class="sub nw-foot">Başlıklar haber sitelerinden otomatik derlenir. "Öne çıkan" konular başlıklardaki kelimelerin sayımıdır; sıralama aynı gelişmeyi kaç sitenin yazdığına ve tazeliğine göredir. Yorum ya da al-sat tavsiyesi değildir.</p></section>`}
 async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
@@ -3406,9 +3418,8 @@ document.addEventListener("click",e=>{
   if(a==="edit-tx")return txSheet(state.tx.find(x=>x.id===id));
   if(a==="calday")return calDay(t.dataset.d);
   if(a==="tkp"){view.tkP=t.dataset.k;render();return}
-  if(a==="nwt"){view.nwT=t.dataset.k;render();return}
-  if(a==="nwall"){view.nwAll=view.nwAll===t.dataset.k?null:t.dataset.k;render();return}
-  if(a==="news"){view.nwT=id;view.tab="takip";render();setTimeout(()=>{const c=document.getElementById("newsCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})},60);return}
+  if(a==="nwall"){view.nwAll=!view.nwAll;render();return}
+  if(a==="news"){view.tab="takip";render();setTimeout(()=>{const c=document.getElementById("newsCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})},60);return}
   if(a==="tkadd")return tkAdd();
   if(a==="tkview"){S().tkView=S().tkView==="rahat"?"sik":"rahat";commit();return}
   if(a==="tkedit")return tkEdit();
