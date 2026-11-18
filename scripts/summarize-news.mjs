@@ -61,9 +61,9 @@ const ask = {
     { model, max_tokens: 1500, temperature: 0.2, system, messages: [{ role: "user", content: user }] });
     return parse((d.content || []).filter(c => c.type === "text").map(c => c.text).join("")); }
 };
-const tries = [...(GEM ? [["gemini", "gemini-2.5-flash"], ["gemini", "gemini-2.0-flash"], ["gemini", "gemini-flash-latest"]] : []), ...(ANT ? [["claude", "claude-haiku-5-5"], ["claude", "claude-haiku-4-5"]] : [])];
+const tries = [...(GEM ? [["gemini", "gemini-3.8-flash"], ["gemini", "gemini-flash-latest"], ["gemini", "gemini-3.8-flash"], ["gemini", "gemini-flash-lite-latest"]] : []), ...(ANT ? [["claude", "claude-haiku-5-5"], ["claude", "claude-haiku-4-5"]] : [])];
 let res = null;
-for (const [p, m] of tries) { try { res = await ask[p](m); res._m = m; break; } catch (e) { console.log("Özet (" + m + "):", e.message); } }
+for (const [p, m] of tries) { try { res = await ask[p](m); res._m = m; break; } catch (e) { console.log("Özet (" + m + "):", e.message.slice(0, 160)); if (/\b(429|503)\b/.test(e.message)) await new Promise(r => setTimeout(r, 8000)); } }
 if (!res) process.exit(0);
 
 const KEYS = new Set(T.map(x => x[0]));
