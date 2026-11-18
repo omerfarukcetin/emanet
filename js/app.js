@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.09";
+const APP_VERSION="3.10";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2553,11 +2553,11 @@ function techKey(h){
 }
 /* ---------- karne ekleri: kıyaslama, gerçek kazanç, alım alım durum ---------- */
 const pctS=v=>(v>=0?"+":"−")+"%"+fmtN(Math.abs(v),Math.abs(v)<10?1:0);
-/* elde kalan alımlar (satışlar ilk alınandan düşer); birim maliyet TL ve kendi para biriminde */
+/* elde kalan alımlar (satış, ortalama maliyet yöntemine uygun olarak her alımdan oranında düşer); birim maliyet TL ve kendi para biriminde */
 function lotsFifo(h){const tr=(h.trades||[]).filter(t=>(t.type==="buy"||t.type==="sell")&&t.date).slice().sort((a,c)=>a.date.localeCompare(c.date));const lots=[];
   for(const t of tr){if(t.type==="buy"){const q=+t.qty||0;if(!(q>0))continue;const fx=h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||(fxhist[t.date]&&+fxhist[t.date][h.cur])||fxOf(h,h.cur));
       lots.push({date:t.date,q,px:+t.price||0,unitTL:((+t.price||0)*q+(+t.fee||0))*fx/q})}
-    else{let r=+t.qty||0;while(r>1e-9&&lots.length){const l=lots[0],x=Math.min(l.q,r);l.q-=x;r-=x;if(l.q<=1e-9)lots.shift()}}}
+    else{const tot=lots.reduce((a2,l)=>a2+l.q,0),f=tot>0?Math.min(1,(+t.qty||0)/tot):0;lots.forEach(l=>l.q-=l.q*f);for(let i=lots.length-1;i>=0;i--)if(lots[i].q<=1e-9)lots.splice(i,1)}}
   const rem=lots.filter(l=>l.q>1e-9),q=rem.reduce((a,l)=>a+l.q,0);return q>0&&Math.abs(q-(+h.qty||0))<=Math.max(1e-6,(+h.qty||0)*.02)?rem:null}
 const usdAt=d=>bAt("usd",d)||(fxhist[d]&&+fxhist[d].USD)||0;
 /* 1) kıyaslama: varlığın 1 ay / 3 ay / 1 yıl getirisi, uygun ölçütlerle yan yana */
@@ -2592,6 +2592,27 @@ function karnePos(h){const lots=lotsFifo(h);if(!lots||!lots.length)return"";cons
       return `<div><span>${fmtDate(l.date)}</span><span class="num">${fmtN(l.q,l.q%1?2:0)} adet · ${fmtN(l.px,l.px<10?4:2)} ${cur}</span><b class="num ${d==null?"":d>=0?"pos-t":"neg-t"}">${d==null?"—":pctS(d)}</b></div>`}).join("")}</div>
       ${lots.length>8?`<p class="kr-sum">Son 8 alım gösteriliyor (toplam ${lots.length}).</p>`:""}`}
   return out}
+/* gerçekleşen satışlar: her satış ortalama maliyetle (eldeki alımlardan oranında); nominal TL, enflasyondan arındırılmış ve dolar bazında */
+function realizedReal(h){const tr=(h.trades||[]).filter(t=>(t.type==="buy"||t.type==="sell")&&t.date).slice().sort((a,c)=>a.date.localeCompare(c.date)||(a.type==="buy"?-1:1));
+  const fxOn=(t)=>h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||(fxhist[t.date]&&+fxhist[t.date][h.cur])||(t.type==="buy"&&h.fxAt&&+h.fxAt[h.cur])||rate(h.cur));
+  const lots=[],out=[];
+  for(const t of tr){const q=+t.qty||0;if(!(q>0))continue;
+    if(t.type==="buy"){lots.push({date:t.date,q,unitTL:((+t.price||0)*q+(+t.fee||0))*fxOn(t)/q});continue}
+    let r=q,cost=0,inf=0,usd=0,infOK=true,usdOK=true,first=null;const sNow=tufeLevel(t.date),uS=usdAt(t.date)||(h.cur==="USD"?fxOn(t):0);
+    // ortalama maliyet yöntemi (uygulamadaki K/Z ile aynı): satış, eldeki her alımdan payı oranında düşer
+    const tot=lots.reduce((a2,l)=>a2+l.q,0);if(!(tot>0))continue;const f=Math.min(1,q/tot);
+    for(const l of lots){const x=l.q*f,c=l.unitTL*x;if(!(x>0))continue;cost+=c;first=first&&first<l.date?first:l.date;
+      const a=tufeLevel(l.date);if(a&&sNow)inf+=c*sNow.v/a.v;else infOK=false;const u=usdAt(l.date);if(u>0)usd+=c/u;else usdOK=false;l.q-=x}
+    for(let i=lots.length-1;i>=0;i--)if(lots[i].q<=1e-9)lots.splice(i,1);
+    if(!(cost>0))continue;const fx=fxOn(t),proc=((+t.price||0)*q-(+t.fee||0)-(+t.tax||0))*fx;
+    out.push({t,date:t.date,q,first,days:first?daysBetween(first,t.date):0,proc,cost,plTL:proc-cost,nom:(proc/cost-1)*100,re:infOK&&sNow?(proc/inf-1)*100:null,du:usdOK&&uS>0?(proc/uS/usd-1)*100:null,cur:h.cur})}
+  return out}
+function realizedBlock(h){const r=realizedReal(h);if(!r.length)return"";const tl=v=>fmt(v,"TRY",{dec:0}),cl=v=>v==null?"":v>=0?"pos-t":"neg-t",pc=v=>v==null?"—":pctS(v);
+  const T=r.reduce((a,x)=>({p:a.p+x.proc,c:a.c+x.cost}),{p:0,c:0});
+  return `<details class="stx rz" ${view.rzOpen!==false?"open":""}><summary><span class="label sh-sec" style="margin:0">Satışların gerçek kârı</span><b class="num ${cl(T.p-T.c)}">${S().hide?"••":(T.p>=T.c?"+":"−")+tl(Math.abs(T.p-T.c))}</b></summary>
+    <div class="rz-list">${r.slice().reverse().map(x=>`<div class="rz-i"><div class="rz-h"><b>${fmtDate(x.date)}</b><span class="sub">${fmtN(x.q,x.q%1?4:0)} adet · ilk alımdan ${x.days} gün sonra</span><b class="num ${cl(x.plTL)}">${S().hide?"••":(x.plTL>=0?"+":"−")+tl(Math.abs(x.plTL))}</b></div>
+      <div class="kr-rets kr-real"><div><small>TL olarak</small><b class="num ${cl(x.nom)}">${pc(x.nom)}</b></div><div><small>Enflasyondan arındırılmış</small><b class="num ${cl(x.re)}">${pc(x.re)}</b></div><div><small>Dolar bazında</small><b class="num ${cl(x.du)}">${pc(x.du)}</b></div></div></div>`).join("")}</div>
+    <p class="kr-sum">Satış tutarı komisyon ve stopaj düşülerek, maliyet ortalama maliyetle (işlem geçmişindeki K/Z ile aynı yöntem) hesaplandı. Her alım kendi tarihindeki enflasyon ve dolarla karşılaştırıldı.${r.some(x=>x.re==null)?" Enflasyon verisi henüz yayımlanmamış aylar için “—” görünür.":""}</p></details>`}
 function karne(h,pf){
   const k=techKey(h),t=k&&tech&&tech.s&&tech.s[k];
   if(!t){const ex=karnePos(h);return ex?`<details class="karne" ${view.karneOpen!==false?"open":""}><summary><span class="label sh-sec" style="margin:0">Varlık karnesi</span></summary>${ex}<p class="kr-note">Geçmişin özetidir; gelecekteki getiriyi göstermez ve yatırım tavsiyesi değildir.</p></details>`:""}
@@ -2662,6 +2683,7 @@ function holdingDetail(pfId,h){
     </div>
     ${rest?`<div class="kv">${rest}</div>`:""}
     ${sellTaxBlock(h,pf)}
+    ${realizedBlock(h)}
     ${karne(h,pf)}
     <div class="sec sh-sec2"><div class="label sh-sec" style="margin:0">İşlem geçmişi</div>${h.kind!=="bes"&&!CASH_KINDS.includes(h.kind)?`<button class="btn ghost sm" id="hDiv">${ic(I.plus,14)}Temettü ekle</button>`:""}</div>
     ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:4px 0 8px">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}
@@ -2741,7 +2763,7 @@ function tradeSheet(pfId,h,type,tr){
       let cashMsg="";
       if(!buy){if(t.cash)cashLinkSync(t,h);else if(sellNew&&v.cashTo&&v.cashTo!=="none"){const dest=state.portfolios.find(p=>"pf:"+p.id===v.cashTo);if(dest){const n=cashLinkSet(t,h,dest);if(n)cashMsg=" · "+fmt(n,h.cur)+" nakde eklendi"}}
         if(sellNew)S().sellCash=v.cashTo==="none"?"none":"pf"}
-      commit(tr?"İşlem güncellendi"+(t.cash?" · nakit de güncellendi":""):buy?"Alım eklendi"+(h.fxAt&&h.fxAt.pending?" · alış günü kuru birazdan gelecek":""):(h.qty>0?"Satış kaydedildi":"Pozisyon kapandı")+(+t.tax?" · stopaj "+fmt(t.tax,h.cur):"")+" · net K/Z "+fmt(t.pl||0,h.cur)+cashMsg);
+      commit(tr?"İşlem güncellendi"+(t.cash?" · nakit de güncellendi":""):buy?"Alım eklendi"+(h.fxAt&&h.fxAt.pending?" · alış günü kuru birazdan gelecek":""):(h.qty>0?"Satış kaydedildi":"Pozisyon kapandı")+(+t.tax?" · stopaj "+fmt(t.tax,h.cur):"")+" · net K/Z "+fmt(t.pl||0,h.cur)+(()=>{if(tr)return"";const x=realizedReal(h).find(z=>z.t.id===t.id);return x&&x.re!=null?" · enflasyondan arındırınca "+pctS(x.re):""})()+cashMsg);
     },
     onDelete:tr?()=>{const snap=JSON.stringify(h);const tt=(h.trades||[]).find(x=>x.id===tr.id);if(tt&&tt.cash)cashLinkDrop(tt);h.trades=(h.trades||[]).filter(x=>x.id!==tr.id);
       if(!h.trades.length){state.portfolios.forEach(p=>p.holdings=p.holdings.filter(x=>x!==h));commit("Son işlem silindi, varlık kaldırıldı");return}

@@ -1420,3 +1420,11 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .qchips{display:flex;gap:6px;margin-top:6px}
 .qchips button{flex:1;padding:6px 0;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;font-size:var(--fs-act);font-weight:600;cursor:pointer}
 .qchips button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* 3.10 · satışların gerçek kârı */
+.rz-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.rz-i{padding-top:10px;border-top:1px solid var(--line)}
+.rz-i:first-child{border-top:0;padding-top:0}
+.rz-h{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;margin-bottom:6px}
+.rz-h .sub{font-size:var(--fs-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rz-h b.num{font-weight:800}
