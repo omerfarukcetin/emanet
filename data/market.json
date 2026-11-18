@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-18T13:01:17.630Z",
+ "updatedAt": "2026-11-18T13:10:40.326Z",
  "fx": {
   "EUR": 55.3478,
   "USD": 50.4466
@@ -13,8 +13,8 @@
   "gumus": 73.32,
   "hamit": 41287,
   "resat": 41287,
-  "resatAlis": 40373.89,
-  "resatSatis": 40937.01,
+  "resatAlis": 40566.33,
+  "resatSatis": 41133.21,
   "tam": 40213,
   "yarim": 20181,
   "resatKaynak": "altin.in",
@@ -30,15 +30,15 @@
    "pc": 6.16
   },
   "hisse:SOKE": {
-   "p": 7,
+   "p": 7.01,
    "cur": "TRY",
-   "t": "2026-11-18T12:44:04.000Z",
+   "t": "2026-11-18T12:54:54.000Z",
    "pc": 7.19
   },
   "hisse:BALSU": {
-   "p": 6.35,
+   "p": 6.33,
    "cur": "TRY",
-   "t": "2026-11-18T12:45:03.000Z",
+   "t": "2026-11-18T12:55:16.000Z",
    "pc": 6.79
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 35.86
   },
   "hisse:OPT25": {
-   "p": 48.46,
+   "p": 48.4,
    "cur": "TRY",
-   "t": "2026-11-18T12:43:32.000Z",
+   "t": "2026-11-18T12:53:38.000Z",
    "pc": 48.8
   },
   "fon:KPA": {
@@ -90,21 +90,21 @@
    "pc": 1.465951
   },
   "hisse:FZLGY": {
-   "p": 7.96,
+   "p": 7.91,
    "cur": "TRY",
-   "t": "2026-11-18T12:45:15.000Z",
+   "t": "2026-11-18T12:55:25.000Z",
    "pc": 8.44
   },
   "hisse:BIMAS": {
-   "p": 391.75,
+   "p": 392,
    "cur": "TRY",
-   "t": "2026-11-18T12:45:16.000Z",
+   "t": "2026-11-18T12:55:23.000Z",
    "pc": 393.25
   },
   "hisse:FROTO": {
-   "p": 73.55,
+   "p": 73.4,
    "cur": "TRY",
-   "t": "2026-11-18T12:45:16.000Z",
+   "t": "2026-11-18T12:55:24.000Z",
    "pc": 71.7
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 9.35
   },
   "kripto:ETH": {
-   "p": 1793.4,
+   "p": 1795.38,
    "cur": "USD",
-   "t": "2026-11-18T13:00:12.000Z",
+   "t": "2026-11-18T13:10:25.000Z",
    "pc": 1822.57
   },
   "kripto:XRP": {
-   "p": 0.9825,
+   "p": 0.9849,
    "cur": "USD",
-   "t": "2026-11-18T13:00:14.000Z",
+   "t": "2026-11-18T13:10:25.000Z",
    "pc": 0.9828
   },
   "abd:SCHG": {
@@ -144,12 +144,10 @@
    "pc": 51.74
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ENR: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
