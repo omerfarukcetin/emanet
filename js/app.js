@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.16";
+const APP_VERSION="3.17";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1447,7 +1447,8 @@ function attnItems(){
   const ms=monthSum(m),tg=saveTarget(ms),[y,mo]=m.split("-").map(Number),left=dim(y,mo)-(+t.slice(8));
   if(tg>0&&ms.s<tg&&left<=7)out.push({n:left,ic:I.target,c:"--c5",t:"Tasarruf hedefine "+fmt(tg-ms.s,null,{dec:0})+" kaldı",s:"Ayın bitmesine "+(left===0?"son gün":left+" gün var"),act:"save-add",id:""});
   if(newsStale())setTimeout(loadNews,0);if(!bench)setTimeout(loadBench,0);
-  sharpMoves().forEach(x=>out.push({n:-.5,ic:x.c<0?I.trendDn:I.trend,c:x.c<0?"--neg":"--pos",t:esc(x.n)+" bugün "+(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2),s:"Sert hareket · haberlere bak",act:"news",id:x.k}));
+  {const sm=sharpMoves();if(sm.length){const dn=sm.filter(x=>x.c<0).length>=sm.length/2,su=news&&news.sum&&news.sum.i&&Date.now()-Date.parse(news.sum.at)<8*36e5?news.sum.i[0]:null;
+    out.push({n:-.5,ic:dn?I.trendDn:I.trend,c:dn?"--neg":"--pos",t:sm.map(x=>`<span style="white-space:nowrap">${esc(x.n)} ${(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),1)}</span>`).join(" · "),s:"Sert hareket · "+(su?esc(su.b):"haberlere bak"),act:"news",id:""})}}
   return out.sort((a,b)=>a.n-b.n);
 }
 function attnCard(){
