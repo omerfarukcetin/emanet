@@ -1,13 +1,14 @@
 // Emanet — piyasa gündemi özeti (data/news.json içindeki "sum" alanı).
-// Nitelikli kaynakların başlıklarından, GitHub Models (Actions'ın kendi GITHUB_TOKEN'ı, ücretsiz kota) ile kısa bir Türkçe özet yazdırır.
+// Nitelikli kaynakların başlıklarından yapay zekâ ile kısa bir Türkçe özet yazdırır. Anahtar depo sırlarından gelir:
+//   GEMINI_API_KEY (Google AI Studio, ücretsiz kota) ya da ANTHROPIC_API_KEY (Claude). İkisi de yoksa adım sessizce atlanır.
 // Model yalnızca verilen başlıkları kullanır: haber metni çekilmez, tahmin ve tavsiye istenmez. Her madde hangi başlıklara dayandığını söyler.
 // En fazla saatte bir çalışır; başlıklar değişmediyse yeniden yazmaz. Herhangi bir hata olursa eski özet kalır, fiyat güncellemesi etkilenmez.
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
 
 const FILE = "data/news.json";
-const token = process.env.GITHUB_TOKEN;
-if (!token) { console.log("GITHUB_TOKEN yok; özet atlandı."); process.exit(0); }
+const GEM = (process.env.GEMINI_API_KEY || "").trim(), ANT = (process.env.ANTHROPIC_API_KEY || "").trim();
+if (!GEM && !ANT) { console.log("GEMINI_API_KEY / ANTHROPIC_API_KEY sırrı yok; özet atlandı."); process.exit(0); }
 const news = await fs.readFile(FILE, "utf8").then(JSON.parse).catch(() => null);
 if (!news || !news.t) { console.log("news.json yok; özet atlandı."); process.exit(0); }
 const bench = await fs.readFile("data/bench.json", "utf8").then(JSON.parse).catch(() => ({}));
@@ -46,19 +47,23 @@ Kurallar:
 - En önemli 3-5 gelişmeyi seç; aynı gelişmeyi tekrar etme. "kaynak", dayandığın başlıkların köşeli parantez içindeki numaralarıdır (en az 1).`;
 const user = `Bugün: ${new Date().toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric" })}\n\n${blocks.join("\n\n")}`;
 
-async function ask(model) {
-  const r = await fetch("https://models.github.ai/inference/chat/completions", {
-    method: "POST", signal: AbortSignal.timeout(60000),
-    headers: { authorization: "Bearer " + token, accept: "application/json", "content-type": "application/json" },
-    body: JSON.stringify({ model, temperature: 0.2, max_tokens: 1200, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: user }] })
-  });
-  if (!r.ok) throw new Error(model + " HTTP " + r.status + " " + (await r.text()).slice(0, 200));
-  const raw = await r.text();let d;try { d = JSON.parse(raw); } catch { throw new Error(model + " beklenmeyen yanıt: HTTP " + r.status + " " + (r.headers.get("content-type") || "") + " " + raw.slice(0, 120)); }
-  const txt = d.choices?.[0]?.message?.content || "";
-  return JSON.parse(txt.replace(/^```(json)?|```$/g, "").trim());
+const parse = txt => { const m = String(txt || "").match(/\{[\s\S]*\}/); if (!m) throw new Error("JSON yok: " + String(txt).slice(0, 120)); return JSON.parse(m[0]); };
+async function post(url, headers, body) {
+  const r = await fetch(url, { method: "POST", signal: AbortSignal.timeout(90000), headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
+  const raw = await r.text(); if (!r.ok) throw new Error("HTTP " + r.status + " " + raw.slice(0, 200));
+  return JSON.parse(raw);
 }
+const ask = {
+  gemini: async model => { const d = await post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { "x-goog-api-key": GEM },
+    { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 2000, responseMimeType: "application/json" } });
+    return parse((d.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("")); },
+  claude: async model => { const d = await post("https://api.anthropic.com/v1/messages", { "x-api-key": ANT, "anthropic-version": "2023-06-01" },
+    { model, max_tokens: 1500, temperature: 0.2, system, messages: [{ role: "user", content: user }] });
+    return parse((d.content || []).filter(c => c.type === "text").map(c => c.text).join("")); }
+};
+const tries = [...(GEM ? [["gemini", "gemini-2.5-flash"], ["gemini", "gemini-2.0-flash"], ["gemini", "gemini-flash-latest"]] : []), ...(ANT ? [["claude", "claude-haiku-5-5"], ["claude", "claude-haiku-4-5"]] : [])];
 let res = null;
-for (const m of ["openai/gpt-4.1-mini", "openai/gpt-4o-mini"]) { try { res = await ask(m); res._m = m; break; } catch (e) { console.log("Özet:", e.message); } }
+for (const [p, m] of tries) { try { res = await ask[p](m); res._m = m; break; } catch (e) { console.log("Özet (" + m + "):", e.message); } }
 if (!res) process.exit(0);
 
 const KEYS = new Set(T.map(x => x[0]));

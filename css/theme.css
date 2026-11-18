@@ -1463,3 +1463,14 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .nw-tags{display:flex;gap:4px;flex-wrap:wrap}
 .nw-tags i{font-style:normal;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
 .nw-it.hot .nw-tags i{background:color-mix(in srgb,var(--neg) 12%,var(--surface));color:var(--neg)}
+/* 3.16 · piyasa gündemi özeti */
+.nw-gen{margin:2px 0 8px;line-height:1.5;font-weight:600}
+.nw-sm{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid var(--line)}
+.nw-sm:first-child{border-top:0}
+.nw-sm p{margin:0;line-height:1.5}
+.nw-sm.hot .nw-tags i{background:color-mix(in srgb,var(--neg) 12%,var(--surface));color:var(--neg)}
+.nw-src{font-size:var(--fs-sub);color:var(--muted)}
+.nw-src a{color:var(--accent);text-decoration:none}
+.nw-src a:hover{text-decoration:underline}
+.nw-ai{margin:8px 0 0;font-size:.75rem;line-height:1.4}
+.nw-sm p{font-size:.93em}.nw-gen{font-size:.98em}

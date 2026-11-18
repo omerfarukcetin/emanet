@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.15";
+const APP_VERSION="3.16";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -686,15 +686,20 @@ function newsTop(sm,max){if(!news||!news.t)return[];const by=new Map();
   const out=[];for(const x of L){const twin=out.find(o=>nwSim(o.w,x.w));if(twin){twin.more=(twin.more||0)+1;x.tags.forEach(t=>{if(!twin.tags.includes(t))twin.tags.push(t)});continue}out.push(x);if(out.length>=max)break}
   return out}
 function newsCard(){if(newsStale())setTimeout(loadNews,0);
-  const sm=sharpMoves(),all=!!view.nwAll,top=newsTop(sm,all?10:5);
+  const sm=sharpMoves(),all=!!view.nwAll,top=newsTop(sm,all?10:5),S_=news&&news.sum,sumOk=!!(S_&&S_.i&&S_.i.length&&Date.now()-Date.parse(S_.at)<8*36e5);
   const row=T=>{const ch=bench?mktChg(T.m,"1g"):null,c=ch&&ch.c,hot=sm.some(y=>y.k===T.k),th=news&&news.th&&news.th[T.k]||[];
     return `<div class="nw-row${hot?" hot":""}"><b>${esc(T.n)}</b><span class="num ${c==null?"":c>=0?"pos-t":"neg-t"}">${c==null?"—":(c>=0?"+":"−")+"%"+fmtN(Math.abs(c),2)}</span><span class="nw-why">${th.length?th.slice(0,2).map(x=>esc(x[0])).join(" · "):"—"}</span></div>`};
   return `<section class="card" id="newsCard"><div class="sec" style="margin-bottom:8px"><h2>Piyasa gündemi</h2>${news&&news.updatedAt?`<span class="sub">${ago(news.updatedAt)}</span>`:""}</div>
     ${sm.length?`<div class="nw-alert ${sm[0].c<0?"neg":"pos"}"><b>Sert hareket</b><span>${sm.map(x=>esc(x.n)+" "+(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),1)).join(" · ")}</span></div>`:""}
     <div class="nw-sum"><div class="nw-row nw-hd"><span>Piyasa</span><span>Bugün</span><span>Başlıklarda öne çıkan</span></div>${NEWS_T.map(row).join("")}</div>
-    <h3 class="nw-h">Dikkat çeken gelişmeler</h3>
+    ${sumOk?`<h3 class="nw-h">Bugünün özeti</h3>${S_.g?`<p class="nw-gen">${esc(S_.g)}</p>`:""}
+      <div class="nw-list">${S_.i.map(x=>{const tg=x.k.map(k=>(NEWS_T.find(t=>t.k===k)||{}).n).filter(Boolean),hot=x.k.some(k=>sm.some(y=>y.k===k));
+        return `<div class="nw-sm${hot?" hot":""}"><span class="nw-tags">${tg.map(t=>`<i>${esc(t)}</i>`).join("")}</span><b class="nw-t">${esc(x.b)}</b><p>${esc(x.o)}</p><span class="nw-src">Kaynak: ${x.src.map(c=>`<a href="${esc(c.u)}" target="_blank" rel="noopener noreferrer" title="${esc(c.t)}">${esc(/^https?:/.test(c.s||"")?(c.s.split("/")[2]||"").replace(/^www\./,""):c.s||"haber")}</a>`).join(", ")}</span></div>`}).join("")}</div>
+      <p class="sub nw-ai">Yapay zekâ ile yalnızca güvenilir kaynakların başlıklarından özetlendi · ${ago(S_.at)}. Hata içerebilir; önemli kararlar için haberin kendisine bak.</p>
+      <button class="btn ghost sm" data-act="nwhead" style="margin-top:4px">${view.nwHead?"Başlıkları gizle":"Başlıkları göster"}</button>`:""}
+    ${sumOk&&!view.nwHead?"":`<h3 class="nw-h">${sumOk?"Başlıklar":"Dikkat çeken gelişmeler"}</h3>
     ${!news?`<div class="sub" style="padding:10px 0">Haberler yükleniyor…</div>`:top.length?`<div class="nw-list">${top.map(x=>`<a class="nw-it${x.hot?" hot":""}" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer"><span class="nw-tags">${x.tags.map(t=>`<i>${esc(t)}</i>`).join("")}</span><span class="nw-t">${esc(x.t.replace(/\s+\|\s+[^|]{3,45}$/,""))}</span><span class="sub">${esc(/^https?:/.test(x.s||"")?(x.s.split("/")[2]||"").replace(/^www\./,""):x.s||"")}${x.d?(x.s?" · ":"")+ago(x.d):""}${x.more?" · +"+x.more+" benzer başlık":""}</span></a>`).join("")}</div>
-      ${all||top.length>=5?`<button class="btn ghost sm" data-act="nwall" style="margin-top:6px">${all?"Daha az göster":"Daha fazla gelişme"}</button>`:""}`:`<div class="sub" style="padding:10px 0">Bugün güvenilir kaynaklarda sebep anlatan ya da birçok kaynağın yazdığı bir gelişme yok.</div>`}
+      ${all||top.length>=5?`<button class="btn ghost sm" data-act="nwall" style="margin-top:6px">${all?"Daha az göster":"Daha fazla gelişme"}</button>`:""}`:`<div class="sub" style="padding:10px 0">Bugün güvenilir kaynaklarda sebep anlatan ya da birçok kaynağın yazdığı bir gelişme yok.</div>`}`}
     <p class="sub nw-foot">Yalnızca ekonomi yayınları ve haber ajanslarından (Bloomberg HT, AA, Ekonomim, Dünya, Foreks vb.), bir sebep anlatan ya da birçok kaynağın yazdığı başlıklar gösterilir; "son dakika", "kaç TL" ve tık tuzağı başlıklar elenir. Öne çıkan konular başlıklardaki kelimelerin sayımıdır. Yorum ya da al-sat tavsiyesi değildir.</p></section>`}
 async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
@@ -3419,6 +3424,7 @@ document.addEventListener("click",e=>{
   if(a==="calday")return calDay(t.dataset.d);
   if(a==="tkp"){view.tkP=t.dataset.k;render();return}
   if(a==="nwall"){view.nwAll=!view.nwAll;render();return}
+  if(a==="nwhead"){view.nwHead=!view.nwHead;render();return}
   if(a==="news"){view.tab="takip";render();setTimeout(()=>{const c=document.getElementById("newsCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})},60);return}
   if(a==="tkadd")return tkAdd();
   if(a==="tkview"){S().tkView=S().tkView==="rahat"?"sik":"rahat";commit();return}
