@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.12";
+const APP_VERSION="3.13";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -664,6 +664,26 @@ async function loadTech(){for(const u of marketUrls().map(x=>x.replace("market.j
 async function loadClose(){for(const u of marketUrls().map(x=>x.replace("market.json","close.json"))){try{const d=await getJSON(u);if(d&&d.d){if(d.prev&&d.prev.p&&+d.prev.p["gold:gram"]>0)for(const[k,f]of Object.entries(AYAR))if(!(+d.prev.p["gold:"+k]>0))d.prev.p["gold:"+k]=d.prev.p["gold:gram"]*f;const ch=JSON.stringify(d.prev)!==JSON.stringify(closeD&&closeD.prev)||!closeD||closeD.d!==d.d;closeD=d;if(ch&&ready)render();return}}catch(e){}}}
 let benchBusy=false;
 async function loadBench(){if(benchBusy)return;benchBusy=true;try{for(const u of marketUrls().map(x=>x.replace("market.json","bench.json"))){try{const d=await getJSON(u);if(d&&d.xu100){d._at=Date.now();bench=d;if(ready&&(view.tab==="portfoy"||view.tab==="takip"))render();return}}catch(e){}}}finally{benchBusy=false}}
+/* piyasa haberleri (data/news.json, yarım saatte bir): {t:{altin:[{t,s,u,d}]...}, th:{altin:[[tema,adet]]...}} */
+let news=null,newsBusy=false;
+async function loadNews(){if(newsBusy)return;newsBusy=true;try{for(const u of marketUrls().map(x=>x.replace("market.json","news.json"))){try{const d=await getJSON(u);if(d&&d.t){d._at=Date.now();const ch=!news||news.updatedAt!==d.updatedAt;news=d;if(ch&&ready&&(view.tab==="takip"||view.tab==="ozet"))render();return}}catch(e){}}}finally{newsBusy=false}}
+const newsStale=()=>!news||Date.now()-(news._at||0)>10*6e4;
+const NEWS_T=[{k:"altin",n:"Altın",m:"xau"},{k:"gumus",n:"Gümüş",m:"xag"},{k:"btc",n:"Bitcoin",m:"btc"},{k:"bist",n:"BIST 100",m:"xu100"},{k:"dolar",n:"Dolar",m:"usd"},{k:"petrol",n:"Petrol",m:"brent"}];
+/* günlük değişim bu eşiği aşarsa "sert hareket" sayılır (%) */
+const NEWS_SH={xau:2,xag:3,btc:4,xu100:2.5,usd:1.5,brent:3};
+function sharpMoves(){if(!bench)return[];return NEWS_T.map(x=>{const ch=mktChg(x.m,"1g");return ch&&ch.c!=null&&Math.abs(ch.c)>=NEWS_SH[x.m]?{...x,c:ch.c}:null}).filter(Boolean)}
+function ago(iso){const m=Math.round((Date.now()-Date.parse(iso))/6e4);if(!(m>=0))return"";return m<60?Math.max(1,m)+" dk önce":m<24*60?Math.round(m/60)+" sa önce":Math.round(m/1440)+" gün önce"}
+function newsCard(){if(newsStale())setTimeout(loadNews,0);
+  const sm=sharpMoves(),k=view.nwT||(sm[0]&&sm[0].k)||"altin",T=NEWS_T.find(x=>x.k===k)||NEWS_T[0];
+  const list=news&&news.t&&news.t[T.k]||[],th=news&&news.th&&news.th[T.k]||[],all=view.nwAll===T.k,ch=bench?mktChg(T.m,"1g"):null,sh=sm.find(x=>x.k===T.k);
+  const chip=x=>{const c=bench?mktChg(x.m,"1g"):null,hot=sm.some(y=>y.k===x.k);return `<button class="chip${hot?" hot":""}" data-act="nwt" data-k="${x.k}" aria-pressed="${x.k===T.k}">${x.n}${c&&c.c!=null?` <span class="${c.c>=0?"pos-t":"neg-t"}">${(c.c>=0?"+":"−")+"%"+fmtN(Math.abs(c.c),1)}</span>`:""}</button>`};
+  return `<section class="card" id="newsCard"><div class="sec" style="margin-bottom:8px"><h2>Piyasa haberleri</h2>${news&&news.updatedAt?`<span class="sub">${ago(news.updatedAt)}</span>`:""}</div>
+    <div class="chips nw-chips" role="group" aria-label="Konu">${NEWS_T.map(chip).join("")}</div>
+    ${sh?`<div class="nw-alert ${sh.c<0?"neg":"pos"}"><b>Sert hareket</b><span>${esc(T.n)} bugün ${(sh.c>=0?"+":"−")+"%"+fmtN(Math.abs(sh.c),2)}</span></div>`:ch&&ch.c!=null?`<div class="sub nw-day">${esc(T.n)} bugün ${(ch.c>=0?"+":"−")+"%"+fmtN(Math.abs(ch.c),2)}</div>`:""}
+    ${th.length?`<div class="nw-th"><span class="sub">Başlıklarda öne çıkan konular</span><div>${th.map(([l,n])=>`<span class="nw-tag">${esc(l)} <small>${n}</small></span>`).join("")}</div></div>`:""}
+    ${!news?`<div class="sub" style="padding:10px 0">Haberler yükleniyor…</div>`:list.length?`<div class="nw-list">${list.slice(0,all?10:5).map(x=>`<a class="nw-it" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer"><span class="nw-t">${esc(x.t)}</span><span class="sub">${esc(x.s||"")}${x.d?(x.s?" · ":"")+ago(x.d):""}</span></a>`).join("")}</div>
+      ${list.length>5?`<button class="btn ghost sm" data-act="nwall" data-k="${T.k}" style="margin-top:6px">${all?"Daha az göster":"Tüm başlıklar ("+list.length+")"}</button>`:""}`:`<div class="sub" style="padding:10px 0">Son iki günde bu konuda başlık bulunamadı.</div>`}
+    <p class="sub nw-foot">Başlıklar haber sitelerinden otomatik derlenir; konu etiketleri başlıklardaki kelimelerin sayımıdır. Yorum ya da al-sat tavsiyesi değildir.</p></section>`}
 async function loadTufe(){try{const d=await getJSON("data/tufe.json");if(d&&d.m){tufe=d;if(ready)render()}}catch(e){}}
 async function loadUfe(){try{const d=await getJSON("data/ufe.json");if(d&&d.idx){ufe=d;if(ready)render()}}catch(e){}}
 async function refreshNow(btn){btn.disabled=true;btn.textContent="Denetleniyor…";await loadMarket(true);btn.disabled=false;btn.textContent="Şimdi denetle"}
@@ -965,6 +985,7 @@ const I={
   collapse:sv('<path d="M7 4l5 5 5-5M7 20l5-5 5 5"/>'),
   spark:sv('<path d="M12 4l1.9 5.100L19 11l-5.1 1.900L12 18l-1.9-5.100L5 11l5.1-1.900z"/>'),
   trend:sv('<path d="M4 16.500l5-5 3.5 3.500L20 7.5"/><path d="M14.5 7.500H20V13"/>'),
+  trendDn:sv('<g transform="matrix(1 0 0 -1 0 24)"><path d="M4 16.500l5-5 3.5 3.500L20 7.5"/><path d="M14.5 7.500H20V13"/></g>'),
   key:sv('<circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.500M16 7l2.5 2.500M13.5 9.500l2 2"/>'),
   dots:sv('<path d="M6 12h.01M12 12h.01M18 12h.01"/>'),
   candle:sv('<path d="M7 4v3M7 15v4M17 5v4M17 15v5"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="9" width="4" height="6" rx="1"/>'),
@@ -1408,6 +1429,8 @@ function attnItems(){
   if(mp){try{const z=zakat(mp.id);if(z.hawl&&z.reached&&z.left>0){const n=dd(z.hawl.next);if(n>=0&&n<=14)out.push({n,ic:I.zekat,c:"--pos",t:"Zekât günü · "+when(n),s:"Hesaplanan · "+fmt(z.left),act:"goto",id:"zekat"})}}catch(e){}}
   const ms=monthSum(m),tg=saveTarget(ms),[y,mo]=m.split("-").map(Number),left=dim(y,mo)-(+t.slice(8));
   if(tg>0&&ms.s<tg&&left<=7)out.push({n:left,ic:I.target,c:"--c5",t:"Tasarruf hedefine "+fmt(tg-ms.s,null,{dec:0})+" kaldı",s:"Ayın bitmesine "+(left===0?"son gün":left+" gün var"),act:"save-add",id:""});
+  if(newsStale())setTimeout(loadNews,0);if(!bench)setTimeout(loadBench,0);
+  sharpMoves().forEach(x=>out.push({n:-.5,ic:x.c<0?I.trendDn:I.trend,c:x.c<0?"--neg":"--pos",t:esc(x.n)+" bugün "+(x.c>=0?"+":"−")+"%"+fmtN(Math.abs(x.c),2),s:"Sert hareket · haberlere bak",act:"news",id:x.k}));
   return out.sort((a,b)=>a.n-b.n);
 }
 function attnCard(){
@@ -1495,6 +1518,7 @@ function rTakip(){if(!bench||Date.now()-(bench._at||0)>5*6e4)setTimeout(loadBenc
   return `<section class="card"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Piyasa</h2><div class="seg" role="group" aria-label="Değişim dönemi">${TK_P.map(([k,l])=>`<button data-act="tkp" data-k="${k}" aria-pressed="${P===k}">${l}</button>`).join("")}</div></div>
     <div class="${lc}">${mk||`<div class="empty">Piyasa satırı seçilmedi.</div>`}</div>
     <div class="card-foot"><span class="sub">${isLive?"Canlı · ":""}${upd?String(upd.getHours()).padStart(2,"0")+":"+String(upd.getMinutes()).padStart(2,"0")+(isLive?":"+String(upd.getSeconds()).padStart(2,"0"):"")+" · BIST 15 dk gecikmeli":"Yükleniyor…"}</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview" aria-label="Görünümü değiştir">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Satırları seç</button></span></div></section>
+  ${newsCard()}
   <section class="card"><div class="sec" style="margin-bottom:6px"><h2>Takip ettiklerim</h2><button class="btn ghost sm" data-act="tkadd">${ic(I.plus,14)}Ekle</button></div>
     ${fol.length?`<div class="${lc}">${fl}</div><div class="card-foot"><span class="sub">Portföye girmez, yalnızca fiyatı izlenir.</span><span class="tk-tools"><button class="btn ghost sm" data-act="tkview">${dn?"Rahat görünüm":"Sıkı görünüm"}</button><button class="btn ghost sm" data-act="tkedit">Düzenle</button></span></div>`
       :`<div class="empty">${emptyIc(I.eye||I.trend)}<b>Henüz kod eklemedin</b>Almayı düşündüğün hisse, fon ya da kriptoyu ekle; fiyatını ve değişimini burada izle.</div>`}</section>`}
@@ -3382,6 +3406,9 @@ document.addEventListener("click",e=>{
   if(a==="edit-tx")return txSheet(state.tx.find(x=>x.id===id));
   if(a==="calday")return calDay(t.dataset.d);
   if(a==="tkp"){view.tkP=t.dataset.k;render();return}
+  if(a==="nwt"){view.nwT=t.dataset.k;render();return}
+  if(a==="nwall"){view.nwAll=view.nwAll===t.dataset.k?null:t.dataset.k;render();return}
+  if(a==="news"){view.nwT=id;view.tab="takip";render();setTimeout(()=>{const c=document.getElementById("newsCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})},60);return}
   if(a==="tkadd")return tkAdd();
   if(a==="tkview"){S().tkView=S().tkView==="rahat"?"sik":"rahat";commit();return}
   if(a==="tkedit")return tkEdit();

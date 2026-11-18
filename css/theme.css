@@ -1428,3 +1428,25 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .rz-h{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;margin-bottom:6px}
 .rz-h .sub{font-size:var(--fs-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rz-h b.num{font-weight:800}
+
+/* 3.13 · piyasa haberleri */
+.nw-chips{margin-bottom:10px}
+.nw-chips .chip span{font-size:.78em;font-weight:700;margin-left:2px}
+.nw-chips .chip.hot{border-color:color-mix(in srgb,var(--neg) 55%,var(--line))}
+.nw-chips .chip[aria-pressed=true] span{color:inherit}
+.nw-alert{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:8px 12px;border-radius:12px;margin-bottom:10px;font-size:var(--fs-sub)}
+.nw-alert.neg{background:color-mix(in srgb,var(--neg) 12%,var(--surface));color:var(--neg)}
+.nw-alert.pos{background:color-mix(in srgb,var(--pos) 12%,var(--surface));color:var(--pos)}
+.nw-alert span{color:var(--fg)}
+.nw-day{margin-bottom:8px}
+.nw-th{margin-bottom:10px}
+.nw-th>div{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.nw-tag{padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));font-size:var(--fs-sub);font-weight:600}
+.nw-tag small{color:var(--muted);font-weight:600}
+.nw-list{display:flex;flex-direction:column}
+.nw-it{display:flex;flex-direction:column;gap:2px;padding:9px 0;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+.nw-it:first-child{border-top:0}
+.nw-it .nw-t{font-weight:600;line-height:1.35}
+.nw-it .sub{font-size:var(--fs-sub)}
+.nw-it:hover .nw-t,.nw-it:focus-visible .nw-t{text-decoration:underline}
+.nw-foot{margin:10px 0 0;font-size:.75rem;line-height:1.4}
