@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-18T17:20:27.838Z",
+ "updatedAt": "2026-11-18T17:32:37.314Z",
  "fx": {
   "EUR": 55.4044,
   "USD": 50.4466
@@ -24,9 +24,9 @@
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 6.37,
+   "p": 6.455,
    "cur": "USD",
-   "t": "2026-11-18T17:20:00.000Z",
+   "t": "2026-11-18T17:31:42.000Z",
    "pc": 6.23
   },
   "hisse:SOKE": {
@@ -66,15 +66,15 @@
    "pc": 0.544868
   },
   "abd:SPMO": {
-   "p": 126.64,
+   "p": 127.42,
    "cur": "USD",
-   "t": "2026-11-18T17:20:09.000Z",
+   "t": "2026-11-18T17:32:22.000Z",
    "pc": 127.29
   },
   "abd:SCHD": {
-   "p": 34.91,
+   "p": 34.95,
    "cur": "USD",
-   "t": "2026-11-18T17:20:12.000Z",
+   "t": "2026-11-18T17:32:21.000Z",
    "pc": 35.31
   },
   "hisse:OPT25": {
@@ -108,44 +108,46 @@
    "pc": 71.7
   },
   "abd:OWL": {
-   "p": 9.363,
+   "p": 9.385,
    "cur": "USD",
-   "t": "2026-11-18T17:20:13.000Z",
+   "t": "2026-11-18T17:32:03.000Z",
    "pc": 9.28
   },
   "kripto:ETH": {
-   "p": 1759.2,
+   "p": 1776.6,
    "cur": "USD",
-   "t": "2026-11-18T17:20:11.000Z",
+   "t": "2026-11-18T17:32:23.000Z",
    "pc": 1822.57
   },
   "kripto:XRP": {
-   "p": 0.9776,
+   "p": 0.9825,
    "cur": "USD",
-   "t": "2026-11-18T17:20:15.000Z",
+   "t": "2026-11-18T17:32:19.000Z",
    "pc": 0.9828
   },
   "abd:SCHG": {
-   "p": 32.92,
+   "p": 33.09,
    "cur": "USD",
-   "t": "2026-11-18T17:20:18.000Z",
+   "t": "2026-11-18T17:32:22.000Z",
    "pc": 32.86
   },
   "abd:VOO": {
-   "p": 672.01,
+   "p": 674.52,
    "cur": "USD",
-   "t": "2026-11-18T17:20:16.000Z",
+   "t": "2026-11-18T17:32:28.000Z",
    "pc": 673.19
   },
   "abd:GPIQ": {
-   "p": 51.52,
+   "p": 51.82,
    "cur": "USD",
-   "t": "2026-11-18T17:20:17.000Z",
+   "t": "2026-11-18T17:32:12.000Z",
    "pc": 51.44
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: The operation was aborted due to timeout)",
+  "Yedek döviz kaynağı da yanıt vermedi (api.frankfurter.dev 522)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
