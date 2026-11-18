@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-18T23:31:03.335Z",
+ "updatedAt": "2026-11-18T23:40:42.479Z",
  "fx": {
   "EUR": 55.5617,
   "USD": 50.4797
@@ -13,8 +13,8 @@
   "gumus": 73.87,
   "hamit": 41271,
   "resat": 41271,
-  "resatAlis": 40310.52,
-  "resatSatis": 40887.49,
+  "resatAlis": 40325.07,
+  "resatSatis": 40902.15,
   "tam": 40197,
   "yarim": 20173,
   "resatKaynak": "altin.in",
@@ -114,15 +114,15 @@
    "pc": 9.28
   },
   "kripto:ETH": {
-   "p": 1770.16,
+   "p": 1773.59,
    "cur": "USD",
-   "t": "2026-11-18T23:30:11.000Z",
+   "t": "2026-11-18T23:40:25.000Z",
    "pc": 1822.57
   },
   "kripto:XRP": {
-   "p": 0.9653,
+   "p": 0.9686,
    "cur": "USD",
-   "t": "2026-11-18T23:30:14.000Z",
+   "t": "2026-11-18T23:40:24.000Z",
    "pc": 0.9828
   },
   "abd:SCHG": {
@@ -144,12 +144,10 @@
    "pc": 51.44
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
