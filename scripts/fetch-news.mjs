@@ -72,7 +72,7 @@ const key = t => t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]+/g, " 
 const ROUTINE = /kaç tl|kaç lira|ne kadar|güncel|açılış|kapanış|canlı|son dakika .* fiyat|fiyatları \d|\b\d{1,2} (ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\b|\d{1,2}\.\d{1,2}\.\d{4}/i;
 const STOP = new Set("altın altını altında gümüş gümüşte bitcoin bitcoin'de borsa borsada dolar doların petrol brent fiyat fiyatı fiyatları fiyatlar ons gram bugün sonra yüzde için ile olan oldu daha kadar haber haberleri dakika yatırımcı yatırımcısı piyasa piyasalar piyasada türkiye ekonomisi".split(" "));
 const toks = t => new Set(t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9' ]+/g, " ").split(/\s+/).map(w => w.replace(/'.*$/, "")).filter(w => w.length >= 4 && !STOP.has(w)));
-const out = { updatedAt: new Date().toISOString(), t: {}, th: {} }, pools = {};
+const out = { updatedAt: new Date().toISOString(), t: {}, th: {}, sum: prev.sum }, pools = {};   // özet (sum) ayrı adımda yazılır, burada korunur
 for (const [k, [q, must]] of Object.entries(TOPICS)) {
   let items = null, err = "";
   let qual = [];

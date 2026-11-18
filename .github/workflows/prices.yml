@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  models: read      # piyasa gündemi özeti için GitHub Models (ücretsiz kota)
 
 concurrency:
   group: fiyatlar
@@ -36,6 +37,11 @@ jobs:
       - name: Piyasa haberlerini yenile (yarım saatte bir)
         continue-on-error: true
         run: node scripts/fetch-news.mjs
+      - name: Piyasa gündemini özetle (saatte bir)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/summarize-news.mjs
       - name: Değişiklik varsa kaydet
         run: |
           cp data/market.json data/bench.json data/close.json _fiyat/data/; cp data/tech.json data/symbols.json data/news.json _fiyat/data/ 2>/dev/null || true
