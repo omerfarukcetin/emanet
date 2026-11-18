@@ -62,6 +62,11 @@ const sources = q => [
   `https://news.google.com/rss/search?q=${encodeURIComponent(q + " when:2d")}&hl=tr&gl=TR&ceid=TR:tr`,
   `https://www.bing.com/news/search?q=${encodeURIComponent(q)}&format=rss&setlang=tr-TR&cc=TR`
 ];
+// nitelikli kaynaklar: ekonomi/finans yayınları ve büyük haber ajansları. Öne çıkanlara yalnızca bunlar alınır (q:1).
+const QUAL_SITES = ["bloomberght.com", "aa.com.tr", "ekonomim.com", "dunya.com", "haberturk.com", "ntv.com.tr", "cnnturk.com", "foreks.com", "tr.investing.com", "paraanaliz.com", "ekoturk.com", "bbc.com", "dw.com", "tr.euronews.com", "paratic.com", "borsagundem.com", "matriksdata.com", "fortuneturkey.com", "forbes.com.tr", "ekonomist.com.tr", "fxstreet.com", "tr.cointelegraph.com", "beincrypto.com", "coindesk.com", "tr.tradingview.com", "reuters.com"];
+const QUAL = /bloomberg|anadolu ajans|^aa$|ekonomim|dünya|habertürk|^ntv|cnn türk|foreks|investing|para ?analiz|ekotürk|bbc|^dw|euronews|paratic|borsa ?gündem|matriks|fortune|forbes|ekonomist|fxstreet|cointelegraph|beincrypto|coindesk|tradingview|reuters/i;
+// tık tuzağı ve "son dakika" kalıpları (cb:1): öne çıkanlara alınmaz
+const BAIT = /son dakika|flaş|dikkat|bomba|\bşok\b|darbe|okumadan|tek tek|işte (detay|o |yeni|güncel)|merak edil|kritik uyarı|herkes|neler oluyor|ne olacak\?|!|\.\.\./i;
 const key = t => t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]+/g, " ").trim().slice(0, 60);
 // "kaç TL oldu" türü rutin fiyat başlıkları: bilgi taşımadıkları için öne çıkanlara alınmaz (r:1)
 const ROUTINE = /kaç tl|kaç lira|ne kadar|güncel|açılış|kapanış|canlı|son dakika .* fiyat|fiyatları \d|\b\d{1,2} (ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\b|\d{1,2}\.\d{1,2}\.\d{4}/i;
@@ -70,18 +75,25 @@ const toks = t => new Set(t.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-
 const out = { updatedAt: new Date().toISOString(), t: {}, th: {} }, pools = {};
 for (const [k, [q, must]] of Object.entries(TOPICS)) {
   let items = null, err = "";
+  let qual = [];
+  try { qual = await rss(`https://news.google.com/rss/search?q=${encodeURIComponent("(" + q + ") (" + QUAL_SITES.map(d => "site:" + d).join(" OR ") + ") when:2d")}&hl=tr&gl=TR&ceid=TR:tr`); } catch (e) { console.log(`${k}: nitelikli kaynak sorgusu alınamadı (${e.message})`); }
   for (const u of sources(q)) { try { const l = await rss(u); if (l.filter(x => must.test(x.t)).length >= 3) { items = l; break; } } catch (e) { err = e.message; } }
+  if (items || qual.length) items = [...qual, ...(items || [])];
   if (!items) { out.t[k] = prev.t?.[k] || []; out.th[k] = prev.th?.[k] || []; console.log(`${k}: alınamadı (${err}); önceki liste korundu`); continue; }
   const lim = Date.now() - 48 * 3600e3, seen = new Set();
   const rel = items.filter(x => must.test(x.t) && !/\bKAP\b|\*\*\*/.test(x.t)).filter(x => !x.d || Date.parse(x.d) >= lim).filter(x => { const kk = key(x.t); if (seen.has(kk)) return false; seen.add(kk); return true; })
     .sort((a, b) => (b.d || "").localeCompare(a.d || ""));
-  pools[k] = rel.slice(0, 40);
+  rel.forEach(x => { if (QUAL.test(x.s || "")) x.q = 1; if (BAIT.test(x.t)) x.cb = 1; });
+  // nitelikli başlıklar önde kalsın diye 40'lık havuz önce onlardan dolar
+  pools[k] = [...rel.filter(x => x.q), ...rel.filter(x => !x.q)].slice(0, 40);
   const list = pools[k];
   // tema sayımı: son 24 saatin başlıkları (yoksa hepsi)
-  const recent = rel.slice(0, 40).filter(x => x.d && Date.parse(x.d) >= Date.now() - 24 * 3600e3), pool = recent.length >= 3 ? recent : rel.slice(0, 40);
+  // tema sayımı: önce nitelikli ve tık tuzağı olmayan başlıklar (en az 4 tane varsa), yoksa hepsi
+  const good = pools[k].filter(x => x.q && !x.cb), base = good.length >= 4 ? good : pools[k];
+  const recent = base.filter(x => x.d && Date.parse(x.d) >= Date.now() - 24 * 3600e3), pool = recent.length >= 3 ? recent : base;
   const th = THEMES.map(([l, re]) => [l, pool.filter(x => re.test(x.t)).length]).filter(x => x[1] >= 2 && x[1] >= pool.length * 0.08).sort((a, b) => b[1] - a[1]).slice(0, 4);
   out.t[k] = list; out.th[k] = th;
-  console.log(`${k}: ${list.length} başlık · ${th.map(x => x[0] + " " + x[1]).join(", ") || "tema yok"}`);
+  console.log(`${k}: ${list.length} başlık (${list.filter(x => x.q && !x.cb).length} nitelikli) · ${th.map(x => x[0] + " " + x[1]).join(", ") || "tema yok"}`);
   await new Promise(r => setTimeout(r, 700));
 }
 // önem: aynı gelişmeyi kaç farklı başlık anlatıyor (tüm konular birlikte, son 24 saat). Her konuya en önemli 12 başlık yazılır.
@@ -90,6 +102,7 @@ const sim = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return 
 for (const [k, l] of Object.entries(pools)) {
   for (const x of l) { const w = toks(x.t); x.n = all.filter(o => o.x.t !== x.t && sim(w, o.w)).length; if (ROUTINE.test(x.t)) x.r = 1; }
   const age = x => x.d ? (Date.now() - Date.parse(x.d)) / 3600e3 : 24;
-  out.t[k] = l.slice().sort((a, b) => ((b.r ? 0 : 10) + b.n * 2 - age(b) / 4) - ((a.r ? 0 : 10) + a.n * 2 - age(a) / 4)).slice(0, 12);
+  const sc = x => (x.r || x.cb ? 0 : 10) + (x.q ? 10 : 0) + x.n * 2 - age(x) / 4;
+  out.t[k] = l.slice().sort((a, b) => sc(b) - sc(a)).slice(0, 15);
 }
 await fs.writeFile(OUT, JSON.stringify(out) + "\n");
