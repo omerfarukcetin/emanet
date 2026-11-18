@@ -71,7 +71,7 @@ const items = (Array.isArray(res.maddeler) ? res.maddeler : []).map(x => ({
   k: (Array.isArray(x.konu) ? x.konu : [x.konu]).filter(k => KEYS.has(k)),
   b: String(x.baslik || "").trim().slice(0, 90),
   o: String(x.ozet || "").trim().slice(0, 600),
-  src: [...new Set((Array.isArray(x.kaynak) ? x.kaynak : []).map(Number).filter(i => src[i]))].slice(0, 4).map(i => src[i])
+  src: [...new Set((Array.isArray(x.kaynak) ? x.kaynak : []).map(Number).filter(i => src[i]))].map(i => src[i]).filter((c, j, A) => A.findIndex(z => z.s === c.s) === j).slice(0, 4)
 })).filter(x => x.o && x.src.length).slice(0, 5);
 if (!items.length) { console.log("Özet boş döndü; eski özet korundu."); process.exit(0); }
 news.sum = { at: new Date().toISOString(), h: hash, m: res._m, g: String(res.genel || "").trim().slice(0, 400), i: items };
