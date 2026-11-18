@@ -49,11 +49,12 @@ const user = `Bugün: ${new Date().toLocaleDateString("tr-TR", { timeZone: "Euro
 async function ask(model) {
   const r = await fetch("https://models.github.ai/inference/chat/completions", {
     method: "POST", signal: AbortSignal.timeout(60000),
-    headers: { authorization: "Bearer " + token, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28", "content-type": "application/json" },
+    headers: { authorization: "Bearer " + token, accept: "application/json", "content-type": "application/json" },
     body: JSON.stringify({ model, temperature: 0.2, max_tokens: 1200, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: user }] })
   });
   if (!r.ok) throw new Error(model + " HTTP " + r.status + " " + (await r.text()).slice(0, 200));
-  const d = await r.json(), txt = d.choices?.[0]?.message?.content || "";
+  const raw = await r.text();let d;try { d = JSON.parse(raw); } catch { throw new Error(model + " beklenmeyen yanıt: HTTP " + r.status + " " + (r.headers.get("content-type") || "") + " " + raw.slice(0, 120)); }
+  const txt = d.choices?.[0]?.message?.content || "";
   return JSON.parse(txt.replace(/^```(json)?|```$/g, "").trim());
 }
 let res = null;
