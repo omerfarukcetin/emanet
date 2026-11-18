@@ -27,15 +27,18 @@ jobs:
           ref: fiyat
           path: _fiyat
       - name: Önceki fiyat dosyalarını al
-        run: cp _fiyat/data/market.json _fiyat/data/bench.json _fiyat/data/close.json _fiyat/data/tech.json _fiyat/data/symbols.json data/ 2>/dev/null || true
+        run: cp _fiyat/data/market.json _fiyat/data/bench.json _fiyat/data/close.json _fiyat/data/tech.json _fiyat/data/symbols.json _fiyat/data/news.json data/ 2>/dev/null || true
       - name: Fiyatları çek
         run: node scripts/fetch-prices.mjs
       - name: Kod rehberini yenile (günde bir)
         continue-on-error: true
         run: node scripts/fetch-symbols.mjs
+      - name: Piyasa haberlerini yenile (yarım saatte bir)
+        continue-on-error: true
+        run: node scripts/fetch-news.mjs
       - name: Değişiklik varsa kaydet
         run: |
-          cp data/market.json data/bench.json data/close.json _fiyat/data/; cp data/tech.json data/symbols.json _fiyat/data/ 2>/dev/null || true
+          cp data/market.json data/bench.json data/close.json _fiyat/data/; cp data/tech.json data/symbols.json data/news.json _fiyat/data/ 2>/dev/null || true
           cd _fiyat
           if [ -n "$(git status --porcelain data)" ]; then
             git config user.name "emanet-fiyat"
