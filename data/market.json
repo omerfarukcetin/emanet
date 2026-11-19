@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-19T02:40:39.696Z",
+ "updatedAt": "2026-11-19T02:50:29.124Z",
  "fx": {
-  "EUR": 55.5258,
-  "USD": 50.4749
+  "EUR": 55.5297,
+  "USD": 50.484
  },
  "gold": {
-  "ata": 41330,
+  "ata": 41147,
   "aziz": null,
-  "ceyrek": 10104,
-  "cumhuriyet": 41330,
-  "gram": 6078.48,
-  "gumus": 73.71,
-  "hamit": 41330,
-  "resat": 41330,
-  "resatAlis": 40320.06,
-  "resatSatis": 40897.06,
-  "tam": 40255,
-  "yarim": 20201,
+  "ceyrek": 10059,
+  "cumhuriyet": 41147,
+  "gram": 6050.14,
+  "gumus": 73.19,
+  "hamit": 41147,
+  "resat": 41147,
+  "resatAlis": 40181.07,
+  "resatSatis": 40756.07,
+  "tam": 40077,
+  "yarim": 20112,
   "resatKaynak": "altin.in",
-  "ayar22": 5789.6,
-  "ayar18": 4955,
-  "ayar14": 4517.28
+  "ayar22": 5764.05,
+  "ayar18": 4935,
+  "ayar14": 4499.61
  },
  "quotes": {
   "abd:LPTH": {
@@ -114,15 +114,15 @@
    "pc": 9.28
   },
   "kripto:ETH": {
-   "p": 1769.1,
+   "p": 1767.66,
    "cur": "USD",
-   "t": "2026-11-19T02:40:23.000Z",
+   "t": "2026-11-19T02:50:14.000Z",
    "pc": 1774.71
   },
   "kripto:XRP": {
-   "p": 0.9613,
+   "p": 0.9601,
    "cur": "USD",
-   "t": "2026-11-19T02:40:27.000Z",
+   "t": "2026-11-19T02:50:17.000Z",
    "pc": 0.9686
   },
   "abd:SCHG": {
@@ -144,7 +144,7 @@
    "pc": 51.44
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
