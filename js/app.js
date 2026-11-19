@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.17";
+const APP_VERSION="3.18";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2282,6 +2282,10 @@ function rZekat(){
     <div class="trio"><div><span class="label">Tabi varlık</span><div class="v">${gTxt(z.netGram)}</div></div><div><span class="label">Nisap</span><div class="v">${fmtN(s.nisabGram)} g</div></div><div><span class="label">Havl</span><div class="v">${z.hawl?z.hawl.left+" gün":"—"}</div></div></div>
     ${g.gram?`<div class="bar" aria-hidden="true"><i style="width:${Math.min(100,z.netGram/s.nisabGram*100)}%"></i></div>`:""}
   </section>
+  ${(()=>{const c=g.coin;if(!c||!(c.v>0))return"";const f=c.v/15/100;
+    return `<section class="card fels"><div class="sec" style="margin-bottom:6px"><h2>Bir fels</h2><span class="sub">${esc(c.n)}</span></div>
+      <div class="fels-v"><b class="num">${fmt(f,"TRY",{dec:2,show:true})}</b><span class="sub">Bu tutardan aşağı alışveriş caiz olmaz.</span></div>
+      <p class="sub" style="margin:8px 0 0;line-height:1.5">Bir felsin kıymeti, en ucuz altın liranın kıymetinin on beşte biri kadar kuruştur. Bugün altın lira ${fmt(c.v,"TRY",{show:true})} → ${fmtN(c.v/15,0)} kuruş = <b>${fmt(f,"TRY",{dec:2,show:true})}</b>. Daha ucuz bir şey alınacaksa, birkaç tane alıp ya da yanına başka bir şey ekleyip toplamı bu tutarın üstüne çıkarmak gerekir. <i>(Se'âdet-i Ebediyye)</i></p></section>`})()}
   <div class="grid2">
   <section class="card"><h2 style="margin-bottom:8px">Hesap dökümü</h2><div class="kv">
     ${Object.entries(z.byKind).map(([k,v])=>`<div><span>${esc(k==="__cash"?CASH_LBL:(KINDS[k]||k))}</span><span>${fmt(v)}</span></div>`).join("")||(z.cash?"":`<div><span>Zekâta tabi varlık</span><span>${fmt(0)}</span></div>`)}

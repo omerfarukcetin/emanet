@@ -1474,3 +1474,6 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .nw-src a:hover{text-decoration:underline}
 .nw-ai{margin:8px 0 0;font-size:.75rem;line-height:1.4}
 .nw-sm p{font-size:.93em}.nw-gen{font-size:.98em}
+/* 3.18 · bir fels */
+.fels-v{display:flex;flex-direction:column;gap:2px}
+.fels-v b{font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
