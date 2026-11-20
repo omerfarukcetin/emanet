@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-20T03:20:40.538Z",
+ "updatedAt": "2026-11-20T03:31:08.788Z",
  "fx": {
-  "EUR": 55.5539,
-  "USD": 50.5799
+  "EUR": 55.4746,
+  "USD": 50.468
  },
  "gold": {
   "ata": 39360,
@@ -114,15 +114,15 @@
    "pc": 9.24
   },
   "kripto:ETH": {
-   "p": 1748.34,
+   "p": 1743.06,
    "cur": "USD",
-   "t": "2026-11-20T03:20:25.000Z",
+   "t": "2026-11-20T03:30:37.000Z",
    "pc": 1755.3
   },
   "kripto:XRP": {
-   "p": 0.9603,
+   "p": 0.9585,
    "cur": "USD",
-   "t": "2026-11-20T03:20:27.000Z",
+   "t": "2026-11-20T03:30:36.000Z",
    "pc": 0.9598
   },
   "abd:SCHG": {
@@ -144,10 +144,12 @@
    "pc": 51.61
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "KLU: fon fiyatı alınamadı (fetch failed)"
  ]
 }
