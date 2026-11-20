@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-20T10:30:29.530Z",
+ "updatedAt": "2026-11-20T10:40:40.813Z",
  "fx": {
   "EUR": 55.4795,
   "USD": 50.5845
@@ -13,8 +13,8 @@
   "gumus": 69.19,
   "hamit": 40491,
   "resat": 40491,
-  "resatAlis": 39165.01,
-  "resatSatis": 39808.78,
+  "resatAlis": 39238.98,
+  "resatSatis": 39964.85,
   "tam": 39410,
   "yarim": 19765,
   "resatKaynak": "altin.in",
@@ -30,15 +30,15 @@
    "pc": 6.26
   },
   "hisse:SOKE": {
-   "p": 6.78,
+   "p": 6.79,
    "cur": "TRY",
-   "t": "2026-11-20T10:07:41.000Z",
+   "t": "2026-11-20T10:24:27.000Z",
    "pc": 6.96
   },
   "hisse:BALSU": {
-   "p": 6.1,
+   "p": 6.11,
    "cur": "TRY",
-   "t": "2026-11-20T10:14:53.000Z",
+   "t": "2026-11-20T10:25:12.000Z",
    "pc": 6.3
   },
   "ppf:KLU": {
@@ -90,21 +90,21 @@
    "pc": 1.430712
   },
   "hisse:FZLGY": {
-   "p": 6.88,
+   "p": 6.82,
    "cur": "TRY",
-   "t": "2026-11-20T10:15:14.000Z",
+   "t": "2026-11-20T10:24:23.000Z",
    "pc": 7.25
   },
   "hisse:BIMAS": {
-   "p": 373.25,
+   "p": 373.5,
    "cur": "TRY",
-   "t": "2026-11-20T10:15:14.000Z",
+   "t": "2026-11-20T10:25:26.000Z",
    "pc": 384
   },
   "hisse:FROTO": {
-   "p": 70.25,
+   "p": 70.35,
    "cur": "TRY",
-   "t": "2026-11-20T10:15:16.000Z",
+   "t": "2026-11-20T10:25:26.000Z",
    "pc": 71.7
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 9.24
   },
   "kripto:ETH": {
-   "p": 1750.03,
+   "p": 1758,
    "cur": "USD",
-   "t": "2026-11-20T10:30:17.000Z",
+   "t": "2026-11-20T10:40:29.000Z",
    "pc": 1755.3
   },
   "kripto:XRP": {
-   "p": 0.9609,
+   "p": 0.9656,
    "cur": "USD",
-   "t": "2026-11-20T10:30:16.000Z",
+   "t": "2026-11-20T10:40:28.000Z",
    "pc": 0.9598
   },
   "abd:SCHG": {
@@ -144,7 +144,7 @@
    "pc": 51.61
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
