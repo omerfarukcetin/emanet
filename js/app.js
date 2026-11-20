@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.22";
+const APP_VERSION="3.23";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -92,7 +92,7 @@ function normalize(s){
   if(!s.budgets||typeof s.budgets!=="object")s.budgets={};
   s.tx.forEach(t=>{if(t.cat in CAT_MAP)t.cat=CAT_MAP[t.cat]||(t.type==="in"?"Diğer gelir":"Diğer gider")});
   s.portfolios.forEach(p=>{if(!Array.isArray(p.holdings))p.holdings=[];if(!p.owner)p.owner=s.settings.mainOwner||"Ben";if(p.inSummary===undefined)p.inSummary=true;
-    p.holdings.forEach(h=>{if(h.kind==="hisse"&&h.cur==="USD")h.kind="abd";if(+h.qty>0&&+h.qty<=1e-8)h.qty=0;
+    p.holdings.forEach(h=>{if(h.kind==="hisse"&&h.cur==="USD")h.kind="abd";if(+h.qty>0&&+h.qty<=1e-8)h.qty=0;try{dustFix(h)}catch(e){}
       if(h.kind==="bes"&&!h.bes){const pr=(+h.qty||0)*(+h.cost||0),v=(+h.qty||0)*(+h.price||0);h.bes={principal:pr,gain:v-pr,state:0,stateGain:0};h.qty=1;h.cost=pr;h.price=v;h.trades=[]}})});
   s.debts.forEach(d=>{if(!Array.isArray(d.payments))d.payments=[]});
   /* zekât portföy bazında: kişi bazlı eski kayıtları portföye taşı */
@@ -613,6 +613,11 @@ function ensureTrades(h){
     h.trades=+h.qty>0?[{id:uid(),type:"buy",date:h.buyDate||"",qty:+h.qty,price:+h.cost||0,fee:0,legacy:true,fx:h.fxAt&&!h.fxAt.pending?{USD:+h.fxAt.USD,EUR:+h.fxAt.EUR||0,src:h.fxAt.src}:undefined}]:[];
   }
 }
+/* satıştan sonra kalan yuvarlama artığı (son işlem satış, kalan < satılanın binde biri ve < 0,01): son satışa eklenir, varlık kapanır */
+function dustFix(h){const q=+h.qty||0;if(!(q>0)||q>=0.01||!Array.isArray(h.trades)||!h.trades.length)return;
+  const last=h.trades.slice().sort((a,c)=>(a.date||"").localeCompare(c.date||"")).pop();if(!last||last.type!=="sell"||!(q<(+last.qty||0)*1e-3))return;
+  // açılışta çalıştığı için yeniden hesaplama yapılmaz: artık son satışa eklenir, miktar sıfırlanır (K/Z farkı kuruş altıdır)
+  last.qty=Math.round(((+last.qty||0)+q)*1e10)/1e10;h.qty=0}
 function rebuild(h){
   const tr=(h.trades||[]).slice().sort(byDate);let q=0,c=0,real=+h.realizedLegacy||0,divs=0;
   for(const t of tr){
@@ -2910,7 +2915,7 @@ function tradeSheet(pfId,h,type,tr){
     onOpen:buy?(buyNew&&fromOpts.length>1?(form,sh)=>cashFromPreview(form,sh,h.cur,()=>{const E=form.elements,q=parseNum(E.qty.value),p=parseNum(E.price.value);return q>0&&p>0?q*p+(E.fee.value.trim()?parseNum(E.fee.value)||0:q*p*(+S().feeRate||0)/100):0}):undefined):(form,sh)=>{const el=form.elements;
       if(!tr){const max=+h.qty||0,whole=Number.isInteger(max)&&["hisse","fon","ppf","bes"].includes(h.kind);
         el.qty.closest(".field").insertAdjacentHTML("beforeend",`<div class="qchips" role="group" aria-label="Hızlı miktar">${[25,50,75,100].map(p=>`<button type="button" data-qp="${p}">${p===100?"Tümü":"%"+p}</button>`).join("")}</div>`);
-        sh.querySelectorAll("[data-qp]").forEach(b=>b.onclick=()=>{const p=+b.dataset.qp;let q=p===100?max:max*p/100;q=whole?Math.floor(q):Math.floor(q*1e4)/1e4;el.qty.value=String(q).replace(".",",");
+        sh.querySelectorAll("[data-qp]").forEach(b=>b.onclick=()=>{const p=+b.dataset.qp;let q=p===100?max:max*p/100;if(p!==100)q=whole?Math.floor(q):Math.floor(q*1e4)/1e4;el.qty.value=String(q).replace(".",",");
           sh.querySelectorAll("[data-qp]").forEach(x=>x.setAttribute("aria-pressed",x===b));el.qty.dispatchEvent(new Event("input",{bubbles:true}))})}
       if(sellNew){el.cashTo.closest(".field").insertAdjacentHTML("beforeend",`<div class="sub" id="sellNet" style="margin-top:6px"></div>`);
         const upd=()=>{const q=parseNum(el.qty.value),p=parseNum(el.price.value);const o=sh.querySelector("#sellNet");if(!(q>0&&p>0)){o.textContent="";return}
@@ -2918,7 +2923,8 @@ function tradeSheet(pfId,h,type,tr){
           const net=q*p-fee-ta;o.innerHTML=`Eline geçecek: <b class="num">${fmt(net,h.cur)}</b>${el.cashTo.value==="none"?" · hiçbir yere eklenmeyecek":""}`};
         form.addEventListener("input",upd);form.addEventListener("change",upd);upd()}},
     extra:`<div class="note">${buy?"Alımlar aynı satırda toplanır; ortalama maliyet komisyonla birlikte yeniden hesaplanır. Alış günü kuru ayrıca kaydedilir.":"Gerçekleşen kâr/zarar = satış tutarı − komisyon − ortalama maliyet − stopaj. Stopaj yalnızca kazanca uygulanır; oran fon türüne ve alış tarihine göre değişir, aracı kurum ekstrenizden veya fonun izahnamesinden kontrol edin. Kesilen tutarı biliyorsanız doğrudan girin."}${tr&&tr.legacy?" Bu kayıt, işlem geçmişi tutulmadan önce girilen pozisyondan oluşturuldu.":""}</div>`,
-    onSave:v=>{const q=parseNum(v.qty),p=parseNum(v.price);if(!(q>0))return"Miktar sıfırdan büyük olmalı.";if(!(p>=0)||(!tr&&!(p>0)))return"Fiyat girin.";
+    onSave:v=>{let q=parseNum(v.qty);const p=parseNum(v.price);if(!(q>0))return"Miktar sıfırdan büyük olmalı.";
+      if(!buy&&!tr){const rest=(+h.qty||0)-q;if(rest>0&&rest<q*1e-3&&rest<0.01)q=+h.qty}   // 8,7826 yazıldı ama elde 8,78264 var: artık kalmasınif(!(p>=0)||(!tr&&!(p>0)))return"Fiyat girin.";
       if(v.date&&v.date>todayISO())return"Tarih ileri olamaz.";
       const fee=v.fee.trim()?parseNum(v.fee):q*p*(+S().feeRate||0)/100;if(isNaN(fee)||fee<0)return"Komisyonu kontrol edin.";
       const d=v.date||(tr?"":todayISO());
