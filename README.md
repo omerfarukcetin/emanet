@@ -88,9 +88,14 @@ Kurulu değilse uygulama dosyadaki fiyatlarla çalışmaya devam eder. BIST fiya
 
 ## Portföy paylaşımı
 
-Bir portföyü başka bir e-posta adresiyle paylaşabilirsiniz (Portföy → Düzenle → Paylaşım). Paylaşılan kişi o e-postayla giriş yaptığında portföyü kendi ekranında salt okunur görür; değişiklik yapamaz. Bütçe, borçlar ve zekât paylaşılmaz. Sahibi portföyü her güncellediğinde paylaşılan kopya da güncellenir.
+Bir portföyü başka bir e-posta adresiyle paylaşabilirsiniz (Portföy → Düzenle → Paylaşım). Her kişi için yetki seçilir:
 
-Kurulum için Supabase → SQL Editor'de `supabase/schema.sql` dosyasının "Portföy paylaşımı" bölümünü bir kez çalıştırın.
+- **Görüntüleyebilir**: portföyü kendi ekranında görür, değiştiremez.
+- **Düzenleyebilir**: varlık ekler, alım-satım girer, düzeltir ya da siler. Değişiklikler varlık bazında "değişiklik paketi" olarak gider; sahibinin uygulaması açılınca portföye işlenir. Portföyün adı, rengi, paylaşımı ve silinmesi yalnızca sahibindedir.
+
+Bütçe, borçlar ve zekât paylaşılmaz. Sahibi portföyü her güncellediğinde paylaşılan kopya da güncellenir.
+
+Kurulum için Supabase → SQL Editor'de `supabase/schema.sql` dosyasının "Portföy paylaşımı" ve "Portföy paylaşımında yetki" bölümlerini bir kez çalıştırın.
 
 ## Getiri karşılaştırması
 

@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.19";
+const APP_VERSION="3.20";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -247,47 +247,92 @@ const MAIN=()=>S().mainOwner||"Ben";
 const ownerOf=p=>p.owner||MAIN();
 const mainPf=()=>state.portfolios.find(p=>p.id===S().mainPf&&!p._shared)||state.portfolios.find(p=>!p._shared)||null;
 /* ---------- paylaşılan portföyler ----------
-   Sahibi bir portföyü e-postayla paylaşır (emanet_share tablosu); karşı taraf onu kendi hesabında salt okunur görür.
-   Gelen portföyler state.portfolios'a yalnızca ekranda eklenir (_shared); kaydedilen veriye hiç girmez (pure). */
-let sharedIn=[],myShares=[],shareErr="";
+   Sahibi bir portföyü e-postayla paylaşır (emanet_share tablosu) ve yetki verir: "view" (yalnızca görür) ya da "edit" (düzenler).
+   Gelen portföyler state.portfolios'a yalnızca ekranda eklenir (_shared); kaydedilen veriye hiç girmez (pure).
+   Düzenleme yetkisinde alan kişi portföyün tamamını değil, yalnızca değiştirdiği varlıkları "değişiklik paketi" olarak yollar
+   ({set:[varlık…], del:[id…]}, emanet_share_edit işlevi; satırın "edits" listesine eklenir). Sahibinin uygulaması açılınca paketleri
+   sırayla kendi portföyüne işler (varlık düzeyinde; aynı varlığı ikisi birden değiştirdiyse sonraki geçerli olur), listeyi boşaltır
+   ve yeni kopyayı yayımlar (emanet_share_ack). Böylece iki taraf aynı anda farklı varlıklarla uğraşırsa kimse diğerini silmez.
+   Kasa bağlantıları (satıştan gelen para / alımın parası) portföyün kendi içindeyse kopyada "__self" olarak taşınır. */
+let sharedIn=[],myShares=[],shareErr="",shareEditOk=true;
 const ownPfs=()=>state.portfolios.filter(p=>!p._shared);
+const canEdit=p=>!!p&&(!p._shared||p._shared.role==="edit");
+const editPfs=()=>state.portfolios.filter(canEdit);
 function pure(){return state&&state.portfolios&&state.portfolios.some(p=>p._shared)?{...state,portfolios:ownPfs()}:state}
 function injectShared(){if(!state||!state.portfolios)return;const own=ownPfs();if(own.length+sharedIn.length===state.portfolios.length&&sharedIn.every((x,i)=>state.portfolios[own.length+i]===x))return;state.portfolios=own.concat(sharedIn)}
-const pfSnap=p=>({name:p.name,color:p.color,owner:p.owner,holdings:p.holdings});
+/* varlıklardaki kasa bağlantısının portföy kimliğini çevirir (derin kopya döner) */
+function mapCash(hs,from,to){return JSON.parse(JSON.stringify(hs||[]),(k,v)=>k==="cash"&&v&&typeof v==="object"&&v.pf===from?{...v,pf:to}:v)}
+const pfSnap=p=>({name:p.name,color:p.color,owner:p.owner,holdings:mapCash(p.holdings,p.id,"__self")});
+function applyEdits(hs,edits){const L=hs.slice();(edits||[]).forEach(e=>{(e.del||[]).forEach(id=>{const i=L.findIndex(h=>h.id===id);if(i>=0)L.splice(i,1)});
+  (e.set||[]).forEach(h=>{if(!h||!h.id)return;const i=L.findIndex(x=>x.id===h.id);if(i>=0)L[i]=h;else L.push(h)})});return L}
+const shRecv={};   // alan taraf: son alınan/gönderilen varlıklar (id → JSON); değişiklik paketi buna göre hesaplanır
+let shPushing=false;
+const holdJ=p=>{const m={};mapCash(p.holdings,p.id,"__self").forEach(h=>m[h.id]=JSON.stringify(h));return m};
 async function loadShares(){
   if(!cloudOn())return;const me=(sbUser.email||"").toLowerCase();
   try{
-    const a=await sb.from("emanet_share").select("id,pf_id,email,updated_at").eq("owner",sbUser.id);
+    let a=await sb.from("emanet_share").select("id,pf_id,email,role,edits,updated_at").eq("owner",sbUser.id);
+    if(a.error&&/role|edits|column/i.test(a.error.message||"")){shareEditOk=false;a=await sb.from("emanet_share").select("id,pf_id,email,updated_at").eq("owner",sbUser.id)}else if(!a.error)shareEditOk=true;
     if(a.error){shareErr=/emanet_share|relation|schema cache|not exist/i.test(a.error.message||"")?"setup":"err";return}
-    shareErr="";myShares=a.data||[];
-    const b=await sb.from("emanet_share").select("id,owner_email,pf_id,data,updated_at").eq("email",me).neq("owner",sbUser.id);
-    if(!b.error){const old=new Map(sharedIn.map(x=>[x.id,x]));
-      sharedIn=(b.data||[]).filter(r=>r.data&&Array.isArray(r.data.holdings)).map(r=>{const id="sh_"+r.id,o=old.get(id),pf=normalize({portfolios:[{...r.data,id}]}).portfolios[0];pf._shared={from:r.owner_email||"",at:r.updated_at};if(o&&JSON.stringify(o.holdings)===JSON.stringify(pf.holdings)&&o.name===pf.name)return o;return pf});
-      if(ready)render()}
+    shareErr="";const prevAck=new Map(myShares.map(r=>[r.id,r._ack||0]));myShares=a.data||[];
+    // sahip: bekleyen değişiklik paketlerini kendi portföyüne işle (onaylanmamış önceki işleme varsa tekrar işleme)
+    const got=[];for(const r of myShares){const done=prevAck.get(r.id)||0;if(done){r._ack=done;continue}
+      if(!Array.isArray(r.edits)||!r.edits.length)continue;const p=ownPfs().find(x=>x.id===r.pf_id);if(!p)continue;
+      const inc=r.edits.map(e=>({...e,set:normalize({portfolios:[{id:p.id,name:p.name,holdings:mapCash(e.set||[],"__self",p.id)}]}).portfolios[0].holdings}));
+      p.holdings=applyEdits(p.holdings,inc);r._ack=r.edits.length;got.push((r.edits[r.edits.length-1].by||r.email)+" · "+p.name)}
+    if(got.length)commit("Paylaşılan portföyde değişiklik işlendi: "+[...new Set(got)].join(", "));
+    if(!shPushing){const b=await sb.from("emanet_share").select(shareEditOk?"id,owner_email,pf_id,data,role,edits,updated_at":"id,owner_email,pf_id,data,updated_at").eq("email",me).neq("owner",sbUser.id);
+      if(!b.error){const old=new Map(sharedIn.map(x=>[x.id,x]));
+        sharedIn=(b.data||[]).filter(r=>r.data&&Array.isArray(r.data.holdings)).map(r=>{const id="sh_"+r.id,o=old.get(id);
+          if(o&&o._shared.role==="edit"&&JSON.stringify(holdJ(o))!==JSON.stringify(shRecv[id]||{}))return o;   // gönderilmemiş değişiklik var: önce o gitsin
+          const hs=mapCash(applyEdits(r.data.holdings,r.edits),"__self",id);
+          const pf=normalize({portfolios:[{...r.data,holdings:hs,id}]}).portfolios[0];pf._shared={from:r.owner_email||"",at:r.updated_at,role:r.role==="edit"?"edit":"view",row:r.id};
+          if(o&&JSON.stringify(o.holdings)===JSON.stringify(pf.holdings)&&o.name===pf.name&&o._shared.role===pf._shared.role)return o;
+          shRecv[id]=holdJ(pf);return pf});
+        injectShared();if(ready)render()}}
   }catch(e){}
+}
+/* alan taraf: düzenlenebilir paylaşılan portföylerdeki değişiklikleri paket olarak yolla */
+async function pushEdits(){
+  if(!cloudOn()||shPushing)return;const L=sharedIn.filter(p=>p._shared.role==="edit");if(!L.length)return;shPushing=true;
+  try{for(const p of L){const now=holdJ(p),was=shRecv[p.id]||{},set=[],del=[];
+      Object.entries(now).forEach(([id,j])=>{if(was[id]!==j)set.push(JSON.parse(j))});Object.keys(was).forEach(id=>{if(!(id in now))del.push(id)});
+      if(!set.length&&!del.length)continue;
+      const{error}=await sb.rpc("emanet_share_edit",{p_id:p._shared.row,p_delta:{set,del}});
+      if(error){toast("Değişiklik "+p._shared.from+" kişisine gönderilemedi: "+(/izin|permission|yetki/i.test(error.message||"")?"düzenleme yetkin yok":error.message||""));continue}
+      shRecv[p.id]=now}}
+  finally{shPushing=false}
 }
 const shareSent={};
 async function pushShares(){
-  if(!cloudOn()||!myShares.length)return;
-  for(const r of myShares){const p=ownPfs().find(x=>x.id===r.pf_id);if(!p)continue;const j=JSON.stringify(pfSnap(p));if(shareSent[r.id]===j)continue;
-    try{const{error}=await sb.from("emanet_share").update({data:JSON.parse(j),updated_at:new Date().toISOString()}).eq("id",r.id);if(!error)shareSent[r.id]=j}catch(e){}}
+  if(!cloudOn())return;await pushEdits();if(!myShares.length)return;
+  for(const r of myShares){const p=ownPfs().find(x=>x.id===r.pf_id);if(!p)continue;const j=JSON.stringify(pfSnap(p));if(shareSent[r.id]===j&&!r._ack)continue;
+    try{let error;
+      if(r._ack){({error}=await sb.rpc("emanet_share_ack",{p_id:r.id,p_n:r._ack,p_data:JSON.parse(j)}));if(!error){r._ack=0;r.edits=[]}}
+      else({error}=await sb.from("emanet_share").update({data:JSON.parse(j),updated_at:new Date().toISOString()}).eq("id",r.id));
+      if(!error)shareSent[r.id]=j}catch(e){}}
 }
-setInterval(()=>{if(document.visibilityState==="visible")loadShares()},5*60e3);
+setInterval(()=>{if(document.visibilityState==="visible")loadShares()},2*60e3);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")loadShares()});
+const ROLE_L={view:"Görüntüleyebilir",edit:"Düzenleyebilir"};
 function shareBlock(p){
   if(!cloudOn())return `<div class="note">Paylaşmak için e-postayla giriş yapmış olmalısınız.</div>`;
   if(shareErr==="setup")return `<div class="note">Paylaşım için Supabase'de bir kez kurulum SQL'i çalıştırılmalı (README'deki "Portföy paylaşımı" bölümü).</div>`;
   const rows=myShares.filter(r=>r.pf_id===p.id);
+  const roleSel=(v,attr)=>`<select class="shr-role" ${attr} aria-label="Yetki">${Object.entries(ROLE_L).map(([k,l])=>`<option value="${k}" ${k===v?"selected":""}>${l}</option>`).join("")}</select>`;
   return `<div class="shr"><div class="label sh-sec" style="margin:0 0 6px">Paylaşım</div>
-    ${rows.map(r=>`<div class="shr-r"><span>${esc(r.email)}</span><button type="button" class="btn ghost sm" data-unshare="${r.id}">Kaldır</button></div>`).join("")}
-    <div class="shr-add"><input type="email" id="shrMail" placeholder="ornek@eposta.com" autocomplete="off" inputmode="email"><button type="button" class="btn sm" id="shrAdd">Paylaş</button></div>
-    <div class="sub" style="font-size:.76rem;margin-top:6px">Paylaştığın kişi bu e-postayla Emanet'e giriş yaptığında portföyü kendi ekranında görür; değiştiremez. Bütçe, borçlar ve zekât paylaşılmaz.</div></div>`;
+    ${rows.map(r=>`<div class="shr-r"><span class="shr-m">${esc(r.email)}</span>${shareEditOk?roleSel(r.role||"view",`data-role="${r.id}"`):""}<button type="button" class="btn ghost sm" data-unshare="${r.id}">Kaldır</button></div>`).join("")}
+    <div class="shr-add"><input type="email" id="shrMail" placeholder="ornek@eposta.com" autocomplete="off" inputmode="email">${shareEditOk?roleSel("view",'id="shrRole"'):""}<button type="button" class="btn sm" id="shrAdd">Paylaş</button></div>
+    <div class="sub" style="font-size:.76rem;margin-top:6px">Paylaştığın kişi bu e-postayla Emanet'e giriş yaptığında portföyü kendi ekranında görür. <b>Görüntüleyebilir</b>: yalnızca bakar. <b>Düzenleyebilir</b>: varlık ekler, alım-satım girer, düzeltir; değişiklikleri senin uygulaman açılınca bu portföye işlenir. Portföyün adı, rengi, paylaşımı ve silinmesi yalnızca sende. Bütçe, borçlar ve zekât paylaşılmaz.</div>
+    ${shareEditOk?"":`<div class="note" style="margin-top:8px">Düzenleme yetkisi verebilmek için Supabase'de paylaşımın güncel SQL'ini bir kez çalıştırman gerekiyor (README → Portföy paylaşımı).</div>`}</div>`;
 }
 function bindShare(sh,p){
-  const add=sh.querySelector("#shrAdd");if(add)add.onclick=async()=>{const m=sh.querySelector("#shrMail").value.trim().toLowerCase();
+  const add=sh.querySelector("#shrAdd");if(add)add.onclick=async()=>{const m=sh.querySelector("#shrMail").value.trim().toLowerCase(),rs=sh.querySelector("#shrRole"),role=rs?rs.value:"view";
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m))return toast("Geçerli bir e-posta girin");if(m===(sbUser.email||"").toLowerCase())return toast("Kendi e-postanızla paylaşamazsınız");
-    add.disabled=true;const{error}=await sb.from("emanet_share").upsert({pf_id:p.id,email:m,owner_email:sbUser.email,data:pfSnap(p),updated_at:new Date().toISOString()},{onConflict:"owner,pf_id,email"});
-    add.disabled=false;if(error){toast("Paylaşılamadı: "+(error.message||""));return}await loadShares();toast(p.name+" "+m+" ile paylaşıldı");pfSheet(p)};
+    add.disabled=true;const row={pf_id:p.id,email:m,owner_email:sbUser.email,data:pfSnap(p),updated_at:new Date().toISOString(),...(shareEditOk?{role}:{})};
+    const{error}=await sb.from("emanet_share").upsert(row,{onConflict:"owner,pf_id,email"});
+    add.disabled=false;if(error){toast("Paylaşılamadı: "+(error.message||""));return}await loadShares();toast(p.name+" "+m+" ile paylaşıldı · "+ROLE_L[role].toLocaleLowerCase("tr"));pfSheet(p)};
+  sh.querySelectorAll("[data-role]").forEach(s=>s.onchange=async()=>{const{error}=await sb.from("emanet_share").update({role:s.value}).eq("id",s.dataset.role);if(error)return toast("Yetki değiştirilemedi");await loadShares();toast("Yetki: "+ROLE_L[s.value])});
   sh.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=async()=>{const{error}=await sb.from("emanet_share").delete().eq("id",b.dataset.unshare);if(error)return toast("Kaldırılamadı");await loadShares();toast("Paylaşım kaldırıldı");pfSheet(p)});
 }
 function owners(){const o=[MAIN()];state.portfolios.forEach(p=>{const x=ownerOf(p);if(!o.includes(x))o.push(x)});return o}
@@ -1166,7 +1211,7 @@ function rOzet(){
   ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Görüntülenen portföy">${state.portfolios.map(p=>`<button class="chip" data-act="ozpf" data-id="${p.id}" aria-pressed="${!!mp&&p.id===mp.id}">${esc(p.name)}${owners().length>1?` <small>${esc(ownerOf(p))}</small>`:""}</button>`).join("")}${ownPfs().length>1?`<button class="chip add" data-act="pforder" aria-label="Portföylerin sırasını değiştir">${ic(I.sort,15)}</button>`:""}</div>`:""}
   <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="ozet" data-pfid="${mp?mp.id:""}"${heroTint(mp)}>
     <div class="hero-top"><div style="min-width:0">
-      <span class="label">${mp?esc(mp.name)+(mp._shared?" · "+esc(mp._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
+      <span class="label">${mp?esc(mp.name)+(mp._shared?" · "+esc(mp._shared.from)+" paylaştı"+(canEdit(mp)?" · düzenleyebilirsin":""):state.portfolios.length>1&&isMainPf(mp)?" · ana portföy":""):"Net varlık"}</span>
     </div><div class="hero-acts">${mp&&hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="h:${mp?mp.id:"all"}" data-v="${t.v}">${money(t.v)}</div></div>
     ${mp?plChips(hs,t.v,t.c)+heroStats(hs,t.v,t.c):""}
@@ -1186,7 +1231,7 @@ function rOzet(){
     :`<div class="empty">${emptyIc(I.portfoy)}<b>Bu portföyde varlık yok</b>Hisse, fon, altın, döviz ya da nakit ekleyin.${emptyBtn("add-h","Varlık ekle")}</div>`}
   </section>`
   :`<section class="card"><div class="empty">${emptyIc(I.portfoy)}<b>Henüz portföy yok</b>Yatırımlarınızı gruplamak için bir portföy oluşturun.</div><div style="text-align:center"><button class="btn primary" data-act="new-pf">Portföy oluştur</button></div></section>`}`;
-  P.note=`${onMain?"":`<div class="note">Bütçe, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}`;
+  P.note=`${onMain||!mainPf()?"":`<div class="note">Bütçe, birikim hedefleri ve vadeler ana portföye (${esc((mainPf()||{}).name||"")}) bağlıdır; bu portföyde gösterilmez. Bu portföyün zekâtını Zekât sekmesinden ayrıca hesaplayabilirsiniz.</div>`}`;
   P.flow=`${!onMain?"":`<section class="card side">
     <div class="sec" style="margin-bottom:10px"><h2>${MONTHS[+cm.slice(5)-1]} nakit akışı</h2><button class="btn ghost sm" data-tab="akis">Tümü${ic(I.right,14)}</button></div>
     <div class="flow">
@@ -1608,7 +1653,7 @@ function rPortfoy(){
     <button class="chip add" data-act="new-pf">+ Yeni portföy</button>
   </div>
   <section class="hero net${view.swipe?" sw-"+view.swipe:""}" data-swipe="portfoy" data-pfid="${cur?cur.id:"all"}"${heroTint(cur)}>
-    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(cur._shared?" · "+esc(cur._shared.from)+" paylaştı":state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
+    <div class="hero-top"><div style="min-width:0"><span class="label">${cur?esc(cur.name)+(cur._shared?" · "+esc(cur._shared.from)+" paylaştı"+(canEdit(cur)?" · düzenleyebilirsin":""):state.portfolios.length>1&&isMainPf(cur)?" · ana portföy":""):(view.owner==="all"?"Tüm portföyler":esc(view.owner)+" · tüm portföyler")}</span></div><div class="hero-acts">${hs.length?curSeg():""}${eyeBtn()}</div></div>
     <div class="bigrow"><div class="big amt" data-cnt="p:${view.pf}" data-v="${v}">${money(v)}</div></div>
     ${plChips(hs,v,c)}${heroStats(hs,v,c)}
     <div class="subrow">${eqvChips(v)}${pfDots(cur?cur.id:"all",state.portfolios.length>1)}</div>
@@ -2510,7 +2555,7 @@ function besApply(h){const b=h.bes;h.kind="bes";h.cur="TRY";h.qty=1;h.cost=+b.pr
 function besSheet(pfId,h){
   const b=h&&h.bes||{};const pid=pfId||(h?null:(view.pf&&view.pf!=="all"?view.pf:(mainPf()||state.portfolios[0]).id));
   formSheet({title:h?"BES sözleşmesini düzenle":"BES ekle",fields:[
-    {id:"pf",label:"Portföy",type:"select",value:pid||(state.portfolios.find(p=>p.holdings.includes(h))||{}).id,options:ownPfs().map(p=>[p.id,pfName(p.id)])},
+    {id:"pf",label:"Portföy",type:"select",value:pid||(state.portfolios.find(p=>p.holdings.includes(h))||{}).id,options:editPfs().map(p=>[p.id,pfName(p.id)])},
     [{id:"name",label:"Sözleşme / şirket",value:h?h.name:"",ph:"Örn. Anadolu Hayat BES"},{id:"buyDate",label:"Başlangıç tarihi",type:"date",value:h?(h.buyDate||""):""}],
     [{id:"principal",label:"Ana para (yatırdığınız toplam)",type:"number",value:h?b.principal:"",ph:"0"},{id:"gain",label:"Fon getirisi (kâr)",type:"number",value:h?b.gain:"",ph:"0"}],
     [{id:"state",label:"Devlet katkısı",type:"number",value:h?b.state:"",ph:"0"},{id:"stateGain",label:"Devlet katkısı getirisi",type:"number",value:h?(b.stateGain||""):"",ph:"0"}]],
@@ -2535,7 +2580,7 @@ function holdingSheet(pfId,h){
   const multiT=!!(h&&(h.trades||[]).length>1);
   const PH={hisse:["Örn. Türk Hava Yolları","THYAO"],abd:["Örn. Apple","AAPL"],fon:["Fon adı","TEFAS kodu, örn. TTE"],ppf:["Örn. ... Para Piyasası Fonu","TEFAS kodu"],kripto:["Örn. Bitcoin","BTC"]};
   formSheet({title:h?"Varlığı düzenle":"Varlık ekle",fields:[
-    {id:"pf",label:"Portföy",type:"select",value:pid,options:ownPfs().map(p=>[p.id,p.name+(owners().length>1?" ("+ownerOf(p)+")":"")])},
+    {id:"pf",label:"Portföy",type:"select",value:pid,options:editPfs().map(p=>[p.id,p.name+(p._shared?" · "+p._shared.from:owners().length>1?" ("+ownerOf(p)+")":"")])},
     [{id:"kind",label:"Tür",type:"select",value:k0,options:Object.entries(KINDS)},{id:"cur",label:"Para birimi",type:"select",value:h?h.cur:"TRY",options:CURS}],
     {id:"preset",label:"Ürün",type:"select",value:curPreset,options:presetOpts(k0),hidden:!PRESETS[k0]},
     [{id:"broker",label:"Aracı kurum",type:"select",value:h?(h.broker||""):(view.lastBroker&&view.lastBroker[pid])||"",options:brokerOpts(pid,h&&h.broker)},{id:"brokerNew",label:"Yeni kurum adı",value:"",ph:"Örn. Midas",list:BROKER_HINT,hidden:true}],
@@ -2761,8 +2806,8 @@ function holdingDetail(pfId,h){
     ${karne(h,pf)}
     <div class="sec sh-sec2"><div class="label sh-sec" style="margin:0">İşlem geçmişi</div>${h.kind!=="bes"&&!CASH_KINDS.includes(h.kind)?`<button class="btn ghost sm" id="hDiv">${ic(I.plus,14)}Temettü ekle</button>`:""}</div>
     ${tr.length?`<div class="list">${tr.map(t=>tradeRow(h,t,false,pfId)).join("")}</div><div class="sub" style="margin-top:6px">Düzenlemek veya silmek için bir işleme dokunun.</div>`:`<div class="sub" style="padding:4px 0 8px">Bu varlık için işlem kaydı yok. Yeni alım ve satışlar burada listelenir.</div>`}
-    ${pf&&pf._shared?`<div class="note">${esc(pf._shared.from)} bu portföyü sizinle paylaştı; yalnızca görüntüleyebilirsiniz.</div>`:`<div class="actions eq"><button class="btn primary" id="hBuy">${ic(I.buy)}Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">${ic(I.sell)}Satış yap</button>`:""}<button class="btn" id="hEdit">${ic(I.edit)}Düzenle</button></div>`}`,sh=>{
-      if(pf&&pf._shared){sh.querySelectorAll('#hDiv').forEach(x=>x.remove());sh.querySelectorAll('[data-act="edit-tr"]').forEach(x=>{x.removeAttribute('data-act');x.removeAttribute('role');x.removeAttribute('tabindex')});return}
+    ${pf&&pf._shared&&!canEdit(pf)?`<div class="note">${esc(pf._shared.from)} bu portföyü sizinle paylaştı; yalnızca görüntüleyebilirsiniz.</div>`:`<div class="actions eq"><button class="btn primary" id="hBuy">${ic(I.buy)}Alım ekle</button>${+h.qty>0?`<button class="btn" id="hSell">${ic(I.sell)}Satış yap</button>`:""}<button class="btn" id="hEdit">${ic(I.edit)}Düzenle</button></div>`}`,sh=>{
+      if(pf&&pf._shared&&!canEdit(pf)){sh.querySelectorAll('#hDiv').forEach(x=>x.remove());sh.querySelectorAll('[data-act="edit-tr"]').forEach(x=>{x.removeAttribute('data-act');x.removeAttribute('role');x.removeAttribute('tabindex')});return}
       sh.querySelector("#hEdit").onclick=()=>{closeSheet();holdingSheet(pfId,h)};
       sh.querySelector("#hBuy").onclick=()=>{closeSheet();tradeSheet(pfId,h,"buy")};
       const sb=sh.querySelector("#hSell");if(sb)sb.onclick=()=>{closeSheet();tradeSheet(pfId,h,"sell")};
@@ -2796,7 +2841,8 @@ function cashHolding(pf,cur,make){let c=pf.holdings.find(x=>x.kind==="nakit"&&x.
 function cashLinkFind(L){const pf=L&&state.portfolios.find(p=>p.id===L.pf),c=pf&&pf.holdings.find(x=>x.id===L.h),t=c&&(c.trades||[]).find(x=>x.id===L.t);return t?{pf,c,t}:null}
 const cashAmt=t=>Math.round((t.type==="buy"?(+t.qty||0)*(+t.price||0)+(+t.fee||0):(+t.qty||0)*(+t.price||0)-(+t.fee||0)-(+t.tax||0))*100)/100;
 /* alımda kullanılabilecek nakit satırları: [değer, etiket] */
-function cashFromOpts(pfId,cur){const own=ownPfs(),o=[];
+const cashPfs=pfId=>{const p=state.portfolios.find(x=>x.id===pfId);return p&&p._shared?[p]:ownPfs()};
+function cashFromOpts(pfId,cur){const own=cashPfs(pfId),o=[];
   own.slice().sort((a,b)=>(b.id===pfId)-(a.id===pfId)).forEach(p=>{const c=cashHolding(p,cur,false);if(c&&+c.qty>0)o.push(["pf:"+p.id,(p.id===pfId?"Bu portföydeki nakitten düş":p.name+" portföyündeki nakitten düş")+" ("+fmt(+c.qty,cur,{show:true})+")"])});
   return [...o,["none","Nakitten düşme"]]}
 /* bağlantıyı kurar; tutar (sayı) ya da hata metni döndürür */
@@ -2819,7 +2865,7 @@ function cashFromPreview(form,sh,cur,total,curOf){const sel=form.elements.cashFr
     o.innerHTML=left>=-0.005?`Nakitten düşülecek: <b class="num">${fmt(a,cu,{show:true})}</b> · kalan <span class="num">${fmt(left,cu,{show:true})}</span>`:`<span class="neg-t">Nakit yetmiyor: ${fmt(+c.qty,cu,{show:true})} var, alım ${fmt(a,cu,{show:true})} tutuyor.</span>`};
   if(!form.dataset.cfBound){form.addEventListener("input",upd);form.addEventListener("change",upd);form.dataset.cfBound="1"}upd()}
 function tradeSheet(pfId,h,type,tr){
-  const buy=(tr?tr.type:type)==="buy",sellNew=!buy&&!tr&&!CASH_KINDS.includes(h.kind),own=ownPfs();
+  const buy=(tr?tr.type:type)==="buy",sellNew=!buy&&!tr&&!CASH_KINDS.includes(h.kind),own=cashPfs(pfId);
   const buyNew=buy&&!tr&&!CASH_KINDS.includes(h.kind)&&h.kind!=="doviz",fromOpts=buyNew?cashFromOpts(pfId,h.cur):[];
   const fromDef=S().buyCash==="pf"&&fromOpts.length>1?fromOpts[0][0]:"none";
   const cashOpts=[["pf:"+pfId,"Bu portföydeki nakde ekle"],...own.filter(p=>p.id!==pfId).map(p=>["pf:"+p.id,p.name+" portföyündeki nakde ekle"]),["none","Hiçbir yere ekleme"]];
@@ -2995,7 +3041,7 @@ function quickPrev(r){if(!r)return `<span class="sub">Yaz ve Enter'a bas. Örnek
     tag(esc(r.cat)+(r.sub?" · "+esc(r.sub):"")+(r.why.c==="bulunamadı"?" ?":""),r.why.c==="bulunamadı"?"warn":""),r.type==="out"?(c?cardTag(c):tag("Nakit")):"",r.inst>1?tag(r.inst+" taksit"):"",
     r.date!==todayISO()?tag(fmtDate(r.date)):"",r.note?tag(esc(r.note),"nt"):""].join("")}
 /* ---------- tek + menüsü: her sekmede aynı ---------- */
-function curPfId(){const v=view.pf;return v&&v!=="all"&&ownPfs().some(p=>p.id===v)?v:(mainPf()||ownPfs()[0]||{}).id}
+function curPfId(){const v=view.pf;return v&&v!=="all"&&editPfs().some(p=>p.id===v)?v:(mainPf()||ownPfs()[0]||editPfs()[0]||{}).id}
 function addMenu(){
   const it=[
     ["out","Harcama",I.cart,"--neg","Market, fatura, kira…"],
@@ -3030,7 +3076,7 @@ function addMenu(){
 function pickHolding(type,pid0){
   const pid=pid0||curPfId(),pf=state.portfolios.find(p=>p.id===pid);if(!pf)return holdingSheet();
   const hs=pf.holdings.filter(h=>type==="buy"||+h.qty>0).slice().sort((a,b)=>hVal(b)-hVal(a));
-  const others=ownPfs().length>1?`<div class="chips am-pf" role="group" aria-label="Portföy">${ownPfs().map(p=>`<button class="chip" data-pp="${p.id}" aria-pressed="${p.id===pid}">${esc(p.name)}</button>`).join("")}</div>`:"";
+  const others=editPfs().length>1?`<div class="chips am-pf" role="group" aria-label="Portföy">${editPfs().map(p=>`<button class="chip" data-pp="${p.id}" aria-pressed="${p.id===pid}">${esc(p.name)}</button>`).join("")}</div>`:"";
   openSheet(`<h3>${type==="buy"?"Hangi varlığı aldın?":"Hangi varlığı sattın?"}</h3>${others}
     ${type==="buy"?`<button type="button" class="am-new" data-new="1">${ic(I.plus,18)}<span><b>Yeni varlık ekle</b><small>Listede olmayan bir hisse, fon, altın ya da döviz</small></span></button>`:""}
     <div class="list">${hs.length?hs.map(h=>`<div class="row li" role="button" tabindex="0" data-ph="${h.id}">${kindBadge(h.kind)}<div class="main"><div class="t">${esc(h.name)}</div><div class="s">${esc((KINDS[h.kind]||h.kind).replace(/\s*\(.*\)/,""))} · ${fmtN(+h.qty||0,4)} adet</div></div><div class="end"><span class="num">${fmt(hVal(h),null,{dec:0})}</span></div></div>`).join(""):`<div class="sub" style="padding:12px 0">${type==="buy"?"Bu portföyde henüz varlık yok.":"Bu portföyde satılacak varlık yok."}</div>`}</div>`,sh=>{
@@ -3444,7 +3490,7 @@ document.addEventListener("click",e=>{
   if(a==="start-empty"){state=state||emptyState();state.updatedAt=Date.now();commit();pfSheet();return}
   if(a==="start-sample"){state=normalize(sample());commit("Örnek veriler yüklendi");return}
   if(a==="new-pf")return pfSheet();
-  if(a==="edit-pf"){const p=state.portfolios.find(p=>p.id===id);if(p&&p._shared)return toast(p._shared.from+" bu portföyü sizinle paylaştı; yalnızca görüntüleyebilirsiniz");return pfSheet(p)}
+  if(a==="edit-pf"){const p=state.portfolios.find(p=>p.id===id);if(p&&p._shared)return toast(p._shared.from+" bu portföyü sizinle paylaştı; "+(canEdit(p)?"varlıklarını düzenleyebilirsin, adı ve ayarları sahibinde":"yalnızca görüntüleyebilirsiniz"));return pfSheet(p)}
   if(a==="pf-all"){view.pf="all";view.tab="portfoy";render();window.scrollTo({top:0});return}
   if(a==="open-pf"){setPf(id);view.tab="portfoy";render();window.scrollTo({top:0});return}
   if(a==="ozpf"){setPf(id);render();return}

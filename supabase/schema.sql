@@ -130,3 +130,42 @@ create policy "emanet_share_sahip" on public.emanet_share for all to authenticat
 drop policy if exists "emanet_share_okuyan" on public.emanet_share;
 create policy "emanet_share_okuyan" on public.emanet_share for select to authenticated
   using (email = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+-- ---------------------------------------------------------------------------
+-- Portföy paylaşımında yetki: "view" (yalnızca görür) ya da "edit" (düzenler).
+-- Düzenleyen kişi tabloya doğrudan yazamaz; yalnızca aşağıdaki işlevle, kendisine "edit" yetkisiyle açılmış
+-- satırın "edits" listesine bir değişiklik paketi ekleyebilir. Paketleri sahibinin uygulaması işler ve
+-- emanet_share_ack ile listeden düşer. Bu bölüm birden çok kez çalıştırılabilir.
+-- ---------------------------------------------------------------------------
+alter table public.emanet_share add column if not exists role  text  not null default 'view';
+alter table public.emanet_share add column if not exists edits jsonb not null default '[]'::jsonb;
+alter table public.emanet_share drop constraint if exists emanet_share_role_chk;
+alter table public.emanet_share add constraint emanet_share_role_chk check (role in ('view', 'edit'));
+
+create or replace function public.emanet_share_edit(p_id uuid, p_delta jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare me text := lower(coalesce(auth.jwt() ->> 'email', ''));
+begin
+  if me = '' then raise exception 'giriş gerekli'; end if;
+  if jsonb_typeof(p_delta) <> 'object' or length(p_delta::text) > 300000 then raise exception 'geçersiz değişiklik'; end if;
+  update public.emanet_share
+     set edits = case when jsonb_array_length(edits) >= 300 then edits else edits || jsonb_build_array(
+                   jsonb_build_object('set', coalesce(p_delta -> 'set', '[]'::jsonb), 'del', coalesce(p_delta -> 'del', '[]'::jsonb), 'by', me, 'at', now())) end
+   where id = p_id and role = 'edit' and email = me;
+  if not found then raise exception 'düzenleme yetkin yok'; end if;
+end $$;
+
+create or replace function public.emanet_share_ack(p_id uuid, p_n int, p_data jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.emanet_share
+     set edits = coalesce((select jsonb_agg(e order by i) from jsonb_array_elements(edits) with ordinality as t(e, i) where i > p_n), '[]'::jsonb),
+         data = p_data, updated_at = now()
+   where id = p_id and owner = auth.uid();
+  if not found then raise exception 'izin yok'; end if;
+end $$;
+
+revoke all on function public.emanet_share_edit(uuid, jsonb) from public, anon;
+revoke all on function public.emanet_share_ack(uuid, int, jsonb) from public, anon;
+grant execute on function public.emanet_share_edit(uuid, jsonb) to authenticated;
+grant execute on function public.emanet_share_ack(uuid, int, jsonb) to authenticated;

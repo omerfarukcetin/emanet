@@ -1508,3 +1508,9 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .subchip button:hover{background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg)}
 .subadd{display:flex;gap:8px}
 .subadd input{flex:1;min-width:0}
+/* 3.20 · paylaşım yetkisi */
+.shr-r{align-items:center;gap:8px}
+.shr-r .shr-m{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.shr-role{font:inherit;font-size:.82rem;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.shr-add{display:flex;gap:6px;flex-wrap:wrap}
+.shr-add input{flex:1 1 160px;min-width:0}
