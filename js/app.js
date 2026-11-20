@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.21";
+const APP_VERSION="3.22";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -92,7 +92,7 @@ function normalize(s){
   if(!s.budgets||typeof s.budgets!=="object")s.budgets={};
   s.tx.forEach(t=>{if(t.cat in CAT_MAP)t.cat=CAT_MAP[t.cat]||(t.type==="in"?"Diğer gelir":"Diğer gider")});
   s.portfolios.forEach(p=>{if(!Array.isArray(p.holdings))p.holdings=[];if(!p.owner)p.owner=s.settings.mainOwner||"Ben";if(p.inSummary===undefined)p.inSummary=true;
-    p.holdings.forEach(h=>{if(h.kind==="hisse"&&h.cur==="USD")h.kind="abd";
+    p.holdings.forEach(h=>{if(h.kind==="hisse"&&h.cur==="USD")h.kind="abd";if(+h.qty>0&&+h.qty<=1e-8)h.qty=0;
       if(h.kind==="bes"&&!h.bes){const pr=(+h.qty||0)*(+h.cost||0),v=(+h.qty||0)*(+h.price||0);h.bes={principal:pr,gain:v-pr,state:0,stateGain:0};h.qty=1;h.cost=pr;h.price=v;h.trades=[]}})});
   s.debts.forEach(d=>{if(!Array.isArray(d.payments))d.payments=[]});
   /* zekât portföy bazında: kişi bazlı eski kayıtları portföye taşı */
@@ -621,7 +621,8 @@ function rebuild(h){
     if(t.type==="buy"){c=(q*c+amt+(+t.fee||0))/(q+tq);q+=tq}
     else{if(tq>q+1e-9)return fmtDate(t.date)+" tarihli satış, o tarihte elinizdeki miktardan fazla.";const gross=amt-(+t.fee||0)-tq*c;const tax=t.taxAmt!=null&&t.taxAmt!==""?+t.taxAmt||0:Math.max(0,gross)*(+t.taxRate||0)/100;t.tax=tax;const pl=gross-tax;t.pl=pl;real+=pl;q-=tq}
   }
-  h.qty=Math.max(0,q);if(tr.some(t=>t.type==="buy"))h.cost=c;h.realized=real;if(divs)h.divs=divs;else delete h.divs;
+  // ondalık toplama artığı (ör. 2,5+3,1+3,1826−8,7826 = 0,000000000000002) "elde var" sayılmasın
+  h.qty=q>1e-8?Math.round(q*1e10)/1e10:0;if(tr.some(t=>t.type==="buy"))h.cost=c;h.realized=real;if(divs)h.divs=divs;else delete h.divs;
   const bd=buysOf(h).map(t=>t.date).filter(Boolean).sort()[0];if(bd)h.buyDate=bd;
   h.fxAt=null;recalcFx(h);return null;
 }
