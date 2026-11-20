@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-20T17:40:41.696Z",
+ "updatedAt": "2026-11-20T17:51:50.854Z",
  "fx": {
-  "EUR": 55.603,
-  "USD": 50.5838
+  "EUR": 55.5785,
+  "USD": 50.572
  },
  "gold": {
   "ata": 40624,
@@ -24,9 +24,9 @@
  },
  "quotes": {
   "abd:LPTH": {
-   "p": 5.207,
+   "p": 5.24,
    "cur": "USD",
-   "t": "2026-11-20T17:40:19.000Z",
+   "t": "2026-11-20T17:51:31.000Z",
    "pc": 6.01
   },
   "hisse:SOKE": {
@@ -66,15 +66,15 @@
    "pc": 0.532421
   },
   "abd:SPMO": {
-   "p": 119.5,
+   "p": 119.45,
    "cur": "USD",
-   "t": "2026-11-20T17:40:27.000Z",
+   "t": "2026-11-20T17:51:27.000Z",
    "pc": 124.04
   },
   "abd:SCHD": {
-   "p": 34.34,
+   "p": 34.31,
    "cur": "USD",
-   "t": "2026-11-20T17:40:25.000Z",
+   "t": "2026-11-20T17:51:35.000Z",
    "pc": 34.2
   },
   "hisse:OPT25": {
@@ -108,44 +108,45 @@
    "pc": 71.7
   },
   "abd:OWL": {
-   "p": 8.805,
+   "p": 8.825,
    "cur": "USD",
-   "t": "2026-11-20T17:40:28.000Z",
+   "t": "2026-11-20T17:51:39.000Z",
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1624.05,
+   "p": 1628.64,
    "cur": "USD",
-   "t": "2026-11-20T17:40:27.000Z",
+   "t": "2026-11-20T17:51:38.000Z",
    "pc": 1755.3
   },
   "kripto:XRP": {
-   "p": 0.9016,
+   "p": 0.9043,
    "cur": "USD",
-   "t": "2026-11-20T17:40:29.000Z",
+   "t": "2026-11-20T17:51:35.000Z",
    "pc": 0.9598
   },
   "abd:SCHG": {
    "p": 31.07,
    "cur": "USD",
-   "t": "2026-11-20T17:40:32.000Z",
+   "t": "2026-11-20T17:51:29.000Z",
    "pc": 32.2
   },
   "abd:VOO": {
-   "p": 643.86,
+   "p": 643.73,
    "cur": "USD",
-   "t": "2026-11-20T17:40:32.000Z",
+   "t": "2026-11-20T17:51:40.000Z",
    "pc": 658.01
   },
   "abd:GPIQ": {
-   "p": 48.65,
+   "p": 48.7,
    "cur": "USD",
-   "t": "2026-11-20T17:40:20.000Z",
+   "t": "2026-11-20T17:51:18.000Z",
    "pc": 50.55
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
