@@ -1477,3 +1477,34 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 /* 3.18 · bir fels */
 .fels-v{display:flex;flex-direction:column;gap:2px}
 .fels-v b{font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
+
+/* 3.19 · giriş ekranı: simgenin renkleri (turkuaz, krem, şeftali, mercan) — açık ve koyu temada aynı */
+.auth{--auth-teal:#0a7891;--auth-teal-d:#075a6f;--auth-cream:#fffbe8;--auth-peach:#f4c9a0;--auth-coral:#ef6f5c;--auth-ink:#0b3a47;
+  background:radial-gradient(120% 80% at 85% 0%,#12c0c9 0%,transparent 55%),linear-gradient(165deg,#0d9db0 0%,var(--auth-teal) 45%,#05465a 100%)}
+.auth::before{opacity:.08}
+.auth-card{--surface:var(--auth-cream);--fg:var(--auth-ink);--muted:#4f6f78;--line:#ecdcb8;--accent:var(--auth-teal);--on-accent:#fffbe8;
+  background:var(--auth-cream);color:var(--auth-ink);box-shadow:0 40px 80px -30px rgba(2,40,52,.6)}
+.auth-brand{color:var(--auth-ink)}
+.auth-brand img{width:52px;height:52px;border-radius:14px;box-shadow:0 8px 18px -8px rgba(7,90,111,.6)}
+.auth-brand b{color:var(--auth-ink);font-size:1.45rem}
+.auth-card h2{color:var(--auth-ink)}
+.auth-card .field label{color:#3d5f68}
+.auth-card input{background:#fff;border-color:#e6d6b0;color:var(--auth-ink)}
+.auth-card input:focus{border-color:var(--auth-teal);outline:2px solid color-mix(in srgb,var(--auth-teal) 30%,transparent);outline-offset:1px}
+.auth-card .btn.primary{background:var(--auth-teal);border-color:var(--auth-teal);color:var(--auth-cream);box-shadow:0 10px 20px -12px var(--auth-teal-d)}
+.auth-card .btn.primary:hover{background:var(--auth-teal-d)}
+.auth-card .btn:not(.primary):not(.ghost){background:transparent;border-color:var(--auth-peach);color:var(--auth-ink)}
+.auth-card .btn.ghost{color:var(--auth-teal)}
+.auth-card .err{color:#c2412f}
+.auth-card .err.ok{color:var(--auth-teal-d)}
+.auth-card .sub{color:#56757d}
+/* 3.19 · alt kategoriler */
+.sub-cat{font-weight:500;color:var(--muted)}
+.subsplit{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:.78rem;color:var(--muted)}
+.subsplit b{color:var(--fg);font-weight:600}
+.subed{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.subchip{display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));font-size:.85rem;font-weight:600}
+.subchip button{border:0;background:none;color:var(--muted);font-size:1.05rem;line-height:1;width:24px;height:24px;border-radius:50%;cursor:pointer}
+.subchip button:hover{background:color-mix(in srgb,var(--neg) 14%,transparent);color:var(--neg)}
+.subadd{display:flex;gap:8px}
+.subadd input{flex:1;min-width:0}

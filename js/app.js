@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.18";
+const APP_VERSION="3.19";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -32,6 +32,12 @@ const DEF_CATS={in:["Maaş","Ek ödemeler (kurs, görev, ikramiye)","Yan gelir",
   out:["Kira & aidat","Faturalar","Market & mutfak","Kredi kartı harcaması","Kredi / taksit","Ulaşım & araç","Eğitim","Sağlık","Çocuk","Giyim","Ev & eşya","Dışarıda yemek & eğlence","Abonelikler","Hediye","Yardım & sadaka","Diğer gider"],
   save:["Birikim","Altın","Fon ve yatırım","Döviz","Acil durum fonu","BES"]};
 const catList=t=>{const c=state&&state.settings&&state.settings.cats;return c&&Array.isArray(c[t])&&c[t].length?c[t]:DEF_CATS[t]};
+/* alt kategoriler (yalnız gider): hazır liste yalnızca Faturalar için; kullanıcı her gider kategorisine ekleyip çıkarabilir (ayarlar: subs) */
+const DEF_SUBS={"Faturalar":["Telefon","İnternet","Su","Doğalgaz","Elektrik","ChatGPT","Claude","Netflix"]};
+const subList=c=>{const m=state&&state.settings&&state.settings.subs;return m&&Array.isArray(m[c])?m[c]:(DEF_SUBS[c]||[])};
+function subsSet(c,l){const st=S();st.subs=st.subs||{};st.subs[c]=l}
+/* sabit ödeme adından alt kategori: "İnternet" → İnternet, "Elektrik faturası" → Elektrik */
+const subFor=(c,name)=>{const n=trLow(name||"");return n?subList(c).find(x=>{const k=trLow(x);return n===k||n.startsWith(k+" ")||n.startsWith(k)}):undefined};
 const CATS={get in(){return catList("in")},get out(){return catList("out")},get save(){return catList("save")}};
 const CAT_MAP={"Kira":"Kira & aidat","Market":"Market & mutfak","Ulaşım":"Ulaşım & araç","Ev":"Ev & eşya","Eğlence":"Dışarıda yemek & eğlence","Sadaka / Bağış":"Yardım & sadaka","Abonelik":"Abonelikler","Satış":"Yan gelir","Temettü / Faiz dışı getiri":"Yatırım getirisi","Diğer":null};
 
@@ -907,7 +913,7 @@ function hideAuth(){$("#auth").hidden=true}
 function showAuth(){
   const el=$("#auth");el.hidden=false;
   el.innerHTML=`<div class="auth-card">
-    <div class="auth-brand">${STAR}<b>Emanet</b></div>
+    <div class="auth-brand"><img src="icons/icon-192.png" alt="" width="52" height="52"><b>Emanet</b></div>
     <h2>Birikiminiz, zekâtınız ve bütçeniz tek defterde.</h2>
     <form id="authF" novalidate class="form">
       <div class="field"><label for="auE">E-posta</label><input id="auE" type="email" autocomplete="email" inputmode="email" placeholder="ornek@eposta.com"></div>
@@ -1890,7 +1896,7 @@ function rAkis(){
   <section class="card">
     <div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><h2>Kategoriler ve bütçe</h2><span><button class="btn ghost sm" data-act="budget">${budTot?"Bütçeyi düzenle":"Bütçe belirle"}</button></span></div>
     ${catArr.length?`<div style="display:flex;flex-direction:column;gap:12px">${catArr.map(([c,v])=>{const lim=+bud[c]||0;const over=lim&&v>lim,near=lim&&v>lim*.9,pv=prevCats[c]||0,dp=pv?(v-pv)/pv*100:null;
-      return `<div class="budrow">${mkIcon(catIcon(c),catColor(c))}<div class="main"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.88rem;margin-bottom:4px"><span>${esc(c)}${dp!=null&&Math.abs(dp)>=1?` <small class="${dp>0?"neg-t":"pos-t"}" title="Geçen ay ${fmt(pv,null,{dec:0})}">${dp>0?"▲":"▼"} %${fmtN(Math.min(999,Math.abs(dp)),0)}</small>`:pv?"":` <small class="sub">yeni</small>`}</span><span class="num ${over?"neg-t":""}">${fmt(v)}${lim?` <span class="sub">/ ${fmt(lim)}</span>`:""}</span></div><div class="bar" style="position:relative"><i style="width:${(lim?Math.min(100,v/lim*100):v/cmax*100)}%;background:var(${over?"--neg":near?"--warn":catColor(c)})"></i></div></div></div>`}).join("")}</div>`
+      return `<div class="budrow">${mkIcon(catIcon(c),catColor(c))}<div class="main"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.88rem;margin-bottom:4px"><span>${esc(c)}${dp!=null&&Math.abs(dp)>=1?` <small class="${dp>0?"neg-t":"pos-t"}" title="Geçen ay ${fmt(pv,null,{dec:0})}">${dp>0?"▲":"▼"} %${fmtN(Math.min(999,Math.abs(dp)),0)}</small>`:pv?"":` <small class="sub">yeni</small>`}</span><span class="num ${over?"neg-t":""}">${fmt(v)}${lim?` <span class="sub">/ ${fmt(lim)}</span>`:""}</span></div><div class="bar" style="position:relative"><i style="width:${(lim?Math.min(100,v/lim*100):v/cmax*100)}%;background:var(${over?"--neg":near?"--warn":catColor(c)})"></i></div>${subSplit(c,m)}</div></div>`}).join("")}</div>`
       :`<div class="sub">Bu ay gider yok.</div>`}
     <div class="card-foot"><button class="btn ghost sm" data-act="cats">Kategorileri düzenle${ic(I.right,14)}</button></div>
   </section>
@@ -2158,8 +2164,12 @@ function benchCard(ids){
 }
 
 /* ---------- gelir-gider: arama ve süzme ---------- */
+/* bir kategorinin bu ayki alt kategori dağılımı: "Elektrik ₺850 · Su ₺320 · Diğer ₺200" (alt kategorili kayıt yoksa boş) */
+function subSplit(c,m){const by={};let any=false;monthTx(m).forEach(t=>{if(t.type!=="out"||t.cat!==c)return;const k=t.sub||"";if(k)any=true;by[k]=(by[k]||0)+toBase(t.amount,t.cur)});
+  if(!any)return"";const l=Object.entries(by).sort((a,b)=>(!a[0])-(!b[0])||b[1]-a[1]);
+  return `<div class="subsplit">${l.map(([k,v])=>`<span>${esc(k||"Diğer")} <b class="num">${fmt(v,null,{dec:0})}</b></span>`).join("")}</div>`}
 function txRow(t){const card=t.type==="card"?cardById(t.card):null,mc=t.method&&cardById(t.method),inc=t.type==="in",cp=t.type==="card",sv=t.type==="save",g=sv&&t.goal&&(state.goals||[]).find(x=>x.id===t.goal);
-  return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),cp?"--c2":catColor(t.cat)),title:cp?"Kart ödemesi":esc(t.cat),
+  return li({act:"edit-tx",id:t.id,mark:mkIcon(cp?I.card:catIcon(t.cat),cp?"--c2":catColor(t.cat)),title:cp?"Kart ödemesi":esc(t.cat)+(t.sub?` <span class="sub-cat">· ${esc(t.sub)}</span>`:""),
     sub:[sv?"Tasarruf"+(g?" · "+esc(g.name):"")+(t.buy?" · portföye alındı":""):"",cp?(card?cardTag(card):"kart"):"",mc?cardTag(mc):"",t.inst?"Taksit "+t.inst:"",t.rid?"Sabit":"",esc(t.note||"")].filter(Boolean).join(" · "),
     amount:(inc?"+":cp||sv?"":"−")+fmt(t.amount,t.cur),cls:inc?"pos-t":""})}
 function txMatch(){
@@ -2174,7 +2184,7 @@ function txMatch(){
     if(pay&&pay!=="cash"&&pay!=="cards"&&!(t.method===pay||(t.type==="card"&&t.card===pay)))return false;
     if(!q)return true;
     const c=cardById(t.card)||cardById(t.method);
-    if(trLow([t.cat,t.note,c&&c.name,fmtDate(t.date),t.type==="card"?"kart ödemesi":t.type==="save"?"tasarruf":""].filter(Boolean).join(" ")).includes(q))return true;
+    if(trLow([t.cat,t.sub,t.note,c&&c.name,fmtDate(t.date),t.type==="card"?"kart ödemesi":t.type==="save"?"tasarruf":""].filter(Boolean).join(" ")).includes(q))return true;
     return isNum&&String(+t.amount).startsWith(String(+dq));
   }).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   return{list,q,active:!!(q||cat||pay)};
@@ -2955,6 +2965,9 @@ function quickParse(raw){
     const c=state.cards.find(c=>{const n=trLow(c.name);return n===w||n.split(/\s+/)[0]===w||(w.length>=4&&n.startsWith(w))});if(c){r.method=c.id;r.why.m="yazdın";used.add(i)}
     else if((w==="kart"||w==="kredi")&&state.cards.length===1){r.method=state.cards[0].id;used.add(i)}});
   const cats=r.type==="in"?CATS.in:r.type==="save"?CATS.save:CATS.out;
+  // alt kategori adı yazılmışsa (elektrik, netflix, claude…): kategorisi de belli olur
+  if(r.type==="out")for(let i=0;i<T.length&&!r.sub;i++){if(used.has(i)||L[i].length<2)continue;const w=L[i];
+    for(const c of cats){const sb=subList(c).find(x=>{const k=trLow(x);return k===w||(w.length>=4&&k.startsWith(w))||(k.length>=4&&w.startsWith(k))});if(sb){r.cat=c;r.sub=sb;r.why.c="yazdın";used.add(i);break}}}
   // kategori adı yazılmışsa
   const words=c=>trLow(c).split(/[^a-zçğıöşü]+/).filter(x=>x.length>=4);
   for(let i=0;i<T.length&&!r.cat;i++){if(used.has(i)||L[i].length<4)continue;const w=L[i];
@@ -2972,14 +2985,14 @@ function quickParse(raw){
 function quickSave(r){const a=r.amount,ym=r.date.slice(0,7),b0=r.type==="out"?budLevel(r.cat,ym):null;
   withUndo(()=>{if(r.inst>1){const g=uid(),per=Math.round(a/r.inst*100)/100;
       for(let k=0;k<r.inst;k++){const[y,m]=ym.split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
-        state.tx.push({id:uid(),type:"out",amount:k===r.inst-1?Math.round((a-per*(r.inst-1))*100)/100:per,cur:"TRY",cat:r.cat,date:dayIn(mm,+r.date.slice(8)),note:r.note,method:r.method,inst:(k+1)+"/"+r.inst,grp:g})}}
-    else state.tx.push({id:uid(),type:r.type,amount:a,cur:"TRY",cat:r.cat,date:r.date,note:r.note,method:r.type==="out"?r.method:""});
-    view.month=ym;commit((r.type==="in"?"Gelir":r.type==="save"?"Tasarruf":"Gider")+" eklendi · "+r.cat+" "+fmt(a,"TRY",{dec:a%1?2:0,show:true})+(r.method?" · "+(cardById(r.method)||{}).name:"")+(r.type==="out"?budNote(r.cat,ym,b0):""))})}
+        state.tx.push({id:uid(),type:"out",amount:k===r.inst-1?Math.round((a-per*(r.inst-1))*100)/100:per,cur:"TRY",cat:r.cat,...(r.sub?{sub:r.sub}:{}),date:dayIn(mm,+r.date.slice(8)),note:r.note,method:r.method,inst:(k+1)+"/"+r.inst,grp:g})}}
+    else state.tx.push({id:uid(),type:r.type,amount:a,cur:"TRY",cat:r.cat,...(r.sub?{sub:r.sub}:{}),date:r.date,note:r.note,method:r.type==="out"?r.method:""});
+    view.month=ym;commit((r.type==="in"?"Gelir":r.type==="save"?"Tasarruf":"Gider")+" eklendi · "+r.cat+(r.sub?" · "+r.sub:"")+" "+fmt(a,"TRY",{dec:a%1?2:0,show:true})+(r.method?" · "+(cardById(r.method)||{}).name:"")+(r.type==="out"?budNote(r.cat,ym,b0):""))})}
 function quickPrev(r){if(!r)return `<span class="sub">Yaz ve Enter'a bas. Örnek: <b>market 450 garanti</b> · <b>benzin 1.200 dün</b> · <b>maaş 85000</b></span>`;
   if(!(r.amount>0))return `<span class="sub">Tutarı da yaz, örneğin <b>${esc(r.note||"market")} 450</b></span>`;
   const c=r.method&&cardById(r.method),tag=(l,cls)=>`<span class="qp ${cls||""}">${l}</span>`;
   return [tag(r.type==="in"?"Gelir":r.type==="save"?"Tasarruf":"Gider",r.type==="in"?"in":r.type==="save"?"sv":"out"),tag(`<b class="num">${fmt(r.amount,"TRY",{dec:r.amount%1?2:0,show:true})}</b>`),
-    tag(esc(r.cat)+(r.why.c==="bulunamadı"?" ?":""),r.why.c==="bulunamadı"?"warn":""),r.type==="out"?(c?cardTag(c):tag("Nakit")):"",r.inst>1?tag(r.inst+" taksit"):"",
+    tag(esc(r.cat)+(r.sub?" · "+esc(r.sub):"")+(r.why.c==="bulunamadı"?" ?":""),r.why.c==="bulunamadı"?"warn":""),r.type==="out"?(c?cardTag(c):tag("Nakit")):"",r.inst>1?tag(r.inst+" taksit"):"",
     r.date!==todayISO()?tag(fmtDate(r.date)):"",r.note?tag(esc(r.note),"nt"):""].join("")}
 /* ---------- tek + menüsü: her sekmede aynı ---------- */
 function curPfId(){const v=view.pf;return v&&v!=="all"&&ownPfs().some(p=>p.id===v)?v:(mainPf()||ownPfs()[0]||{}).id}
@@ -3034,6 +3047,7 @@ function txSheet(t,preset){
     [{id:"amount",label:"Tutar",type:"number",big:true,value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CURS}],
     [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:[...new Set([...catOpts(type),...(t&&t.cat?[t.cat]:[])])].map(c=>[c,c]).concat([["__new","Yeni kategori…"]])},{id:"date",label:"Tarih",type:"date",value:t?t.date:todayISO()}],
     {id:"newCat",label:"Yeni kategorinin adı",value:"",ph:"Örn. Evcil hayvan, Spor, Tatil"},
+    [{id:"sub",label:"Alt kategori",type:"select",value:t&&t.sub||(preset&&preset.sub)||"",options:[["",""]]},{id:"newSub",label:"Yeni alt kategorinin adı",value:"",ph:"Örn. Spotify"}],
     ...(hasCards?[[{id:"method",label:"Ödeme şekli",type:"select",value:t?(t.method||"cash"):"cash",options:methodOpts()},{id:"inst",label:"Taksit sayısı",type:"select",value:"1",options:[["1","Tek çekim"],...[2,3,4,5,6,9,12].map(n=>[String(n),n+" taksit"])]}],
       {id:"card",label:"Ödenen kart",type:"select",value:t&&t.card||(preset&&preset.card)||state.cards[0].id,options:state.cards.map(c=>[c.id,c.name])}]:[]),
     ...(!t&&mainPf()&&mainPf().holdings.some(h=>h.kind!=="bes")?[{id:"buyH",label:"Bununla ne aldınız?",type:"select",value:"",options:[["","Portföye alım yazma"],...mainPf().holdings.filter(h=>h.kind!=="bes").map(h=>[h.id,h.name]),["new","Yeni bir varlık…"]]},
@@ -3082,6 +3096,9 @@ function txSheet(t,preset){
       const bym=v.date.slice(0,7),b0=v.type==="out"&&v.cat!=="__new"?budLevel(v.cat,bym):null,bn=()=>v.type==="out"?budNote(v.cat,bym,b0):"";
       if(v.type!=="card"&&v.cat==="__new"){const n=(v.newCat||"").trim().replace(/\s+/g," ");if(!n)return"Yeni kategorinin adını yazın.";if(n.length>40)return"Ad en çok 40 karakter olabilir.";
         const ex=catOpts(v.type).find(c=>trLow(c)===trLow(n));if(ex)v.cat=ex;else{catsMut(v.type,l=>l.concat([n]));v.cat=n}}
+      let sub="";if(v.type==="out"&&v.sub){if(v.sub==="__new"){const n=(v.newSub||"").trim().replace(/\s+/g," ");if(!n)return"Yeni alt kategorinin adını yazın.";if(n.length>30)return"Alt kategori adı en çok 30 karakter olabilir.";
+          const l=subList(v.cat),ex=l.find(x=>trLow(x)===trLow(n));sub=ex||n;if(!ex)subsSet(v.cat,l.concat([n]))}else sub=v.sub}
+      const subOf=o=>{if(sub)o.sub=sub;else delete o.sub;return o};
       if(v.type==="card"){const d={type:"card",card:v.card,amount:a,cur:v.cur,date:v.date,note:v.note.trim(),cat:"Kart ödemesi"};
         if(t){Object.assign(t,d);delete t.method}else state.tx.push({id:uid(),...d});view.month=v.date.slice(0,7);commit("Kart ödemesi kaydedildi");return}
       const method=v.type==="out"&&v.method&&v.method!=="cash"?v.method:"";
@@ -3096,11 +3113,11 @@ function txSheet(t,preset){
         if(t){Object.assign(t,d);delete t.card}else state.tx.push({id:uid(),...d,...(preset&&preset.rid?{rid:preset.rid}:{})});view.month=v.date.slice(0,7);
         commit(t?"İşlem güncellendi":bought?"Tasarruf eklendi · "+bought+" alımı portföye yazıldı":"Tasarruf eklendi");
         if(!t&&v.buyH==="new")setTimeout(()=>holdingSheet(mainPf().id),350);return}
-      if(t){Object.assign(t,{type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method});delete t.card;delete t.goal}
+      if(t){Object.assign(t,{type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method});subOf(t);delete t.card;delete t.goal}
       else if(n>1&&method){const g=uid(),per=Math.round(a/n*100)/100;
         for(let k=0;k<n;k++){const[y,m]=v.date.slice(0,7).split("-").map(Number);const dt=new Date(y,m-1+k,1);const mm=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0");
-          state.tx.push({id:uid(),type:"out",amount:k===n-1?Math.round((a-per*(n-1))*100)/100:per,cur:v.cur,cat:v.cat,date:dayIn(mm,+v.date.slice(8)),note:v.note.trim(),method,inst:(k+1)+"/"+n,grp:g})}}
-      else{const nt={id:uid(),type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method,...(preset&&preset.rid?{rid:preset.rid}:{})};
+          state.tx.push(subOf({id:uid(),type:"out",amount:k===n-1?Math.round((a-per*(n-1))*100)/100:per,cur:v.cur,cat:v.cat,date:dayIn(mm,+v.date.slice(8)),note:v.note.trim(),method,inst:(k+1)+"/"+n,grp:g}))}}
+      else{const nt=subOf({id:uid(),type:v.type,amount:a,cur:v.cur,cat:v.cat,date:v.date,note:v.note.trim(),method,...(preset&&preset.rid?{rid:preset.rid}:{})});
         const dl=v.dl||"";
         if(dl.startsWith("new:")){const who=(v.dlP||v.note||"").trim();if(!who)return"Borç verdiğin ya da aldığın kişinin adını yazın.";
           const nd={id:uid(),dir:dl.slice(4),person:who,amount:a,cur:v.cur,date:v.date,due:"",note:"",pf:(mainPf()||{}).id,payments:[],tx:nt.id};state.debts.push(nd);nt.debt={d:nd.id};if(!nt.note)nt.note=who}
@@ -3116,6 +3133,11 @@ function txSheet(t,preset){
     const show=(name,on)=>{const f=el[name];if(f){const box=f.closest(".field");box.hidden=!on;const row=box.parentElement;if(row.classList.contains("frow"))row.hidden=[...row.children].every(c=>c.hidden)}};
     const cat=el.cat;if(ty!=="card"&&cat.dataset.ty!==ty){const cur=cat.value;cat.innerHTML=catOpts(ty).map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("")+`<option value="__new">Yeni kategori…</option>`;cat.dataset.ty=ty}
     show("newCat",ty!=="card"&&cat.value==="__new");
+    if(el.sub){const sl=ty==="out"&&cat.value!=="__new"?subList(cat.value):[],key=ty+"|"+cat.value+"|"+sl.join(",");
+      if(el.sub.dataset.k!==key){const cur=el.sub.value||el.sub.dataset.init||"";el.sub.dataset.init="";
+        const o=[["","Alt kategori seçme"],...[...new Set([...sl,...(cur&&cur!=="__new"&&sl.length?[cur]:[])])].map(x=>[x,x]),["__new","Yeni alt kategori…"]];
+        el.sub.innerHTML=o.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join("");el.sub.value=o.some(x=>x[0]===cur)?cur:"";el.sub.dataset.k=key}
+      show("sub",ty==="out"&&cat.value!=="__new"&&(sl.length>0||el.sub.value==="__new"));show("newSub",ty==="out"&&el.sub.value==="__new")}
     show("cat",ty!=="card");show("goal",ty==="save");show("method",ty==="out");
     if(el.dl){const opts=ty==="out"?[["","Bağlama"],...state.debts.filter(d=>d.dir==="borrowed"&&debtLinkable(d)&&debtLeft(d)>0).map(d=>[d.id,"Borç ödemesi · "+d.person+" (kalan "+fmt(debtLeft(d),d.cur,{dec:0})+")"]),["new:lent","Yeni alacak · birine borç verdim"]]
         :ty==="in"?[["","Bağlama"],...state.debts.filter(d=>d.dir==="lent"&&debtLinkable(d)&&debtLeft(d)>0).map(d=>[d.id,"Tahsilat · "+d.person+" (kalan "+fmt(debtLeft(d),d.cur,{dec:0})+")"]),["new:borrowed","Yeni borç · birinden borç aldım"]]:[["","Bağlama"]];
@@ -3132,7 +3154,7 @@ function txSheet(t,preset){
         if(el.buyQty.dataset.auto!=="0"){const a=parseNum(el.amount.value),p=parseNum(el.buyPrice.value),inCur=a>0&&rate(hh.cur)?toBase(a,el.cur.value)*rate(S().base)/rate(hh.cur):0;el.buyQty.value=p>0&&inCur>0?num(inCur/p):""}}}show("inst",ty==="out"&&el.method&&el.method.value!=="cash"&&!t);show("card",ty==="card");
     const h=document.getElementById("txHint");if(h){h.hidden=!(ty==="card"||ty==="save"||(ty==="out"&&el.method&&el.method.value!=="cash"));h.textContent=ty==="save"&&el.buyH&&el.buyH.value==="new"?"Kaydettikten sonra yeni varlık penceresi açılır; orada ne aldığınızı girersiniz.":ty==="save"&&el.buyH&&el.buyH.value?"Tasarruf kaydıyla birlikte seçtiğiniz varlığa bu tarihle alım da yazılır; ayrıca Portföy’e girmeniz gerekmez. Miktar, tutar ÷ fiyat olarak hesaplanır; isterseniz düzeltin.":ty==="save"?"Tasarruf gider sayılmaz; ayın kalanından ve nakit bakiyesinden düşer, tasarruf hedefinize eklenir. Parayı altın ya da fona çevirdiyseniz ayrıca Portföy’e alım olarak girin.":ty==="card"?"Kart ödemesi gider sayılmaz; kart borcunu düşürür.":"Kartla harcama bu ayın giderine yazılır ve kart borcuna eklenir. Taksitli alım aylara bölünür."}
   }
-  setTimeout(()=>{const f=document.getElementById("sf");if(f){f.elements.cat.dataset.ty=type;sync(f)}},0);
+  setTimeout(()=>{const f=document.getElementById("sf");if(f){f.elements.cat.dataset.ty=type;if(f.elements.sub)f.elements.sub.dataset.init=t&&t.sub||(preset&&preset.sub)||"";sync(f)}},0);
 }
 function saveTargetSheet(){
   const t=S().saveTarget||{mode:"amt",v:""};
@@ -3248,7 +3270,7 @@ function catsSheet(ty){
   ty=CAT_T[ty]?ty:"out";const list=catList(ty);
   openSheet(`<h3>Kategoriler</h3>
     <div class="seg full" role="group" style="margin-bottom:10px">${Object.entries(CAT_T).map(([k,l])=>`<button type="button" data-ct="${k}" aria-pressed="${k===ty}">${l}</button>`).join("")}</div>
-    <div class="list">${list.map((c,i)=>`<div class="row catrow">${mkIcon(catIcon(c),catColor(c))}<button type="button" class="main catname" data-ce="${i}"><span class="t">${esc(c)}</span><span class="s">${(n=>n?n+" kayıt":"kayıt yok")(catUse(ty,c))}</span></button>
+    <div class="list">${list.map((c,i)=>`<div class="row catrow">${mkIcon(catIcon(c),catColor(c))}<button type="button" class="main catname" data-ce="${i}"><span class="t">${esc(c)}</span><span class="s">${(n=>n?n+" kayıt":"kayıt yok")(catUse(ty,c))}${ty==="out"&&subList(c).length?" · "+subList(c).length+" alt kategori":""}</span></button>
       <span class="catmv"><button type="button" class="icon-btn sm" data-cu="${i}" ${i===0?"disabled":""} aria-label="${esc(c)}: yukarı taşı">${ic(I.left,14).replace("<svg",'<svg style="transform:rotate(90deg)"')}</button><button type="button" class="icon-btn sm" data-cd="${i}" ${i===list.length-1?"disabled":""} aria-label="${esc(c)}: aşağı taşı">${ic(I.right,14).replace("<svg",'<svg style="transform:rotate(90deg)"')}</button></span></div>`).join("")}</div>
     <div class="sub" style="margin-top:8px">Adını ya da ikonunu değiştirmek, silmek için kategoriye dokunun.</div>
     <div class="actions"><button type="button" class="btn" id="catSort">Kullanıma göre sırala</button><button type="button" class="btn primary grow" id="catAdd">${ic(I.plus,16)}Kategori ekle</button></div>`,sh=>{
@@ -3267,8 +3289,15 @@ function catEdit(ty,name){
   formSheet({title:name?"Kategoriyi düzenle":"Yeni "+CAT_T[ty].toLocaleLowerCase("tr")+" kategorisi",fields:[
     {id:"name",label:"Kategori adı",value:name||"",ph:"Örn. Evcil hayvan, Spor, Tatil"},
     ...(name&&used&&others.length?[{id:"move",label:"Silinirse "+used+" kayıt nereye taşınsın",type:"select",value:"",options:[["","Taşıma; kayıtlar bu adla kalsın"],...others.map(c=>[c,c])]}]:[])],
-    extra:`<div class="field"><label>İkon</label><div class="icongrid" role="radiogroup" aria-label="İkon">${ICON_CHOICES.map(k=>`<button type="button" role="radio" data-ik="${k}" aria-checked="${k===cur}" aria-label="${k}">${ic(I[k],20)}</button>`).join("")}</div><input type="hidden" name="icon" value="${cur}"></div>`,
-    onOpen:(form,sh)=>sh.querySelectorAll("[data-ik]").forEach(b=>b.onclick=()=>{sh.querySelectorAll("[data-ik]").forEach(x=>x.setAttribute("aria-checked",x===b));form.elements.icon.value=b.dataset.ik}),
+    extra:`<div class="field"><label>İkon</label><div class="icongrid" role="radiogroup" aria-label="İkon">${ICON_CHOICES.map(k=>`<button type="button" role="radio" data-ik="${k}" aria-checked="${k===cur}" aria-label="${k}">${ic(I[k],20)}</button>`).join("")}</div><input type="hidden" name="icon" value="${cur}"></div>${ty==="out"?`<div class="field"><label for="subIn">Alt kategoriler</label><div class="subed" id="subEd"></div>
+      <div class="subadd"><input id="subIn" maxlength="30" placeholder="Örn. Spotify" autocomplete="off"><button type="button" class="btn sm" id="subAddB">${ic(I.plus,14)}Ekle</button></div>
+      <div class="sub" style="margin-top:4px">İşlem eklerken bu kategoriyi seçince alt kategori de sorulur. Kaldırdığın alt kategorideki eski kayıtlar olduğu gibi durur.</div><input type="hidden" name="subs" value=""></div>`:""}`,
+    onOpen:(form,sh)=>{sh.querySelectorAll("[data-ik]").forEach(b=>b.onclick=()=>{sh.querySelectorAll("[data-ik]").forEach(x=>x.setAttribute("aria-checked",x===b));form.elements.icon.value=b.dataset.ik});
+      if(ty!=="out")return;let L=(name?subList(name):[]).slice();const box=sh.querySelector("#subEd"),inp=sh.querySelector("#subIn");
+      const draw=()=>{form.elements.subs.value=JSON.stringify(L);box.innerHTML=L.length?L.map((x,i)=>`<span class="subchip">${esc(x)}<button type="button" data-sx="${i}" aria-label="${esc(x)}: kaldır">×</button></span>`).join(""):`<span class="sub">Alt kategori yok.</span>`;
+        box.querySelectorAll("[data-sx]").forEach(b=>b.onclick=()=>{L.splice(+b.dataset.sx,1);draw()})};
+      const add=()=>{const n=inp.value.trim().replace(/\s+/g," ");if(!n)return;if(!L.some(x=>trLow(x)===trLow(n)))L.push(n);inp.value="";draw();inp.focus()};
+      sh.querySelector("#subAddB").onclick=add;inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();add()}});draw()},
     onSave:v=>{const n=v.name.trim().replace(/\s+/g," ");if(!n)return"Kategori adı girin.";if(n.length>40)return"Ad en çok 40 karakter olabilir.";
       if(n!==name&&list.some(c=>trLow(c)===trLow(n)))return"Bu adla bir kategori zaten var.";
       const st=S();st.catIcons=st.catIcons||{};
@@ -3278,11 +3307,13 @@ function catEdit(ty,name){
         delete st.catIcons[name]}
       else if(!name)catsMut(ty,l=>l.concat([n]));
       if(v.icon)st.catIcons[n]=v.icon;else delete st.catIcons[n];
+      if(ty==="out"&&v.subs){let l=null;try{l=JSON.parse(v.subs)}catch(e){}if(Array.isArray(l)){if(name&&n!==name&&st.subs)delete st.subs[name];
+        if(l.length||subList(n).length||(st.subs&&n in st.subs))subsSet(n,l)}}
       commit(name?"Kategori güncellendi":"Kategori eklendi");setTimeout(()=>catsSheet(ty),320)},
     onDelete:name&&list.length>1?()=>{const mvTo=(document.querySelector("#f_move")||{}).value||"";
       if(mvTo){state.tx.forEach(t=>{if((ty==="out"?t.type==="out":t.type===ty)&&t.cat===name)t.cat=mvTo});state.recurring.forEach(r=>{if(r.type===ty&&r.cat===name)r.cat=mvTo});
         if(ty==="out"&&state.budgets&&name in state.budgets){if(!(mvTo in state.budgets))state.budgets[mvTo]=state.budgets[name];delete state.budgets[name]}}
-      catsMut(ty,l=>l.filter(c=>c!==name));if(S().catIcons)delete S().catIcons[name];
+      catsMut(ty,l=>l.filter(c=>c!==name));if(S().catIcons)delete S().catIcons[name];if(ty==="out"&&S().subs&&!mvTo)delete S().subs[name];
       commit(mvTo?"Kategori silindi, kayıtlar “"+mvTo+"” kategorisine taşındı":"Kategori listeden kaldırıldı"+(used?"; eski kayıtlar duruyor":""))}:null});
 }
 /* son üç tam ayın ortalamasına göre bütçe önerisi (yukarı, yuvarlak bir sayıya) */
@@ -3438,7 +3469,7 @@ document.addEventListener("click",e=>{
   if(a==="tx-add")return txSheet();
   if(a==="rec-edit")return recSheet(state.recurring.find(x=>x.id===id));
   if(a==="rec-pay"){const r=state.recurring.find(x=>x.id===id);if(!r)return;let d=dayIn(view.month,r.day);if(d>todayISO()&&view.month===todayISO().slice(0,7))d=todayISO();
-    state.tx.push({id:uid(),type:r.type,amount:r.amount,cur:r.cur,cat:r.cat,date:d,note:r.name,method:r.method||"",rid:r.id});commit(r.name+(r.type==="in"?" alındı":r.type==="save"?" ayrıldı":" ödendi"));return}
+    const sb=r.type==="out"?(r.sub||subFor(r.cat,r.name)):"";state.tx.push({id:uid(),type:r.type,amount:r.amount,cur:r.cur,cat:r.cat,...(sb?{sub:sb}:{}),date:d,note:r.name,method:r.method||"",rid:r.id});commit(r.name+(r.type==="in"?" alındı":r.type==="save"?" ayrıldı":" ödendi"));return}
   if(a==="card-new")return cardSheet();
   if(a==="card-edit")return cardSheet(cardById(id));
   if(a==="card-pay"){const c=cardById(id);const b=cardBal(c);return txSheet(null,{type:"card",amount:Math.round(b.bal*100)/100,card:c.id})}
