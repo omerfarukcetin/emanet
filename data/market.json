@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-20T12:10:39.616Z",
+ "updatedAt": "2026-11-20T12:20:41.074Z",
  "fx": {
-  "EUR": 55.4942,
-  "USD": 50.5807
+  "EUR": 55.5038,
+  "USD": 50.5838
  },
  "gold": {
-  "ata": 40607,
+  "ata": 40658,
   "aziz": null,
-  "ceyrek": 9917,
-  "cumhuriyet": 40607,
-  "gram": 5804.01,
-  "gumus": 68.69,
-  "hamit": 40607,
-  "resat": 40607,
-  "resatAlis": 39277.98,
-  "resatSatis": 39956.86,
-  "tam": 39523,
-  "yarim": 19822,
+  "ceyrek": 9929,
+  "cumhuriyet": 40658,
+  "gram": 5811.35,
+  "gumus": 68.83,
+  "hamit": 40658,
+  "resat": 40658,
+  "resatAlis": 39400,
+  "resatSatis": 40074,
+  "tam": 39573,
+  "yarim": 19847,
   "resatKaynak": "altin.in",
-  "ayar22": 5640.55,
-  "ayar18": 4840,
-  "ayar14": 4414.21
+  "ayar22": 5647.71,
+  "ayar18": 4845,
+  "ayar14": 4419.16
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 6.26
   },
   "hisse:SOKE": {
-   "p": 6.8,
+   "p": 6.82,
    "cur": "TRY",
-   "t": "2026-11-20T11:50:56.000Z",
+   "t": "2026-11-20T12:01:21.000Z",
    "pc": 6.96
   },
   "hisse:BALSU": {
-   "p": 6.15,
+   "p": 6.14,
    "cur": "TRY",
-   "t": "2026-11-20T11:55:01.000Z",
+   "t": "2026-11-20T12:05:15.000Z",
    "pc": 6.3
   },
   "ppf:KLU": {
@@ -90,21 +90,21 @@
    "pc": 1.430712
   },
   "hisse:FZLGY": {
-   "p": 6.85,
+   "p": 6.82,
    "cur": "TRY",
-   "t": "2026-11-20T11:55:23.000Z",
+   "t": "2026-11-20T12:05:02.000Z",
    "pc": 7.25
   },
   "hisse:BIMAS": {
-   "p": 374,
+   "p": 373.75,
    "cur": "TRY",
-   "t": "2026-11-20T11:55:18.000Z",
+   "t": "2026-11-20T12:05:27.000Z",
    "pc": 384
   },
   "hisse:FROTO": {
    "p": 70.25,
    "cur": "TRY",
-   "t": "2026-11-20T11:55:24.000Z",
+   "t": "2026-11-20T12:05:23.000Z",
    "pc": 71.7
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 9.24
   },
   "kripto:ETH": {
-   "p": 1732.38,
+   "p": 1736.61,
    "cur": "USD",
-   "t": "2026-11-20T12:10:24.000Z",
+   "t": "2026-11-20T12:20:25.000Z",
    "pc": 1755.3
   },
   "kripto:XRP": {
-   "p": 0.9441,
+   "p": 0.9463,
    "cur": "USD",
-   "t": "2026-11-20T12:10:24.000Z",
+   "t": "2026-11-20T12:20:27.000Z",
    "pc": 0.9598
   },
   "abd:SCHG": {
@@ -144,7 +144,7 @@
    "pc": 51.61
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
