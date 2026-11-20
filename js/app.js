@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.20";
+const APP_VERSION="3.21";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -1388,15 +1388,43 @@ function sellTaxSim(h,pf){
   const other=(pf?pf.holdings:[]).filter(o=>o.cur!=="TRY"&&(o.trades||[]).length).reduce((a,o)=>a+taxCalc(o,Y).sells.reduce((b,z)=>b+z.gain,0),0);
   const base=Math.max(0,other),tot=Math.max(0,other+x.gain),tax=Math.max(0,incomeTax(tot,Y)-incomeTax(base,Y));
   const stamp=x.gain>0&&base<=0?taxYear(Y).stamp:0;
-  return{Y,x,other,tax,stamp,net:x.sale-tax-stamp,rate:x.gain>0?tax/x.gain*100:0,pend:r.pend,idxPct:x.cost?(x.idx/x.cost-1)*100:0}}
-function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>fmt(v,"TRY",{dec:0});
+  // anlaşılır özet için: Yİ-ÜFE'nin alıştan bu yana gerçek artışı (eşikten bağımsız, maliyet ağırlıklı), dolar getirisi, kur artışı
+  const kAvg=x.cost?x.parts.reduce((a,pt)=>a+pt.cost*(pt.k||1),0)/x.cost:1;
+  const usdBuy=(+h.cost||0)*x.qty,usdNow=ep.p*x.qty;
+  const fxBuy=usdBuy>0?x.cost/usdBuy:0;
+  // vergisiz satış üst fiyatı: bugünkü kurla satış tutarı vergide düşülecek maliyete (x.idx) eşit olduğu fiyat
+  const limit=x.qty>0&&x.fx>0?x.idx/x.fx/x.qty:null;
+  return{Y,x,other,tax,stamp,net:x.sale-tax-stamp,rate:x.gain>0?tax/x.gain*100:0,pend:r.pend,idxPct:x.cost?(x.idx/x.cost-1)*100:0,
+    ufePct:(kAvg-1)*100,tlGain:x.sale-x.cost,tlPct:x.cost?(x.sale/x.cost-1)*100:0,usdGain:usdBuy>0?usdNow-usdBuy:null,usdPct:usdBuy>0?(usdNow/usdBuy-1)*100:null,
+    fxPct:fxBuy>0?(x.fx/fxBuy-1)*100:null,limit,price:ep.p}}
+function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>fmt(v,"TRY",{dec:0}),tls=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),"TRY",{dec:0});
   if(s.need)return `<div class="stx"><div class="label sh-sec" style="margin:0 0 4px">Şimdi satarsan vergi</div><p class="kr-sum">Hesaplamak için alım tarihini girmen gerekiyor (Düzenle → alış tarihi, ya da alımları tarihleriyle ekle).</p></div>`;
-  const x=s.x,g=x.gain;
-  return `<details class="stx" ${view.stxOpen?"open":""}><summary><span class="label sh-sec" style="margin:0">Şimdi satarsan vergi (tahmini)</span><b class="num ${g>0?"neg-t":""}">${g>0?tl(s.tax+s.stamp):"Vergi yok"}</b></summary>
+  const x=s.x,g=x.gain,idx=x.nIdx>0,cu=esc(h.cur),pr=v=>fmtN(v,2)+" "+cu;
+  const tile=(l,v,sub,cls)=>`<div class="stx-t"><span class="l">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<span class="s">${sub}</span>`:""}</div>`;
+  const pc=v=>v>=0?"pos-t":"neg-t";
+  // düz dille açıklama
+  const why=idx
+    ?(g<=0?`TL olarak <b>${fmtPct(s.tlPct)}</b> kazançtasın, ama alıştan bu yana Yİ-ÜFE <b>${fmtPct(s.ufePct)}</b> arttı. Vergide maliyetin bu oranda artırıldığı için kazancın enflasyonun gerisinde kalıyor: Yİ-ÜFE'ye göre <b>${tl(-g)}</b> ${g<0?"zarardasın":"başabaşsın"}, bu yüzden vergi çıkmaz.`
+      :`TL olarak <b>${fmtPct(s.tlPct)}</b> kazançtasın. Alıştan bu yana Yİ-ÜFE <b>${fmtPct(s.ufePct)}</b> arttığı için vergide maliyetin ${tl(x.idx)} sayılır; bunun üstünde kalan <b>${tl(g)}</b> kazanç vergilendirilir.`)
+    :`Alıştan bu yana Yİ-ÜFE <b>${fmtPct(s.ufePct)}</b> arttı. Bu %10'u bulmadığı için maliyet enflasyona göre artırılmaz; TL kazancın olduğu gibi (${tls(g)}) ${g>0?"vergiye konu olur":"hesaba girer, vergi çıkmaz"}.`;
+  const src=s.usdPct!=null&&s.fxPct!=null&&!s.pend?` Bu kazancın kaynağı: hissenin dolar olarak <b>${fmtPct(s.usdPct)}</b> ${s.usdPct>=0?"yükselmesi":"değişmesi"} ve doların TL karşısında <b>${fmtPct(s.fxPct)}</b> değişmesi.`:"";
+  const lim=s.limit>0?`<div class="stx-lim"><span>Vergisiz satış için üst fiyat <small class="sub">(bugünkü kurla, yaklaşık)</small></span><b class="num">${pr(s.limit)}</b>
+      <span class="s">${s.price<=s.limit?`Şu an ${pr(s.price)}. Fiyat bu sınırı geçmedikçe tüm adetleri satsan da vergi çıkmaz.`:`Şu an ${pr(s.price)}, yani sınırın üstünde; aradaki kazanç vergilendirilir.`} Kur yükselirse bu sınır düşer, kur düşerse yükselir.</span></div>`:"";
+  return `<section class="stx stx2">
+    <div class="stx-h"><span class="label sh-sec" style="margin:0">Şimdi satarsan</span><b class="num ${g>0?"neg-t":""}">${g>0?tl(s.tax+s.stamp)+" vergi":"Vergi yok"}</b></div>
+    <div class="stx-g">
+      ${tile("TL getirisi",tls(s.tlGain),fmtPct(s.tlPct),pc(s.tlGain))}
+      ${s.usdGain!=null?tile("Dolar getirisi",(s.usdGain>=0?"+":"−")+fmtN(Math.abs(s.usdGain),2)+" "+cu,fmtPct(s.usdPct),pc(s.usdGain)):""}
+      ${tile("Yİ-ÜFE artışı",fmtPct(s.ufePct),idx?"maliyet endekslendi":"%10'un altında, endeks yok")}
+      ${tile(idx?"Yİ-ÜFE sonrası":"Vergiye konu",tls(g),g>0?"vergiye konu kazanç":g<0?"tahmini zarar":"başabaş",pc(g))}
+    </div>
+    <p class="stx-say">${why}${src}</p>
+    ${lim}
+    <details class="stx-more" ${view.stxOpen?"open":""}><summary>Hesabın ayrıntısı</summary>
     <div class="kv stx-kv">
-      <div><span>Satış tutarı<br><small class="sub">${fmtN(x.qty,4)} adet × ${fmtN(x.t.price,2)} ${esc(h.cur)} · kur ${fmtN(x.fx,4)}</small></span><span class="num">${tl(x.sale)}</span></div>
+      <div><span>Satış tutarı<br><small class="sub">${fmtN(x.qty,4)} adet × ${fmtN(x.t.price,2)} ${cu} · kur ${fmtN(x.fx,4)}</small></span><span class="num">${tl(x.sale)}</span></div>
       <div><span>Alış maliyeti (alış günü kurlarıyla)</span><span class="num">${tl(x.cost)}</span></div>
-      <div><span>Vergide düşülecek maliyet<br><small class="sub">${x.nIdx?"Yİ-ÜFE ile endekslendi ("+fmtPct(s.idxPct)+")":"Yİ-ÜFE artışı %10'un altında, endekslenmedi"}${x.prov?" · son yayımlanan endeksle":""}</small></span><span class="num">${tl(x.idx)}</span></div>
+      <div><span>Vergide düşülecek maliyet<br><small class="sub">${idx?"Yİ-ÜFE ile endekslendi ("+fmtPct(s.idxPct)+")":"Yİ-ÜFE artışı %10'un altında, endekslenmedi"}${x.prov?" · son yayımlanan endeksle":""}</small></span><span class="num">${tl(x.idx)}</span></div>
       <div class="tot"><span>Vergiye konu kazanç</span><span class="num ${g>=0?"pos-t":"neg-t"}">${tl(g)}</span></div>
       ${g>0?`<div><span>Gelir vergisi (${s.Y} tarifesi)<br><small class="sub">bu satışa düşen ortalama oran %${fmtN(s.rate,1)}${s.other>0?" · bu yılki diğer satış kazançların ("+tl(s.other)+") ile birlikte":""}</small></span><span class="num neg-t">${tl(s.tax)}</span></div>
       <div><span>Damga vergisi (beyanname)<br><small class="sub">${s.stamp?"yıllık beyanname başına bir kez":"bu yıl zaten beyanname vereceğin için ek değil"}</small></span><span class="num neg-t">${s.stamp?fmt(s.stamp,"TRY",{dec:2}):"—"}</span></div>
@@ -1404,9 +1432,10 @@ function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>
       <div><span>Vergiden sonra eline geçen</span><span class="num">${tl(s.net)}</span></div>`
       :`<div><span>Vergi</span><span class="num">Yok</span></div>`}
     </div>
-    ${g<=0?`<p class="kr-sum"><b>${g<0?"Zararda satış:":"Kazanç yok:"}</b> ${g<0?"vergi çıkmaz; bu zarar aynı yılki diğer yurt dışı hisse kazançlarından düşülebilir.":"vergi çıkmaz."}</p>`:""}
-    <p class="kr-sum">Tüm adetleri bugünkü fiyat ve kurla satsaydın. Ödeme ${s.Y+1} Mart'ta yıllık beyannameyle yapılır. Varsayımlar: maaşın tek işverenden ve beyan sınırının altında; komisyon dahil değil; resmi hesapta TCMB döviz alış kuru kullanılır, rakamlar biraz değişebilir.${s.pend?" Bazı alımların kuru henüz alınamadı, bugünkü kur kullanıldı.":""} Kesin tutar için mali müşavirine danış.</p>
-  </details>`}
+    ${g<0?`<p class="kr-sum">Zararda satış vergi doğurmaz; bu zarar aynı yılki diğer yurt dışı hisse kazançlarından düşülebilir.</p>`:""}
+    </details>
+    <p class="kr-sum stx-note">Tüm adetleri bugünkü fiyat ve kurla satsaydın. Ödeme ${s.Y+1} Mart'ta yıllık beyannameyle yapılır. Varsayımlar: maaşın tek işverenden ve beyan sınırının altında; komisyon dahil değil; resmi hesapta TCMB döviz alış kuru kullanılır, rakamlar biraz değişebilir.${s.pend?" Bazı alımların kuru henüz alınamadı, bugünkü kur kullanıldı.":""} Kesin tutar için mali müşavirine danış.</p>
+  </section>`}
 function taxReport(Y){
   const pfs=state.portfolios,sel=pfs.find(p=>p.id===view.taxPf)||mainPf();
   if(!sel)return `<section class="card"><div class="empty"><b>Portföy yok</b></div></section>`;
