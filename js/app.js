@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.23";
+const APP_VERSION="3.24";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -72,7 +72,8 @@ try{fxhist=JSON.parse(localStorage.getItem(FXK)||"{}")||{}}catch(e){}
 try{market=JSON.parse(localStorage.getItem(MK)||"null");if(market&&market.gold)goldDerive(market.gold)}catch(e){}
 try{lastWatch=localStorage.getItem(WK)||"[]"}catch(e){}
 let state=null, ready=false, mode="pending", saving=false, pendingSave=false, saveTimer=null, lastLocalWrite=0;
-let view={ozPf:(()=>{try{return localStorage.getItem("emanet-ozpf")}catch(e){return null}})(),tab:"ozet",pf:null,owner:"all",zOwner:null,month:todayISO().slice(0,7),txType:"all",debtDir:"lent"};
+let view={ozPf:(()=>{try{localStorage.removeItem("emanet-ozpf")}catch(e){}return null})(),   // açılışta her zaman ana portföy; seçim yalnızca açık kaldığı sürece
+tab:"ozet",pf:null,owner:"all",zOwner:null,month:todayISO().slice(0,7),txType:"all",debtDir:"lent"};
 
 function normalize(s){
   const e=emptyState(); s=Object.assign(e,s||{});
@@ -1199,7 +1200,7 @@ function swipeTo(el,dir){
     if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5&&Date.now()-t0<900)swipeTo(h,dx<0?1:-1)});
   document.addEventListener("touchcancel",()=>{if(el)el.style.transform="";x0=null;el=null});
 })();
-function setPf(id){view.pf=id;view.ozPf=id;try{localStorage.setItem("emanet-ozpf",id)}catch(e){}}
+function setPf(id){view.pf=id;view.ozPf=id;}
 const ozPf=()=>state.portfolios.find(p=>p.id===view.ozPf)||mainPf()||state.portfolios[0]||null;
 function rOzet(){
   const mp=ozPf(),onMain=!mp||isMainPf(mp);
@@ -3632,7 +3633,7 @@ document.addEventListener("change",e=>{
   if(t.dataset.act==="wht"){const raw=t.value.trim();S().whtRates=S().whtRates||{};if(!raw){delete S().whtRates[t.dataset.k];commit();return}const v=parseNum(raw);if(isNaN(v)||v<0||v>100){toast("Stopaj oranı 0 ile 100 arasında olmalı");return}S().whtRates[t.dataset.k]=v;commit("Stopaj oranı kaydedildi");return}
   if(t.dataset.act==="feerate"){const v=parseNum(t.value);if(isNaN(v)||v<0||v>10){toast("Oran 0 ile 10 arasında olmalı");return}S().feeRate=v;commit("Komisyon oranı kaydedildi");return}
   if(t.dataset.act==="zosel"){view.zOwner=t.value;render();return}
-  if(t.dataset.act==="ozpf"){view.ozPf=t.value;try{localStorage.setItem("emanet-ozpf",t.value)}catch(e){}render();return}
+  if(t.dataset.act==="ozpf"){view.ozPf=t.value;render();return}
   if(t.dataset.act==="startsel"){S().start=t.value;commit();return}
   if(t.id==="importIn"&&t.files&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||!Array.isArray(d.portfolios))throw 0;state=normalize(d);commit("Yedek yüklendi")}catch(err){toast("Dosya okunamadı. Emanet yedeği olan bir .json seçin.")}};r.readAsText(t.files[0])}
 });
