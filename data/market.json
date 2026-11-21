@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-21T23:01:01.668Z",
+ "updatedAt": "2026-11-21T23:10:28.165Z",
  "fx": {
   "EUR": 55.6072,
   "USD": 50.5752
@@ -114,15 +114,15 @@
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1676.76,
+   "p": 1679.4,
    "cur": "USD",
-   "t": "2026-11-21T23:00:17.000Z",
+   "t": "2026-11-21T23:10:08.000Z",
    "pc": 1619.37
   },
   "kripto:XRP": {
-   "p": 0.9252,
+   "p": 0.9274,
    "cur": "USD",
-   "t": "2026-11-21T23:00:17.000Z",
+   "t": "2026-11-21T23:10:15.000Z",
    "pc": 0.9097
   },
   "abd:SCHG": {
@@ -148,7 +148,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
