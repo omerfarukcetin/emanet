@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-22T00:01:39.088Z",
+ "updatedAt": "2026-11-22T00:10:29.285Z",
  "fx": {
   "EUR": 55.6072,
   "USD": 50.5752
@@ -114,16 +114,16 @@
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1681.63,
+   "p": 1682.71,
    "cur": "USD",
-   "t": "2026-11-22T00:00:13.000Z",
-   "pc": 1619.37
+   "t": "2026-11-22T00:10:15.000Z",
+   "pc": 1682.18
   },
   "kripto:XRP": {
-   "p": 0.9296,
+   "p": 0.9305,
    "cur": "USD",
-   "t": "2026-11-22T00:00:10.000Z",
-   "pc": 0.9097
+   "t": "2026-11-22T00:10:15.000Z",
+   "pc": 0.9314
   },
   "abd:SCHG": {
    "p": 30.53,
@@ -148,11 +148,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)",
-  "GSP: fon fiyatı alınamadı (fetch failed)",
-  "KPA: fon fiyatı alınamadı (fetch failed)",
-  "TEFAS art arda yanıt vermedi; kalan fonlar bu turda atlandı"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
