@@ -1,20 +1,20 @@
 {
- "updatedAt": "2026-11-22T22:50:36.178Z",
+ "updatedAt": "2026-11-22T23:01:46.564Z",
  "fx": {
   "EUR": 55.6453,
-  "USD": 50.6134
+  "USD": 50.6087
  },
  "gold": {
   "ata": 40895,
   "aziz": null,
   "ceyrek": 9987,
   "cumhuriyet": 40895,
-  "gram": 5742.94,
+  "gram": 5742.88,
   "gumus": 66.88,
   "hamit": 40895,
   "resat": 40895,
-  "resatAlis": 39131.96,
-  "resatSatis": 39997.96,
+  "resatAlis": 39137.92,
+  "resatSatis": 40003.92,
   "tam": 39804,
   "yarim": 19962,
   "resatKaynak": "altin.in",
@@ -114,15 +114,15 @@
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1713.23,
+   "p": 1717.77,
    "cur": "USD",
-   "t": "2026-11-22T22:50:22.000Z",
+   "t": "2026-11-22T23:00:14.000Z",
    "pc": 1682.18
   },
   "kripto:XRP": {
-   "p": 0.9215,
+   "p": 0.9241,
    "cur": "USD",
-   "t": "2026-11-22T22:50:19.000Z",
+   "t": "2026-11-22T23:00:17.000Z",
    "pc": 0.9314
   },
   "abd:SCHG": {
@@ -148,6 +148,10 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "KLU: fon fiyatı alınamadı (fetch failed)",
+  "ENR: fon fiyatı alınamadı (fetch failed)",
+  "GSP: fon fiyatı alınamadı (fetch failed)",
+  "KPA: fon fiyatı alınamadı (fetch failed)"
  ]
 }
