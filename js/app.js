@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.24";
+const APP_VERSION="3.25";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -358,6 +358,20 @@ const CARD_COLORS=["--c4","--c5","--c9","--c8","--c6","--c1","--c3","--c2"];
 const cardColor=c=>c.color||CARD_COLORS[Math.max(0,state.cards.indexOf(c))%CARD_COLORS.length];
 const cardTag=c=>`<span class="ctag" style="--x:var(${cardColor(c)})">${ic(I.card,12)}${esc(c.name)}</span>`;
 function cardBal(c){const t=todayISO();let sp=0,pd=0;state.tx.forEach(x=>{if(x.type==="out"&&x.method===c.id&&x.date<=t)sp+=toBase(x.amount,x.cur);if(x.type==="card"&&x.card===c.id)pd+=toBase(x.amount,x.cur)});return{sp,pd,bal:sp-pd}}
+/* ekstre hesabı: her son ödeme gününün, ondan önceki son hesap kesim günü vardır. O kesime kadarki kart harcamaları
+   eksi şimdiye kadarki tüm kart ödemeleri = o son ödeme gününde ödenmesi gereken (kaydedilmemişse "açık kalan") tutar. */
+const monthAdd=(ym,k)=>{const[y,m]=ym.split("-").map(Number);const d=new Date(y,m-1+k,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
+function dueBefore(c,t){t=t||todayISO();if(!c.dueDay)return null;let d=dayIn(t.slice(0,7),c.dueDay);if(d>t)d=dayIn(monthAdd(t.slice(0,7),-1),c.dueDay);return d}
+function cutFor(c,due){let k=dayIn(due.slice(0,7),c.cutDay||1);if(k>=due)k=dayIn(monthAdd(due.slice(0,7),-1),c.cutDay||1);return k}
+function cardOpen(c,due,upto){const cut=cutFor(c,due);let sp=0,pd=0;state.tx.forEach(x=>{if(x.type==="out"&&x.method===c.id&&x.date<=cut)sp+=toBase(x.amount,x.cur);
+  if(x.type==="card"&&x.card===c.id&&x.date<=(upto||"9999"))pd+=toBase(x.amount,x.cur)});return{cut,owed:Math.round(Math.max(0,sp-pd)*100)/100}}
+/* otomatik ödeme talimatı: son ödeme günü geçmiş ve işlenmemiş ekstreler için kart ödemesini kendisi kaydeder */
+let cardAutoBusy=false;
+function cardAuto(){if(cardAutoBusy||!state||!Array.isArray(state.cards))return;const t=todayISO(),msg=[];cardAutoBusy=true;
+  try{state.cards.forEach(c=>{if(!c.autoPay||!c.dueDay)return;let d=c.apDone?dayIn(monthAdd(c.apDone.slice(0,7),1),c.dueDay):dueBefore(c,t);let i=0;
+    while(d&&d<=t&&i++<24){const o=cardOpen(c,d);if(o.owed>0.5){state.tx.push({id:uid(),type:"card",amount:o.owed,cur:"TRY",cat:"Kart ödemesi",date:d,note:"Otomatik ödeme talimatı",method:"",card:c.id,auto:1});msg.push(c.name+" "+fmt(o.owed,"TRY",{dec:0}))}
+      c.apDone=d;d=dayIn(monthAdd(d.slice(0,7),1),c.dueDay)}});
+    if(msg.length)commit("Otomatik kart ödemesi kaydedildi: "+msg.join(", "))}finally{cardAutoBusy=false}}
 function nextDue(day){const t=todayISO();let d=dayIn(t.slice(0,7),day);if(d<t){const[y,m]=t.slice(0,7).split("-").map(Number);const n=new Date(y,m,1);d=dayIn(n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0"),day)}return d}
 /* Sabit kalem bu ay ödendi mi: "Öde" ile girilen kayıt ya da elle girilmiş aynı türde, aynı kategoride, tutarı %3'ten az farklı bir kayıt.
    Elle girilen kira gibi kalemler böylece hem "bekleyen" hem "harcanan" diye iki kez sayılmaz. */
@@ -1124,8 +1138,11 @@ function li(o){
   return `<div class="row li${o.rowCls?" "+o.rowCls:""}"${o.style?` style="${o.style}"`:""} title="${String(o.title||"").replace(/<[^>]+>/g,"").replace(/"/g,"&quot;")}" ${o.act?`role="button" tabindex="0" data-act="${o.act}" data-id="${o.id||""}"${o.pf?` data-pf="${o.pf}"`:""}`:""}>${o.mark||""}<div class="main"><div class="t">${o.title}</div>${o.sub?`<div class="s">${o.sub}</div>`:""}${o.extra||""}</div><div class="end">${o.amount!=null?`<div class="num am ${o.cls||""}">${o.amount}</div>`:""}${o.trail||""}</div></div>`;
 }
 const subTabs=()=>`<div class="seg full subtabs" role="group" aria-label="Bölüm">${(view.tab==="portfoy"||view.tab==="takip"?[["portfoy","Portföy"],["takip","Takip listesi"]]:[["akis","Bütçe"],["borc","Borç ve alacak"]]).map(([k,l])=>`<button data-tab="${k}" aria-pressed="${view.tab===k}">${l}</button>`).join("")}</div>`;
+let cardAutoAt="";
 function render(){
   injectShared();
+  // kart otomatik ödeme talimatları: günde bir kez ve kart değişince bak (kaydetme render'dan sonra yapılır)
+  if(ready&&state&&state.cards&&state.cards.some(c=>c.autoPay)){const k=todayISO()+state.cards.map(c=>c.id+(c.apDone||"")+c.dueDay+c.cutDay).join();if(k!==cardAutoAt){cardAutoAt=k;setTimeout(cardAuto,0)}}
   /* telefonda 5 öğe: Özet, Portföy, +, Bütçe, Zekât. Borç, Bütçe ekranının içindeki sekmedir (geniş ekranda kenar çubuğunda da durur). */
   const cur=k=>view.tab===k||(k==="akis"&&(view.tab==="rapor"||(view.tab==="borc"&&!wide())))||(k==="portfoy"&&view.tab==="takip");
   const tabBtn=([k,l])=>`<button data-tab="${k}" ${k==="borc"?'class="only-wide"':""} ${cur(k)?'aria-current="page"':""}>${I[k]}<span>${l}</span></button>`;
@@ -1525,8 +1542,11 @@ function attnItems(){
   const when=n=>n<0?(-n)+" gün gecikti":n===0?"bugün":n===1?"yarın":n+" gün sonra";
   state.recurring.forEach(r=>{if(recPaid(r,m))return;const n=dd(dayIn(m,r.day));if(n>2)return;
     out.push({n,ic:r.type==="in"?I.brief:r.type==="save"?I.target:I.repeat,c:n<0&&r.type!=="in"?"--neg":r.type==="in"?"--pos":r.type==="save"?"--c5":"--accent",t:esc(r.name)+" · "+when(n),s:(r.type==="in"?"Beklenen gelir · ":r.type==="save"?"Düzenli tasarruf · ":"Sabit ödeme · ")+fmt(r.amount,r.cur),act:"goto",id:"akis"})});
-  state.cards.forEach(c=>{const b=cardBal(c).bal;if(!(b>0)||!c.dueDay)return;const n=dd(nextDue(c.dueDay));if(n>5)return;
-    out.push({n,ic:I.card,c:"--c2",t:esc(c.name)+" son ödeme · "+when(n),s:"Kart borcu · "+fmt(b),act:"goto",id:"akis"})});
+  state.cards.forEach(c=>{const b=cardBal(c).bal;if(!(b>0)||!c.dueDay)return;
+    // son ödeme günü geçmiş ekstre hâlâ açıksa: ödeme kaydı unutulmuş olabilir (talimatlı kartta uygulama kendisi kaydeder)
+    const pd=dueBefore(c,t);if(pd&&!c.autoPay){const o=cardOpen(c,pd);if(o.owed>0.5){out.push({n:dd(pd),ic:I.card,c:"--neg",t:esc(c.name)+" · ödeme kaydı yok",s:"Son ödeme "+fmtDate(pd)+" geçti · ekstre "+fmt(o.owed)+" · ödediysen kaydet",act:"card-due",id:c.id});return}}
+    const n=dd(nextDue(c.dueDay));if(n>5)return;const nx=cardOpen(c,nextDue(c.dueDay));
+    out.push({n,ic:I.card,c:"--c2",t:esc(c.name)+" son ödeme · "+when(n),s:(c.autoPay?"Otomatik ödenecek · ":"Ekstre · ")+fmt(nx.owed||b),act:c.autoPay?"goto":"card-due",id:c.autoPay?"akis":c.id})});
   state.debts.forEach(d=>{if(!d.due||!(debtLeft(d)>0))return;const n=dd(d.due);if(n>7)return;
     out.push({n,ic:I.borc,c:n<0?"--neg":"--c2",t:esc(d.name||"")+" · "+when(n),s:(d.dir==="lent"?"Alacağınız · ":"Borcunuz · ")+fmt(debtLeft(d),d.cur),act:"open-debt",id:d.id})});
   const mp=mainPf();
@@ -1967,7 +1987,7 @@ function rAkis(){
   <section class="card side">
     <div class="sec" style="margin-bottom:6px"><h2>Kredi kartları</h2><button class="btn ghost sm" data-act="card-new">${ic(I.plus,14)}Kart ekle</button></div>
     ${state.cards.length?`<div class="list">${state.cards.map(c=>{const b=cardBal(c),nd=nextDue(c.dueDay),n=daysBetween(todayISO(),nd);
-      return li({act:"card-edit",id:c.id,mark:mkIcon(I.card,cardColor(c)),title:esc(c.name),sub:`Son ödeme ${fmtDate(nd)} · ${n} gün${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}`,
+      return li({act:"card-edit",id:c.id,mark:mkIcon(I.card,cardColor(c)),title:esc(c.name),sub:`Son ödeme ${fmtDate(nd)} · ${n} gün${c.autoPay?" · otomatik ödeme":""}${c.limit?` · limit ${fmt(+c.limit,"TRY",{dec:0})}`:""}`,
         extra:c.limit?`<div class="share"><i style="width:${Math.min(100,b.bal/c.limit*100)}%;background:var(${b.bal>c.limit*.9?"--neg":cardColor(c)})"></i></div>`:"",amount:fmt(b.bal),cls:b.bal>0?"neg-t":"",
         trail:b.bal>0?`<button class="btn sm ${n<=3?"primary":""}" data-act="card-pay" data-id="${c.id}">Öde</button>`:`<span class="pill pos">Borç yok</span>`})}).join("")}</div>
       <div class="sub" style="margin-top:8px">Kartla yapılan harcamalar gider olarak o aya yazılır; kart ödemesi tekrar gider sayılmaz, yalnızca kart borcunu düşürür.</div>`
@@ -2501,6 +2521,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheetWrap").hi
 
 const parseNum=v=>{if(v==null)return NaN;v=String(v).trim().replace(/\s/g,"");if(/,\d+$/.test(v)||(v.includes(",")&&!v.includes(".")))v=v.replace(/\./g,"").replace(",",".");return parseFloat(v)};
 function field(f){
+  if(f.type==="html")return f.html||"";
   const id="f_"+f.id;
   if(f.type==="select")return `<div class="field" id="w_${f.id}" ${f.hidden?"hidden":""}><label for="${id}">${f.label}</label><select id="${id}" name="${f.id}">${f.options.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(f.value)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select></div>`;
   if(f.type==="seg")return `<div class="field"><label>${f.label}</label><div class="seg full" role="group" data-seg="${f.id}">${f.options.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${f.value===v}">${l}</button>`).join("")}</div><input type="hidden" name="${f.id}" value="${esc(f.value)}"></div>`;
@@ -3128,7 +3149,7 @@ function txSheet(t,preset){
   formSheet({title:t?"İşlemi düzenle":"İşlem ekle",fields:[
     {id:"type",label:"Tür",type:"seg",value:type,options:hasCards?[["out","Gider"],["in","Gelir"],["save","Tasarruf"],["card","Kart ödemesi"]]:[["out","Gider"],["in","Gelir"],["save","Tasarruf"]]},
     [{id:"amount",label:"Tutar",type:"number",big:true,value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CURS}],
-    [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:[...new Set([...catOpts(type),...(t&&t.cat?[t.cat]:[])])].map(c=>[c,c]).concat([["__new","Yeni kategori…"]])},{id:"date",label:"Tarih",type:"date",value:t?t.date:todayISO()}],
+    [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:[...new Set([...catOpts(type),...(t&&t.cat?[t.cat]:[])])].map(c=>[c,c]).concat([["__new","Yeni kategori…"]])},{id:"date",label:"Tarih",type:"date",value:t?t.date:(preset&&preset.date)||todayISO()}],
     {id:"newCat",label:"Yeni kategorinin adı",value:"",ph:"Örn. Evcil hayvan, Spor, Tatil"},
     [{id:"sub",label:"Alt kategori",type:"select",value:t&&t.sub||(preset&&preset.sub)||"",options:[["",""]]},{id:"newSub",label:"Yeni alt kategorinin adı",value:"",ph:"Örn. Spotify"}],
     ...(hasCards?[[{id:"method",label:"Ödeme şekli",type:"select",value:t?(t.method||"cash"):"cash",options:methodOpts()},{id:"inst",label:"Taksit sayısı",type:"select",value:"1",options:[["1","Tek çekim"],...[2,3,4,5,6,9,12].map(n=>[String(n),n+" taksit"])]}],
@@ -3267,9 +3288,14 @@ function cardSheet(c){
   formSheet({title:c?"Kartı düzenle":"Kredi kartı ekle",fields:[
     {id:"name",label:"Kart adı",value:c?c.name:"",ph:"Örn. Bonus, World, Maximum"},
     [{id:"cutDay",label:"Hesap kesim günü",type:"select",value:c?String(c.cutDay):"1",options:Array.from({length:31},(_,i)=>[String(i+1),String(i+1)])},{id:"dueDay",label:"Son ödeme günü",type:"select",value:c?String(c.dueDay):"10",options:Array.from({length:31},(_,i)=>[String(i+1),String(i+1)])}],
-    {id:"limit",label:"Limit (isteğe bağlı)",type:"number",value:c&&c.limit?c.limit:"",ph:"0"}],
+    {id:"limit",label:"Limit (isteğe bağlı)",type:"number",value:c&&c.limit?c.limit:"",ph:"0"},
+    {id:"autoPay",label:"Otomatik ödeme talimatı",type:"seg",value:c&&c.autoPay?"1":"0",options:[["0","Yok, ben öderim"],["1","Var"]]},
+    {id:"apNote",type:"html",html:`<div class="sub" style="margin-top:-4px">Talimat varsa, her son ödeme gününde ekstre borcu bankadan ödenmiş olarak uygulamaya kendiliğinden yazılır; hesap kesim gününe kadarki harcamalar toplanır. Yoksa, son ödeme günü geçtiği hâlde ödeme kaydı yoksa Özet'te uyarı çıkar.</div>`}],
     onSave:v=>{if(!v.name.trim())return"Kart adı girin.";const lim=v.limit.trim()?parseNum(v.limit):0;if(isNaN(lim)||lim<0)return"Limiti kontrol edin.";
-      const d={name:v.name.trim(),cutDay:+v.cutDay,dueDay:+v.dueDay,limit:lim};if(c)Object.assign(c,d);else state.cards.push({id:uid(),...d});commit(c?"Kart güncellendi":"Kart eklendi")},
+      const ap=v.autoPay==="1",d={name:v.name.trim(),cutDay:+v.cutDay,dueDay:+v.dueDay,limit:lim,autoPay:ap};
+      // talimat yeni açıldıysa: geçmişe gitmez, yalnızca en son geçen son ödeme gününden itibaren işler (o ekstre açıksa onu da kapatır)
+      if(ap&&!(c&&c.autoPay)){const pd=dueBefore(d);d.apDone=pd?dayIn(monthAdd(pd.slice(0,7),-1),d.dueDay):null}if(!ap)d.apDone=null;
+      if(c)Object.assign(c,d);else state.cards.push({id:uid(),...d});commit(c?"Kart güncellendi":"Kart eklendi")},
     onDelete:c?()=>{state.cards=state.cards.filter(x=>x!==c);state.tx.forEach(x=>{if(x.method===c.id)x.method=""});commit("Kart silindi")}:null});
 }
 function cashSheet(){
@@ -3556,6 +3582,8 @@ document.addEventListener("click",e=>{
   if(a==="card-new")return cardSheet();
   if(a==="card-edit")return cardSheet(cardById(id));
   if(a==="card-pay"){const c=cardById(id);const b=cardBal(c);return txSheet(null,{type:"card",amount:Math.round(b.bal*100)/100,card:c.id})}
+  if(a==="card-due"){const c=cardById(id);if(!c)return;const t=todayISO(),pd=dueBefore(c,t),o=pd?cardOpen(c,pd):{owed:0};
+    if(o.owed>0.5)return txSheet(null,{type:"card",amount:o.owed,card:c.id,date:pd});const nd=nextDue(c.dueDay);return txSheet(null,{type:"card",amount:cardOpen(c,nd).owed||Math.round(cardBal(c).bal*100)/100,card:c.id})}
   if(a==="budget")return budgetSheet();
   if(a==="goal-new")return goalSheet();
   if(a==="goal-open"){const g=state.goals.find(x=>x.id===id);return g&&goalDetail(g)}
