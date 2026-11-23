@@ -1,8 +1,8 @@
 {
- "updatedAt": "2026-11-23T13:40:28.009Z",
+ "updatedAt": "2026-11-23T13:51:48.991Z",
  "fx": {
-  "EUR": 55.4257,
-  "USD": 50.6084
+  "EUR": 55.5785,
+  "USD": 50.572
  },
  "gold": {
   "ata": 41449,
@@ -32,13 +32,13 @@
   "hisse:SOKE": {
    "p": 6.61,
    "cur": "TRY",
-   "t": "2026-11-23T13:22:29.000Z",
+   "t": "2026-11-23T13:35:41.000Z",
    "pc": 6.8
   },
   "hisse:BALSU": {
-   "p": 5.99,
+   "p": 6.06,
    "cur": "TRY",
-   "t": "2026-11-23T13:25:09.000Z",
+   "t": "2026-11-23T13:36:28.000Z",
    "pc": 6.08
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 34.2
   },
   "hisse:OPT25": {
-   "p": 45.96,
+   "p": 45.9,
    "cur": "TRY",
-   "t": "2026-11-23T13:22:33.000Z",
+   "t": "2026-11-23T13:32:49.000Z",
    "pc": 46.43
   },
   "fon:KPA": {
@@ -90,21 +90,21 @@
    "pc": 1.410313
   },
   "hisse:FZLGY": {
-   "p": 6.6,
+   "p": 6.58,
    "cur": "TRY",
-   "t": "2026-11-23T13:21:29.000Z",
+   "t": "2026-11-23T13:36:15.000Z",
    "pc": 6.55
   },
   "hisse:BIMAS": {
-   "p": 364.5,
+   "p": 364,
    "cur": "TRY",
-   "t": "2026-11-23T13:25:12.000Z",
+   "t": "2026-11-23T13:36:32.000Z",
    "pc": 374.25
   },
   "hisse:FROTO": {
-   "p": 70.5,
+   "p": 70.45,
    "cur": "TRY",
-   "t": "2026-11-23T13:25:14.000Z",
+   "t": "2026-11-23T13:36:34.000Z",
    "pc": 70.2
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1723.84,
+   "p": 1718.72,
    "cur": "USD",
-   "t": "2026-11-23T13:40:15.000Z",
+   "t": "2026-11-23T13:51:32.000Z",
    "pc": 1721.1
   },
   "kripto:XRP": {
-   "p": 0.9408,
+   "p": 0.9392,
    "cur": "USD",
-   "t": "2026-11-23T13:40:14.000Z",
+   "t": "2026-11-23T13:51:38.000Z",
    "pc": 0.9274
   },
   "abd:SCHG": {
@@ -144,8 +144,9 @@
    "pc": 50.55
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
  "errors": [
+  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
