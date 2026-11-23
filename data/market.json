@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-23T13:51:48.991Z",
+ "updatedAt": "2026-11-23T14:00:35.284Z",
  "fx": {
-  "EUR": 55.5785,
-  "USD": 50.572
+  "EUR": 55.3528,
+  "USD": 50.6041
  },
  "gold": {
-  "ata": 41449,
+  "ata": 41913,
   "aziz": null,
-  "ceyrek": 10141,
-  "cumhuriyet": 41449,
-  "gram": 5886.08,
-  "gumus": 68.8,
-  "hamit": 41449,
-  "resat": 41449,
-  "resatAlis": 40101.42,
-  "resatSatis": 40769.5,
-  "tam": 40404,
-  "yarim": 20264,
+  "ceyrek": 10255,
+  "cumhuriyet": 41913,
+  "gram": 5949.4,
+  "gumus": 70.26,
+  "hamit": 41913,
+  "resat": 41913,
+  "resatAlis": 40538.18,
+  "resatSatis": 41213.07,
+  "tam": 40857,
+  "yarim": 20491,
   "resatKaynak": "altin.in",
-  "ayar22": 5759.28,
-  "ayar18": 4935,
-  "ayar14": 4496.31
+  "ayar22": 5823.44,
+  "ayar18": 4985,
+  "ayar14": 4540.67
  },
  "quotes": {
   "abd:LPTH": {
@@ -30,15 +30,15 @@
    "pc": 6.01
   },
   "hisse:SOKE": {
-   "p": 6.61,
+   "p": 6.6,
    "cur": "TRY",
-   "t": "2026-11-23T13:35:41.000Z",
+   "t": "2026-11-23T13:44:12.000Z",
    "pc": 6.8
   },
   "hisse:BALSU": {
    "p": 6.06,
    "cur": "TRY",
-   "t": "2026-11-23T13:36:28.000Z",
+   "t": "2026-11-23T13:45:10.000Z",
    "pc": 6.08
   },
   "ppf:KLU": {
@@ -80,7 +80,7 @@
   "hisse:OPT25": {
    "p": 45.9,
    "cur": "TRY",
-   "t": "2026-11-23T13:32:49.000Z",
+   "t": "2026-11-23T13:43:59.000Z",
    "pc": 46.43
   },
   "fon:KPA": {
@@ -90,21 +90,21 @@
    "pc": 1.410313
   },
   "hisse:FZLGY": {
-   "p": 6.58,
+   "p": 6.57,
    "cur": "TRY",
-   "t": "2026-11-23T13:36:15.000Z",
+   "t": "2026-11-23T13:43:55.000Z",
    "pc": 6.55
   },
   "hisse:BIMAS": {
-   "p": 364,
+   "p": 364.25,
    "cur": "TRY",
-   "t": "2026-11-23T13:36:32.000Z",
+   "t": "2026-11-23T13:45:21.000Z",
    "pc": 374.25
   },
   "hisse:FROTO": {
    "p": 70.45,
    "cur": "TRY",
-   "t": "2026-11-23T13:36:34.000Z",
+   "t": "2026-11-23T13:45:06.000Z",
    "pc": 70.2
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 9.01
   },
   "kripto:ETH": {
-   "p": 1718.72,
+   "p": 1803.91,
    "cur": "USD",
-   "t": "2026-11-23T13:51:32.000Z",
+   "t": "2026-11-23T14:00:12.000Z",
    "pc": 1721.1
   },
   "kripto:XRP": {
-   "p": 0.9392,
+   "p": 0.9799,
    "cur": "USD",
-   "t": "2026-11-23T13:51:38.000Z",
+   "t": "2026-11-23T14:00:22.000Z",
    "pc": 0.9274
   },
   "abd:SCHG": {
@@ -144,9 +144,8 @@
    "pc": 50.55
   }
  },
- "source": "frankfurter.dev (yalnızca döviz), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
-  "Altın fiyatları alınamadı, önceki değerler korundu (finans.truncgil.com: fetch failed; finans.truncgil.com (v3): fetch failed; altin.in: sayfa okunamadı)",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
