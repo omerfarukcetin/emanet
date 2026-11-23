@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.26";
+const APP_VERSION="3.27";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -487,7 +487,7 @@ function histCard(ids,title){
   return `<section class="card fold open"><div class="sec" style="margin-bottom:10px;flex-wrap:wrap"><button class="foldh" data-act="histtoggle" aria-expanded="true" style="width:auto"><h2>${esc(title)}</h2>${CH}</button>${segU}</div>${body}${all.length>=2?`<div style="margin-top:12px">${segR}</div>`:""}${histHasCash(ids)?`<div class="sub" style="margin-top:8px">Nakit ve mevduat bu grafiğe dahil değildir; yalnızca yatırımların değeri izlenir.</div>`:""}</section>`;
 }
 function commit(msg){snapshot();state.updatedAt=Date.now();lastLocalWrite=state.updatedAt;cacheLocal();applyPrefs();render();if(msg)toast(msg);scheduleSave();syncWatch()}
-function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if(+h.qty>0&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));
+function watchItems(){const seen={},out=[];state.portfolios.filter(p=>!/\(örnek\)/.test(p.name||"")).forEach(p=>p.holdings.forEach(h=>{if((+h.qty>0||(h.trades||[]).some(t=>t.type==="sell"))&&PRICED.includes(h.kind)&&h.symbol){const s=h.symbol.toUpperCase().trim(),k=h.kind+":"+s;if(/^[A-Z0-9.\-]{1,12}$/.test(s)&&!seen[k]){seen[k]=1;out.push({k:h.kind,s,c:h.cur})}}}));
   (state.follow||[]).forEach(f=>{const k=f.k+":"+f.s;if(!seen[k]){seen[k]=1;out.push({k:f.k,s:f.s,c:f.c})}});return out}
 /* İzlenen kodlar: giriş yapıldıysa ortak izleme listesine eklenir; fiyat işi (GitHub Actions) bu listeyi okur. */
 async function syncWatch(){
@@ -1443,7 +1443,7 @@ function sellTaxBlock(h,pf){const s=sellTaxSim(h,pf);if(!s)return"";const tl=v=>
     </details>
     <p class="kr-sum stx-note">Tüm adetleri bugünkü fiyat ve kurla satsaydın. Ödeme ${s.Y+1} Mart'ta yıllık beyannameyle yapılır. Varsayımlar: maaşın tek işverenden ve beyan sınırının altında; komisyon dahil değil; resmi hesapta TCMB döviz alış kuru kullanılır, rakamlar biraz değişebilir.${s.pend?" Bazı alımların kuru henüz alınamadı, bugünkü kur kullanıldı.":""} Kesin tutar için mali müşavirine danış.</p>
   </section>`}
-function taxReport(Y){
+function taxReport(Y,opt){opt=opt||{};
   const pfs=state.portfolios,sel=pfs.find(p=>p.id===view.taxPf)||mainPf();
   if(!sel)return `<section class="card"><div class="empty"><b>Portföy yok</b></div></section>`;
   const hs=sel.holdings.filter(h=>h.cur!=="TRY"&&(h.trades||[]).length);
@@ -1453,8 +1453,10 @@ function taxReport(Y){
   const sum=(a,k)=>a.reduce((s,x)=>s+x[k],0),pend=rows.some(r=>r.pend),tl=v=>fmt(v,"TRY",{dec:0});
   const gain=sum(S_,"gain"),pos=S_.filter(x=>x.gain>0).reduce((s,x)=>s+x.gain,0),neg=S_.filter(x=>x.gain<0).reduce((s,x)=>s+x.gain,0);
   const tile=(l,v,cls,sub)=>`<div><span class="label">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
-  return `${pfs.length>1?`<div class="chips noprint" role="group" aria-label="Kimin raporu">${pfs.map(p=>`<button class="chip" data-act="taxpf" data-id="${p.id}" aria-pressed="${p===sel}">${esc(p.name)}</button>`).join("")}</div>`:""}
-  <section class="card"><div class="sec" style="margin-bottom:8px"><h2>${esc(sel.name)} · yabancı para cinsinden menkul kıymetler</h2></div>
+  const divTL=sum(D_,"tl"),base=Math.max(0,gain)+divTL,tax=incomeTax(base,Y),stamp=base>0?taxYear(Y).stamp:0,need=gain>0||D_.length>0;
+  return `${pfs.length>1&&!opt.noChips?`<div class="chips noprint" role="group" aria-label="Kimin raporu">${pfs.map(p=>`<button class="chip" data-act="taxpf" data-id="${p.id}" aria-pressed="${p===sel}">${esc(p.name)}</button>`).join("")}</div>`:""}
+  <section class="card"><div class="sec" style="margin-bottom:8px"><h2>${opt.noChips?"Beyanname · yurt dışı hisse ve temettü":esc(sel.name)+" · yabancı para cinsinden menkul kıymetler"}</h2></div>
+    ${opt.noChips?`<div class="yr-verdict ${need?"warn":"ok"}"><b>${need?"Beyanname gerekebilir":"Beyanname gerekmiyor"}</b><span>${need?`Yurt dışı hisse satış kazancı ya da temettü var. Beyan ${Y+1} Mart ayında yapılır; tahmini vergi ${tl(tax+stamp)} (gelir vergisi ${tl(tax)}${stamp?" + damga "+fmt(stamp,"TRY",{dec:2}):""}). Yurt dışında kesilen stopaj (${tl(sum(D_,"taxTL"))}) bu vergiden düşülebilir.`:`${Y} yılında yurt dışı hisse satışında kazanç ya da yurt dışı temettü yok (zararlı satışlar beyan gerektirmez).`}</span></div>`:""}
     <div class="tiles rp-tiles">${tile("Satış kazancı (net)",tl(gain),gain>=0?"pos-t":"neg-t",S_.length+" satış")}${tile("Kârlı satışlar",tl(pos),"pos-t")}${tile("Zararlı satışlar",tl(neg),neg<0?"neg-t":"")}${tile("Temettü (brüt)",tl(sum(D_,"tl")),"",D_.length?D_.length+" ödeme · yurt dışı stopaj "+tl(sum(D_,"taxTL")):"yok")}</div>
     ${pend?`<div class="note">Bazı işlem günlerinin kuru henüz alınamadı; bu satırlarda bugünkü kur kullanıldı. İnternete bağlıyken rapor kendiliğinden düzelir.</div>`:""}
   </section>
@@ -1474,15 +1476,62 @@ function taxReport(Y){
   </section>
   <div class="note">Nasıl hesaplandı: satışlar en eski alımdan düşülür (ilk giren ilk çıkar). Alış maliyeti alış günü kuruyla, satış tutarı satış günü kuruyla TL'ye çevrilir. Alış ayından önceki ay ile satış ayından önceki ay arasındaki Yİ-ÜFE artışı %10'u bulursa maliyet endekslenir. Kurlar Avrupa Merkez Bankası referans kurudur; beyanda TCMB döviz alış kuru kullanıldığı için küçük farklar olabilir. İstisna tutarları, zarar mahsubu ve beyan sınırı her yıl değişir; beyannameden önce mali müşavirinize kontrol ettirin.</div>`;
 }
+/* ---------- yıl sonu raporu: seçilen portföyün bir yılı ----------
+   Alımlar, satışlar ve gerçekleşen kâr/zarar (ortalama maliyet, TL ve enflasyondan arındırılmış), temettüler (net, stopaj),
+   ödenen komisyonlar; altta yurt dışı hisse ve temettüler için beyanname bölümü. Tutarlar işlem günü kuruyla TL'ye çevrilir. */
+function yearData(p,Y){const y=String(Y),fxOn=(h,t)=>h.cur==="TRY"?1:((t.fx&&+t.fx[h.cur])||(fxhist[t.date]&&+fxhist[t.date][h.cur])||(t.type==="buy"&&h.fxAt&&+h.fxAt[h.cur])||rate(h.cur));
+  const o={buy:0,sell:0,fee:0,pl:0,real:0,realOK:true,sales:[],divs:{},divN:0,divNet:0,divTax:0};
+  p.holdings.forEach(h=>{(h.trades||[]).forEach(t=>{if(!t.date||t.date.slice(0,4)!==y)return;const f=fxOn(h,t);
+      if(t.type==="buy"){o.buy+=((+t.price||0)*(+t.qty||0)+(+t.fee||0))*f;o.fee+=(+t.fee||0)*f}
+      else if(t.type==="sell"){o.sell+=((+t.price||0)*(+t.qty||0)-(+t.fee||0)-(+t.tax||0))*f;o.fee+=(+t.fee||0)*f}
+      else if(t.type==="div"){const n=(+t.amount||0)*f,tx=(+t.tax||0)*f;const d=o.divs[h.id]||(o.divs[h.id]={h,n:0,tax:0,c:0});d.n+=n;d.tax+=tx;d.c++;o.divN++;o.divNet+=n;o.divTax+=tx}});
+    realizedReal(h).forEach(x=>{if(x.date.slice(0,4)!==y)return;o.pl+=x.plTL;if(x.re!=null){const inf=x.proc/(1+x.re/100);o.real+=x.proc-inf}else o.realOK=false;o.sales.push({...x,h})})});
+  o.sales.sort((a,b)=>b.date.localeCompare(a.date));return o}
+function yearReport(Y){
+  const pfs=state.portfolios,sel=pfs.find(p=>p.id===view.taxPf)||mainPf();
+  if(!sel)return `<section class="card"><div class="empty"><b>Portföy yok</b></div></section>`;
+  const d=yearData(sel,Y),tl=v=>fmt(v,"TRY",{dec:0}),sg=v=>(v>0?"+":v<0?"−":"")+fmt(Math.abs(v),"TRY",{dec:0}),cl=v=>v>=0?"pos-t":"neg-t";
+  const tile=(l,v,cls,sub)=>`<div><span class="label">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
+  const divs=Object.values(d.divs).sort((a,b)=>b.n-a.n),open=sel.holdings.filter(h=>+h.qty>0),tot=pfTotals(sel),cur=Y===+todayISO().slice(0,4);
+  return `${pfs.length>1?`<div class="chips noprint" role="group" aria-label="Kimin raporu">${pfs.map(p=>`<button class="chip" data-act="taxpf" data-id="${p.id}" aria-pressed="${p===sel}">${esc(p.name)}</button>`).join("")}</div>`:""}
+  <section class="card"><div class="sec" style="margin-bottom:8px"><h2>${esc(sel.name)} · ${Y} özeti</h2></div>
+    <div class="tiles rp-tiles">
+      ${tile("Gerçekleşen kâr/zarar",sg(d.pl),cl(d.pl),d.sales.length?d.sales.length+" satış":"satış yok")}
+      ${tile("Enflasyondan arındırılmış",d.sales.length?(d.realOK?sg(d.real):"—"):"—",d.sales.length&&d.realOK?cl(d.real):"",d.sales.length?"TÜFE'ye göre gerçek sonuç":"")}
+      ${tile("Temettü (net)",tl(d.divNet),d.divNet>0?"pos-t":"",d.divN?d.divN+" ödeme"+(d.divTax>0?" · stopaj "+tl(d.divTax):""):"yok")}
+      ${tile("Ödenen komisyon",tl(d.fee),d.fee>0?"neg-t":"")}
+    </div>
+    <div class="kv yr-kv">
+      <div><span>Yıl içinde alım</span><span class="num">${tl(d.buy)}</span></div>
+      <div><span>Yıl içinde satış (eline geçen)</span><span class="num">${tl(d.sell)}</span></div>
+      <div class="tot"><span>Gerçekleşen toplam getiri<br><small class="sub">satışlardaki kâr/zarar + net temettü</small></span><span class="num ${cl(d.pl+d.divNet)}">${sg(d.pl+d.divNet)}</span></div>
+      ${cur?`<div><span>Bugün elde tutulanlar<br><small class="sub">${open.length} varlık · henüz satılmadı, kâğıt üzerinde</small></span><span class="num">${tl(tot.v)} <small class="${cl(tot.pl)}">${sg(tot.pl)}</small></span></div>`:""}
+    </div>
+  </section>
+  <section class="card"><h2 style="margin-bottom:8px">Satışlar</h2>
+    ${d.sales.length?`<div class="list">${d.sales.map(x=>li({act:"edit-h",id:x.h.id,pf:sel.id,mark:kindBadge(x.h.kind),title:esc(x.h.symbol||x.h.name),
+        sub:[fmtDate(x.date),fmtN(x.q,4)+" adet",x.days?Math.round(x.days)+" gün tutuldu":"",x.re!=null?"reel "+pctS(x.re):""].filter(Boolean).join(" · "),
+        amount:sg(x.plTL),cls:cl(x.plTL),trail:`<small class="sub num">${pctS(x.nom)}</small>`})).join("")}</div>
+      <p class="kr-sum">Kâr/zarar ortalama maliyetle hesaplanır (uygulamadaki K/Z ile aynı). "Reel", enflasyondan arındırılmış sonuçtur. Beyannamede yurt dışı hisseler için ilk giren ilk çıkar ve Yİ-ÜFE endekslemesi kullanılır; o rakamlar aşağıdaki beyanname bölümündedir.</p>`
+      :`<div class="sub">${Y} yılında satış yok.</div>`}
+  </section>
+  <section class="card"><h2 style="margin-bottom:8px">Temettüler</h2>
+    ${divs.length?`<div class="list">${divs.map(x=>li({act:"edit-h",id:x.h.id,pf:sel.id,mark:kindBadge(x.h.kind),title:esc(x.h.symbol||x.h.name),sub:x.c+" ödeme"+(x.tax>0?" · stopaj "+tl(x.tax):"")+(x.h.cur!=="TRY"?" · "+esc(x.h.cur):""),amount:tl(x.n),cls:"pos-t"})).join("")}</div>
+      <div class="kv yr-kv"><div class="tot"><span>Toplam net temettü</span><span class="num pos-t">${tl(d.divNet)}</span></div>${d.divTax>0?`<div><span>Kesilen stopaj</span><span class="num">${tl(d.divTax)}</span></div>`:""}</div>`
+      :`<div class="sub">${Y} yılında temettü kaydı yok. Temettüleri varlığın sayfasındaki "Temettü ekle" ile girebilirsin; varlığın toplam kâr/zararına da eklenir.</div>`}
+  </section>
+  ${taxReport(Y,{noChips:true})}
+  <div class="note">Yurt içi hisse (BIST) ve TL fonlarda vergi genellikle kaynağında kesilir; bu kazançlar için ayrıca beyan gerekmez. Yurt içi temettülerde de stopaj kesilir, ancak tutar yüksekse beyan gerekebilir. Bu rapor bir hesap yardımıdır; beyan için mali müşavirine danış.</div>`;
+}
 function rRapor(){
   const mode=view.rpMode==="ay"||view.rpMode==="vergi"?view.rpMode:"yil",today=todayISO();
   const Y=view.rpYear||+today.slice(0,4);view.rpYear=Y;
   const ym=view.rpMonth||today.slice(0,7);view.rpMonth=ym;
   const tile=(l,v,cls,sub)=>`<div><span class="label">${l}</span><b class="num ${cls||""}">${v}</b>${sub?`<small>${sub}</small>`:""}</div>`;
   const rateTxt=r=>r==null?"—":"%"+fmtN(r,1);
-  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Bütçe</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Vergi"]].map(([k,l])=>`<button ${k==="vergi"?'class="adv" ':""}data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
+  const head=(title,prev,next)=>`<div class="rp-top noprint"><button class="btn sm" data-tab="akis">${ic(I.left,14)}Bütçe</button><div class="seg" role="group" aria-label="Rapor türü">${[["yil","Yıllık"],["ay","Aylık"],["vergi","Yıl sonu · portföy"]].map(([k,l])=>`<button ${k==="vergi"?'class="adv" ':""}data-act="rpmode" data-k="${k}" aria-pressed="${mode===k}">${l}</button>`).join("")}</div><button class="btn sm primary" data-act="print">Yazdır / PDF</button></div>
     <div class="sec"><div class="month-sw"><button class="icon-btn noprint" data-act="rpnav" data-d="-1" aria-label="${prev}">${I.left}</button><b>${title}</b><button class="icon-btn noprint" data-act="rpnav" data-d="1" aria-label="${next}">${I.right}</button></div><span class="sub printonly">Emanet · ${fmtDate(today)} tarihinde oluşturuldu</span></div>`;
-  if(mode==="vergi")return head(Y+" vergi raporu","Önceki yıl","Sonraki yıl")+taxReport(Y);
+  if(mode==="vergi")return head(Y+" yıl sonu raporu","Önceki yıl","Sonraki yıl")+yearReport(Y);
   if(mode==="ay"){
     const a=monthAgg(ym),[y,mo]=ym.split("-").map(Number),pm=prevMonth(ym+"-15"),b=monthAgg(pm);
     const chg=(x,y0)=>y0?` · geçen aya göre ${fmtPct((x-y0)/y0*100)}`:"";
@@ -1715,6 +1764,7 @@ function rPortfoy(){
   ${(()=>{const all=[];hsAll.forEach(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h;(ph.trades||[]).forEach(t=>all.push({h:ph,t,pf:h._pf.id}))});
     if(!all.length)return"";all.sort((a,b)=>(b.t.date||"").localeCompare(a.t.date||""));const N=view.trN||15;
     return foldCard("islemler",`<section class="card"><div class="sec" style="margin-bottom:6px"><h2>İşlemler</h2><span class="sub">${all.length} kayıt</span></div><div class="list">${all.slice(0,N).map(x=>tradeRow(x.h,x.t,true,x.pf)).join("")}</div>${all.length>N?`<div style="text-align:center;margin-top:8px"><button class="btn sm" data-act="more-tr">Daha fazla göster</button></div>`:""}</section>`,`<span class="sub">${all.length} kayıt</span>`)})()}
+  ${hsAll.length||closed.length?`<button class="card yr-link" data-act="yearrep" data-id="${cur?cur.id:""}"><span>${mkIcon(I.doc||I.repeat,"--c5")}</span><span class="t"><b>${todayISO().slice(0,4)} yıl sonu raporu</b><small>Satışlar, gerçekleşen kâr/zarar, temettüler, komisyonlar ve beyanname</small></span>${ic(I.right,16)}</button>`:""}
   ${multi&&AUTO()?`<p class="sub" style="margin:0">Fiyatlar ${marketWhen()} (otomatik)</p>`:""}`;
 }
 /* bir varlığın TL ve dolar bazında kâr/zararı (liste satırı için) */
@@ -1851,11 +1901,15 @@ function assetTable(hs,total,o){
 /* kapanan pozisyonlar (tamamı satılmış): Portföy sayfasında ayrı kart; her satırda son satış tarihi, gerçekleşen K/Z ve enflasyondan arındırılmış sonuç */
 function closedCard(list,multi){const rows=list.map(h=>{const ph=h._pf.holdings.find(x=>x.id===h.id)||h,rr=realizedReal(ph),last=(ph.trades||[]).filter(t=>t.type==="sell").map(t=>t.date).sort().pop();
     const P=rr.reduce((a,x)=>a+x.proc,0),C=rr.reduce((a,x)=>a+x.cost,0),inf=rr.every(x=>x.re!=null)&&rr.length?rr.reduce((a,x)=>a+x.cost*(1+x.nom/100)/(1+x.re/100),0):0;
-    return{h,ph,last:last||"",pl:toBase(+ph.realized||0,ph.cur),re:inf>0?(P/inf-1)*100:null}}).sort((a,b)=>b.last.localeCompare(a.last));
-  const tot=rows.reduce((a,r)=>a+r.pl,0);
+    // elde tutsaydın: satılan adetlerin bugünkü değeri − satışta eline geçen (yalnızca otomatik fiyat varsa)
+    const sq=(ph.trades||[]).filter(t=>t.type==="sell").reduce((a,t)=>a+(+t.qty||0),0),ep=effPrice(ph),held=ep.auto&&sq>0&&P>0?sq*ep.p*rate(ph.cur):null;
+    return{h,ph,last:last||"",pl:toBase(+ph.realized||0,ph.cur),re:inf>0?(P/inf-1)*100:null,held,P}}).sort((a,b)=>b.last.localeCompare(a.last));
+  const tot=rows.reduce((a,r)=>a+r.pl,0),hr=rows.filter(r=>r.held!=null),hd=hr.reduce((a,r)=>a+r.held-r.P,0);
+  const hsub=r=>{if(r.held==null)return"";const df=r.held-r.P;return `tutsaydın bugün ${fmt(r.held,"TRY",{dec:0})} <span class="${df>0?"neg-t":"pos-t"}">(${df>0?"+":"−"}${fmt(Math.abs(df),"TRY",{dec:0})})</span>`};
   return `<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Kapanan pozisyonlar</h2><span class="num ${tot>=0?"pos-t":"neg-t"}" style="font-weight:800">${S().hide?"••":(tot>=0?"+":"")+fmt(tot)}</span></div>
-    <div class="list">${rows.map(r=>li({act:"edit-h",id:r.h.id,pf:r.h._pf.id,mark:kindBadge(r.h.kind),title:esc(r.h.name),sub:[r.last?fmtDate(r.last)+" satıldı":"satıldı",multi?esc(r.h._pf.name):"",r.re!=null?"reel "+pctS(r.re):""].filter(Boolean).join(" · "),amount:(r.pl>=0?"+":"")+fmt(r.pl),cls:r.pl>=0?"pos-t":"neg-t"})).join("")}</div>
-    <p class="kr-sum">Tamamı satılan varlıklar burada durur. “Reel”, enflasyondan arındırılmış sonuçtur. Dokununca satışların ayrıntısı açılır.</p></section>`}
+    <div class="list">${rows.map(r=>li({act:"edit-h",id:r.h.id,pf:r.h._pf.id,mark:kindBadge(r.h.kind),title:esc(r.h.name),sub:[r.last?fmtDate(r.last)+" satıldı":"satıldı",multi?esc(r.h._pf.name):"",r.re!=null?"reel "+pctS(r.re):"",S().hide?"":hsub(r)].filter(Boolean).join(" · "),amount:(r.pl>=0?"+":"")+fmt(r.pl),cls:r.pl>=0?"pos-t":"neg-t"})).join("")}</div>
+    ${hr.length&&!S().hide?`<div class="held-sum ${hd>0?"neg":"pos"}"><b>${hd>0?"Satmasaydın bugün "+fmt(hd,"TRY",{dec:0})+" daha fazlan olurdu":"Satman iyi olmuş: bugün "+fmt(-hd,"TRY",{dec:0})+" daha az değerde olurdu"}</b><span>${hr.length} varlığın satılan adetlerinin bugünkü fiyatla değeri, satışta eline geçen tutarla karşılaştırıldı. Satıştan sonra o parayla ne yaptığın hesaba katılmaz.</span></div>`:""}
+    <p class="kr-sum">Tamamı satılan varlıklar burada durur. “Reel”, enflasyondan arındırılmış sonuçtur. “Tutsaydın”, sattığın adetlerin bugünkü değeridir. Dokununca satışların ayrıntısı açılır.</p></section>`}
 const closedRow=h=>`<div class="arow closed" role="button" tabindex="0" data-act="edit-h" data-pf="${h._pf.id}" data-id="${h.id}"><span class="an"><i class="dot" style="background:var(--faint)"></i><span class="t">${esc(h.name)}<small>satıldı</small></span></span><span class="vcell static"><b class="num ${(+h.realized||0)>=0?"pos-t":"neg-t"}">${S().hide?"••••":fmt(+h.realized||0,h.cur,{dec:0})}</b><small>gerçekleşen</small></span></div>`;
 function pfListCard(vis,total){
   const tots=vis.map(p=>({p,t:pfTotals(p)})).sort((a,b)=>b.t.v-a.t.v);
@@ -3570,6 +3624,7 @@ document.addEventListener("click",e=>{
   if(a==="target"){const p=state.portfolios.find(x=>x.id===id);if(p)targetSheet(p);return}
   if(a==="rapor"){view.rpMonth=view.month;view.rpYear=+view.month.slice(0,4);view.tab="rapor";render();window.scrollTo(0,0);return}
   if(a==="rpmode"){view.rpMode=t.dataset.k;render();return}
+  if(a==="yearrep"){view.rpMode="vergi";view.rpYear=+todayISO().slice(0,4);if(id)view.taxPf=id;view.tab="rapor";render();window.scrollTo(0,0);return}
   if(a==="taxpf"){view.taxPf=id;render();return}
   if(a==="rpnav"){const d=+t.dataset.d;if(view.rpMode==="ay"){const[y,m]=view.rpMonth.split("-").map(Number),x=new Date(y,m-1+d,1);view.rpMonth=x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")}else view.rpYear+=d;render();return}
   if(a==="print"){window.print();return}

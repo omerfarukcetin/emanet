@@ -1533,3 +1533,15 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .stx-more summary::after{content:" ▾"}
 .stx-more[open] summary::after{content:" ▴"}
 .stx-note{margin:0;font-size:.74rem}
+/* 3.27 · yıl sonu raporu, kapanan pozisyonlarda "tutsaydın" */
+.yr-kv{margin-top:12px}
+.yr-verdict{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;margin-bottom:12px;font-size:.88rem;line-height:1.45}
+.yr-verdict.warn{background:color-mix(in srgb,var(--warn) 14%,var(--surface))}
+.yr-verdict.ok{background:color-mix(in srgb,var(--pos) 12%,var(--surface))}
+.held-sum{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:12px;margin-top:10px;font-size:.85rem;line-height:1.45}
+.held-sum.neg{background:color-mix(in srgb,var(--neg) 9%,var(--surface))}
+.held-sum.pos{background:color-mix(in srgb,var(--pos) 10%,var(--surface))}
+.held-sum span{color:var(--muted);font-size:.78rem}
+.yr-link{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line)}
+.yr-link .t{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.yr-link .t small{color:var(--muted);font-size:.8rem}
