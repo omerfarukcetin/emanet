@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-24T22:00:41.831Z",
+ "updatedAt": "2026-11-24T22:10:38.402Z",
  "fx": {
-  "EUR": 55.6981,
-  "USD": 50.6888,
+  "EUR": 55.7002,
+  "USD": 50.6825,
   "GBP": 66.621,
-  "CHF": 60.6761,
-  "JPY": 0.3191,
+  "CHF": 60.6685,
+  "JPY": 0.3195,
   "RUB": 0.6174,
   "SAR": 13.4946,
-  "AED": 13.8011,
-  "CAD": 35.5262,
-  "AUD": 33.6675,
-  "CNY": 7.6054,
-  "DKK": 7.4377,
-  "SEK": 4.9554,
-  "NOK": 5.1759,
+  "AED": 13.7994,
+  "CAD": 35.5218,
+  "AUD": 33.6633,
+  "CNY": 7.6058,
+  "DKK": 7.438,
+  "SEK": 4.9572,
+  "NOK": 5.182,
   "KWD": 162.5249,
-  "QAR": 14.4495,
-  "AZN": 29.8169,
-  "GEL": 19.4583,
+  "QAR": 14.4477,
+  "AZN": 29.8132,
+  "GEL": 19.4559,
   "BGN": 28.9337,
-  "RON": 10.4152,
+  "RON": 10.4137,
   "KZT": 0.1103
  },
  "gold": {
@@ -28,12 +28,12 @@
   "aziz": null,
   "ceyrek": 10118,
   "cumhuriyet": 40927,
-  "gram": 5791.71,
-  "gumus": 66.66,
+  "gram": 5792.24,
+  "gumus": 66.67,
   "hamit": 40927,
   "resat": 40927,
-  "resatAlis": 39594.76,
-  "resatSatis": 40258.69,
+  "resatAlis": 39605.03,
+  "resatSatis": 40269.03,
   "tam": 40411,
   "yarim": 20236,
   "resatKaynak": "altin.in",
@@ -133,15 +133,15 @@
    "pc": 9.07
   },
   "kripto:ETH": {
-   "p": 1678.09,
+   "p": 1682.04,
    "cur": "USD",
-   "t": "2026-11-24T22:00:23.000Z",
+   "t": "2026-11-24T22:10:23.000Z",
    "pc": 1708.85
   },
   "kripto:XRP": {
-   "p": 0.9212,
+   "p": 0.9234,
    "cur": "USD",
-   "t": "2026-11-24T22:00:27.000Z",
+   "t": "2026-11-24T22:10:24.000Z",
    "pc": 0.9396
   },
   "abd:SCHG": {
@@ -163,7 +163,7 @@
    "pc": 50.9
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
