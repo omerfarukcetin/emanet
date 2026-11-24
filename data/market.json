@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-24T22:50:40.512Z",
+ "updatedAt": "2026-11-24T23:00:27.418Z",
  "fx": {
-  "EUR": 55.6009,
-  "USD": 50.7037,
-  "GBP": 66.4945,
-  "CHF": 60.723,
+  "EUR": 55.5985,
+  "USD": 50.7408,
+  "GBP": 66.5055,
+  "CHF": 60.7529,
   "JPY": 0.3187,
   "RUB": 0.6179,
   "SAR": 13.512,
-  "AED": 13.812,
-  "CAD": 35.5391,
-  "AUD": 33.6774,
-  "CNY": 7.6086,
-  "DKK": 7.4418,
-  "SEK": 4.9571,
-  "NOK": 5.1806,
+  "AED": 13.8128,
+  "CAD": 35.5726,
+  "AUD": 33.7122,
+  "CNY": 7.6143,
+  "DKK": 7.4473,
+  "SEK": 4.96,
+  "NOK": 5.181,
   "KWD": 162.7265,
-  "QAR": 14.4608,
-  "AZN": 29.8257,
-  "GEL": 19.464,
+  "QAR": 14.4617,
+  "AZN": 29.8475,
+  "GEL": 19.4782,
   "BGN": 28.9337,
-  "RON": 10.4107,
-  "KZT": 0.1104
+  "RON": 10.4161,
+  "KZT": 0.1105
  },
  "gold": {
-  "ata": 40919,
+  "ata": 40956,
   "aziz": null,
-  "ceyrek": 10116,
-  "cumhuriyet": 40919,
-  "gram": 5794.32,
+  "ceyrek": 10125,
+  "cumhuriyet": 40956,
+  "gram": 5794.18,
   "gumus": 66.7,
-  "hamit": 40919,
-  "resat": 40919,
-  "resatAlis": 39608.06,
-  "resatSatis": 40272.05,
-  "tam": 40403,
-  "yarim": 20232,
+  "hamit": 40956,
+  "resat": 40956,
+  "resatAlis": 39621.57,
+  "resatSatis": 40285.7,
+  "tam": 40439,
+  "yarim": 20250,
   "resatKaynak": "altin.in",
-  "ayar22": 5688.26,
+  "ayar22": 5693.36,
   "ayar18": 4875,
-  "ayar14": 4447.2
+  "ayar14": 4450.73
  },
  "quotes": {
   "abd:LPTH": {
@@ -133,15 +133,15 @@
    "pc": 9.07
   },
   "kripto:ETH": {
-   "p": 1683.42,
+   "p": 1682.43,
    "cur": "USD",
-   "t": "2026-11-24T22:50:24.000Z",
+   "t": "2026-11-24T23:00:11.000Z",
    "pc": 1708.85
   },
   "kripto:XRP": {
-   "p": 0.9245,
+   "p": 0.9244,
    "cur": "USD",
-   "t": "2026-11-24T22:50:23.000Z",
+   "t": "2026-11-24T23:00:13.000Z",
    "pc": 0.9396
   },
   "abd:SCHG": {
@@ -163,7 +163,7 @@
    "pc": 50.9
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
