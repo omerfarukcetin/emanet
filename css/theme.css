@@ -1545,3 +1545,13 @@ html.locked body>*:not(#applock){visibility:hidden!important}
 .yr-link{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line)}
 .yr-link .t{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
 .yr-link .t small{color:var(--muted);font-size:.8rem}
+/* 3.28 · zekât · tümü */
+.zall{display:flex;flex-direction:column}
+.zall-r{display:flex;flex-direction:column;gap:6px;width:100%;padding:12px 0;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.zall-r:first-child{border-top:0}
+.zall-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.zall-h b{font-weight:700}
+.zall-h b small{color:var(--muted);font-weight:500}
+.zall-h .num{font-weight:800}
+.zall-s{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.zall-r.on .bar i{background:var(--pos)}

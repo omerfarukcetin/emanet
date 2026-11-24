@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.27";
+const APP_VERSION="3.28";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -121,6 +121,8 @@ function effPrice(h){
   if(AUTO()){
     if(h.kind==="altin"){const k=goldKey(h);const v=k&&market.gold&&+market.gold[k];if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
     if(h.kind==="gumus"){const v=market.gold&&+market.gold.gumus;if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
+    // TL cinsinden tutulan döviz (ör. "USD · 140 adet · birim fiyatı TL"): birim fiyatı güncel kurdur
+    if(h.kind==="doviz"&&h.cur==="TRY"){const c=((h.symbol||h.name||"").toUpperCase().match(/USD|EUR|DOLAR|EURO/)||[""])[0].replace("DOLAR","USD").replace("EURO","EUR");const v=c&&market.fx&&+market.fx[c];if(v>0)return{p:v,auto:true}}
     const sy=(h.symbol||"").toUpperCase().trim();
     const q=market.quotes&&sy&&(market.quotes[h.kind+":"+sy]||(h.kind==="abd"?market.quotes["hisse:"+sy]:null));
     if(q&&+q.p>0&&(!q.cur||q.cur===h.cur))return{p:+q.p,auto:true,t:q.t};
@@ -340,7 +342,7 @@ function owners(){const o=[MAIN()];state.portfolios.forEach(p=>{const x=ownerOf(
 const getHawl=id=>(S().hawlPf||{})[id]||null;
 function setHawl(id,v){S().hawlPf=S().hawlPf||{};if(v)S().hawlPf[id]=v;else delete S().hawlPf[id]}
 /* zekât hesabı portföy bazında; zOwner seçili portföyün kimliğini döndürür */
-const zOwner=()=>{if(!view.zOwner||!state.portfolios.some(p=>p.id===view.zOwner))view.zOwner=(mainPf()||{}).id||"";return view.zOwner};
+const zOwner=()=>{if(view.zOwner==="__all")return(mainPf()||{}).id||"";if(!view.zOwner||!state.portfolios.some(p=>p.id===view.zOwner))view.zOwner=(mainPf()||{}).id||"";return view.zOwner};
 const pfName=id=>{const p=state.portfolios.find(x=>x.id===id);return p?p.name+(owners().length>1?" ("+ownerOf(p)+")":""):"Portföy"};
 function allHoldings(pfId,owner){return state.portfolios.filter(p=>(pfId==="all"||p.id===pfId)&&(!owner||owner==="all"||ownerOf(p)===owner)).flatMap(p=>p.holdings.map(h=>({...h,_pf:p})))}
 const debtPaid=d=>d.payments.reduce((s,p)=>s+(+p.amount||0),0);
@@ -2410,16 +2412,27 @@ function rBorc(){
   <section class="card">${list.length?`<div class="list">${list.map(debtRow).join("")}</div>`:`<div class="empty">${emptyIc(I.borc)}<b>${view.debtDir==="lent"?"Verdiğiniz bir borç yok":"Aldığınız bir borç yok"}</b>Kişiyi, tutarı ve vadeyi girin; ödemeleri parça parça işleyin.</div>`}</section>`;
 }
 
+/* zekât · tümü: her portföy ayrı satırda (toplanmaz): altın karşılığı, nisaba göre ilerleme, zekât ve havl */
+function zAllCard(){const s=S(),gT=v=>s.hide?"••":fmtN(v,2)+" g",ows=owners();
+  const rows=state.portfolios.map(p=>({p,z:zakat(p.id)}));
+  return `<section class="card"><div class="sec" style="margin-bottom:6px"><h2>Portföylerin zekât durumu</h2><span class="sub">nisap ${fmtN(s.nisabGram)} g</span></div>
+    <div class="zall">${rows.map(({p,z})=>{const pc=s.nisabGram>0?z.netGram/s.nisabGram*100:0,st=!z.gold.gram?"Fiyat bekleniyor":z.reached?(z.left>0?"Zekât "+money(z.left):"Bu dönem ödendi"):"Nisaba "+gT(Math.max(0,s.nisabGram-z.netGram))+" kaldı";
+      return `<button class="zall-r${z.reached?" on":""}" data-act="zowner" data-k="${p.id}">
+        <span class="zall-h"><b>${esc(p.name)}${ows.length>1?` <small>${esc(ownerOf(p))}</small>`:""}</b><span class="num">${z.gold.gram?gT(z.netGram):"—"}</span></span>
+        <span class="bar" aria-hidden="true"><i style="width:${Math.min(100,Math.max(0,pc))}%"></i></span>
+        <span class="zall-s"><span>%${fmtN(pc,0)}${z.reached?" · nisaba ulaştı":""} · ${s.hide?"••":fmt(z.net)}</span><span class="${z.reached&&z.left>0?"neg-t":""}">${st}${z.hawl?" · "+z.hawl.left+" gün":""}</span></span></button>`}).join("")}</div>
+    <p class="kr-sum">Her portföyün zekâtı ayrı hesaplanır; burada toplanmaz. Ayrıntısı için bir portföye dokun.</p></section>`}
 function rZekat(){
   const z=zakat(),s=S(),g=z.gold,ows=owners();
   const autoFresh=AUTO()&&market.updatedAt&&(Date.now()-new Date(market.updatedAt))<4*864e5;
   const stale=!autoFresh&&(!s.ratesUpdated||daysBetween(s.ratesUpdated,todayISO())>7);
   const gTxt=v=>s.hide?"••":fmtN(v,2)+" g";
   return `
-  ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Hangi portföyün zekâtı">${state.portfolios.map(p=>`<button class="chip" data-act="zowner" data-k="${p.id}" aria-pressed="${z.owner===p.id}">${esc(p.name)}${ows.length>1?" · "+esc(ownerOf(p)):""}</button>`).join("")}</div>
+  ${state.portfolios.length>1?`<div class="chips" role="group" aria-label="Hangi portföyün zekâtı"><button class="chip" data-act="zowner" data-k="__all" aria-pressed="${view.zOwner==="__all"}">Tümü</button>${state.portfolios.map(p=>`<button class="chip" data-act="zowner" data-k="${p.id}" aria-pressed="${view.zOwner!=="__all"&&z.owner===p.id}">${esc(p.name)}${ows.length>1?" · "+esc(ownerOf(p)):""}</button>`).join("")}</div>
   <div class="sub" style="margin-top:-6px">Her portföyün zekâtı, nisabı ve zekât günü ayrı hesaplanır.${s.zakatRecv||s.zakatDebt?" Borç ve alacaklar, kaydederken seçtiğiniz portföyün hesabına girer.":""}</div>`:""}
   ${!g.gram?`<div class="note warn">Nisabı hesaplamak için altın lira fiyatlarını girin. <button class="btn ghost sm" data-act="rates" style="padding:0;color:inherit;text-decoration:underline">Fiyatları gir</button></div>`
     :stale?`<div class="note warn">Altın ve kur fiyatları ${s.ratesUpdated?fmtDate(s.ratesUpdated)+" tarihinden beri":"bir süredir"} güncellenmedi. <button class="btn ghost sm" data-act="rates" style="padding:0;color:inherit;text-decoration:underline">Güncelle</button></div>`:""}
+  ${view.zOwner==="__all"&&state.portfolios.length>1?zAllCard():`
   <section class="hero flat">
     <div><span class="label">${z.reached?(z.hawl?"Bu dönem ödenecek zekât":"Nisaba ulaşıldı · tahmini zekât"):"Zekât durumu"}</span>
       <div class="big">${!g.gram?"Fiyat bekleniyor":z.reached?money(z.left):"Nisap altında"}</div>
@@ -2455,7 +2468,7 @@ function rZekat(){
   </div>
   <section class="card side"><div class="sec" style="margin-bottom:6px"><h2>Ödenen zekâtlar</h2></div>
     ${state.zakatPaid.some(p=>p.pf===z.owner)?`<div class="list">${state.zakatPaid.filter(p=>p.pf===z.owner).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(p=>li({act:"edit-zp",id:p.id,mark:mkIcon(I.zekat,"--accent"),title:esc(p.note||"Zekât ödemesi"),sub:fmtH(p.date)+" · "+fmtDate(p.date),amount:fmt(p.amount,p.cur)})).join("")}</div>`:`<div class="empty"><b>Henüz ödeme kaydı yok</b>Verdiğiniz zekâtı kaydederek kalan tutarı izleyin.</div>`}
-  </section>
+  </section>`}
   <p class="sub" style="margin:0">Gram fiyatı, Reşat altının alış fiyatı 7,2'ye bölünerek bulunur. Hesap bilgilendirme amaçlıdır; fıkhi ayrıntılar için bir hocaya danışın.</p>`;
 }
 
