@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.28";
+const APP_VERSION="3.29";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -18,7 +18,7 @@ const FUNDS=["fon","ppf"];
 const PRESETS={
   altin:[["GAU","Gram altın","gram"],["CEYREK","Çeyrek altın","ceyrek"],["YARIM","Yarım altın","yarim"],["TAM","Tam altın","tam"],["CUM","Cumhuriyet altını","cumhuriyet"],["RESAT","Reşat altın","resat"],["HAMIT","Hamit altın","hamit"],["ATA","Ata altın","ata"],["AZIZ","Aziz altın","aziz"],["22AYAR","22 ayar altın / bilezik (gram)","ayar22"],["18AYAR","18 ayar altın (gram)","ayar18"],["14AYAR","14 ayar altın (gram)","ayar14"]],
   gumus:[["GUMUS","Gram gümüş","gumus"]],
-  doviz:[["USD","Amerikan doları",null],["EUR","Euro",null]]
+  doviz:Object.entries({USD:"Amerikan doları",EUR:"Euro",GBP:"İngiliz sterlini",CHF:"İsviçre frangı",RUB:"Rus rublesi",SAR:"Suudi riyali",JPY:"Japon yeni",AED:"BAE dirhemi",CAD:"Kanada doları",AUD:"Avustralya doları",CNY:"Çin yuanı",KWD:"Kuveyt dinarı",QAR:"Katar riyali",AZN:"Azerbaycan manatı",DKK:"Danimarka kronu",SEK:"İsveç kronu",NOK:"Norveç kronu",GEL:"Gürcistan larisi",BGN:"Bulgar levası",RON:"Romen leyi",KZT:"Kazak tengesi"}).map(([c,n])=>[c,n,null])
 };
 /* yazdıkça öneri listeleri */
 const SUGG={
@@ -41,7 +41,13 @@ const subFor=(c,name)=>{const n=trLow(name||"");return n?subList(c).find(x=>{con
 const CATS={get in(){return catList("in")},get out(){return catList("out")},get save(){return catList("save")}};
 const CAT_MAP={"Kira":"Kira & aidat","Market":"Market & mutfak","Ulaşım":"Ulaşım & araç","Ev":"Ev & eşya","Eğlence":"Dışarıda yemek & eğlence","Sadaka / Bağış":"Yardım & sadaka","Abonelik":"Abonelikler","Satış":"Yan gelir","Temettü / Faiz dışı getiri":"Yatırım getirisi","Diğer":null};
 
-const CURS=["TRY","USD","EUR"];
+/* para birimleri: ilk üçü gösterim birimi olabilir; diğerleri varlık ve işlemlerde kullanılır, kuru otomatik gelir (bulunamazsa ayarlardan elle) */
+const FX_NAMES={USD:"Amerikan doları",EUR:"Euro",GBP:"İngiliz sterlini",CHF:"İsviçre frangı",JPY:"Japon yeni",RUB:"Rus rublesi",SAR:"Suudi riyali",AED:"BAE dirhemi",CAD:"Kanada doları",AUD:"Avustralya doları",CNY:"Çin yuanı",DKK:"Danimarka kronu",SEK:"İsveç kronu",NOK:"Norveç kronu",KWD:"Kuveyt dinarı",QAR:"Katar riyali",AZN:"Azerbaycan manatı",GEL:"Gürcistan larisi",BGN:"Bulgar levası",RON:"Romen leyi",KZT:"Kazak tengesi"};
+const CURS=["TRY","USD","EUR",...Object.keys(FX_NAMES).filter(c=>c!=="USD"&&c!=="EUR")],CURS_BASE=["TRY","USD","EUR"];
+/* kullanılan dövizler: varlıklar, TL cinsinden döviz varlıkları ve işlemler */
+function fxInUse(){const o=new Set();(state.portfolios||[]).forEach(p=>p.holdings.forEach(h=>{if(h.cur&&h.cur!=="TRY"&&!isG(h.cur))o.add(h.cur);if(h.kind==="doviz"){const u=(h.symbol||"").toUpperCase();if(FX_NAMES[u])o.add(u)}}));
+  (state.tx||[]).forEach(t=>{if(t.cur&&t.cur!=="TRY"&&FX_NAMES[t.cur])o.add(t.cur)});return CURS.filter(c=>o.has(c))}
+const CUR_OPTS=CURS.map(c=>[c,c==="TRY"?"TRY · Türk lirası":c+" · "+FX_NAMES[c]]);
 /* Borç/alacak için ek birimler: altın ve gümüş adet/gram olarak tutulur, TL karşılığı güncel fiyattan hesaplanır */
 const DUNITS={gram:["Gram altın","gr altın"],ayar22:["22 ayar altın (gram)","gr 22 ayar"],ceyrek:["Çeyrek altın","çeyrek"],yarim:["Yarım altın","yarım"],tam:["Tam altın","tam"],cumhuriyet:["Cumhuriyet altını","cumhuriyet"],ata:["Ata altın","ata"],resat:["Reşat altın","reşat"],hamit:["Hamit altın","hamit"],gumus:["Gram gümüş","gr gümüş"]};
 const DEBT_UNITS=[["TRY","TL"],["USD","Dolar"],["EUR","Euro"],...Object.entries(DUNITS).map(([k,v])=>["G:"+k,v[0]])];
@@ -122,7 +128,7 @@ function effPrice(h){
     if(h.kind==="altin"){const k=goldKey(h);const v=k&&market.gold&&+market.gold[k];if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
     if(h.kind==="gumus"){const v=market.gold&&+market.gold.gumus;if(v>0&&h.cur==="TRY")return{p:v,auto:true}}
     // TL cinsinden tutulan döviz (ör. "USD · 140 adet · birim fiyatı TL"): birim fiyatı güncel kurdur
-    if(h.kind==="doviz"&&h.cur==="TRY"){const c=((h.symbol||h.name||"").toUpperCase().match(/USD|EUR|DOLAR|EURO/)||[""])[0].replace("DOLAR","USD").replace("EURO","EUR");const v=c&&market.fx&&+market.fx[c];if(v>0)return{p:v,auto:true}}
+    if(h.kind==="doviz"&&h.cur==="TRY"){const u=(h.symbol||h.name||"").toLocaleUpperCase("tr");const c=CURS.find(x=>x!=="TRY"&&new RegExp("\\b"+x+"\\b").test(u))||(/DOLAR/.test(u)?"USD":/EURO/.test(u)?"EUR":/STERL|POUND/.test(u)?"GBP":/RUBLE/.test(u)?"RUB":/R[İI]YAL/.test(u)?"SAR":"");const v=c&&market.fx&&+market.fx[c];if(v>0)return{p:v,auto:true}}
     const sy=(h.symbol||"").toUpperCase().trim();
     const q=market.quotes&&sy&&(market.quotes[h.kind+":"+sy]||(h.kind==="abd"?market.quotes["hisse:"+sy]:null));
     if(q&&+q.p>0&&(!q.cur||q.cur===h.cur))return{p:+q.p,auto:true,t:q.t};
@@ -2515,9 +2521,12 @@ function rAyarlar(){
     ${tog("autoPrices","Fiyatları otomatik al","Döviz, altın, hisse, fon ve kripto fiyatları yaklaşık 10 dakikada bir kendiliğinden yenilenir")}
     <div class="set-row"><div class="lbl"><b>Son güncelleme</b><small>${market?marketWhen()+(market.source?" · "+esc(market.source):""):"Henüz otomatik fiyat yok"}${(e=>e.length?"<br>Alınamayanlar: "+esc(e.join("; ")):"")(myMarketErrors())}</small></div><button class="btn sm" data-act="refresh">Şimdi denetle</button></div>
     ${AUTO()?`<div class="note">Otomatik fiyat bulunan kalemlerde aşağıdaki elle girilen değerler kullanılmaz; bulunamayanlarda yedek olarak kullanılır. Hisse ve fonlarda varlığa kod girmeniz yeterli (ör. THYAO, AAPL, TTE).</div>`:""}
-    <div class="set-row"><div class="lbl"><b>Gösterim para birimi</b><small>Toplamlar bu birimde gösterilir</small></div>${seg("base",CURS.map(c=>[c,c]))}</div>
+    <div class="set-row"><div class="lbl"><b>Gösterim para birimi</b><small>Toplamlar bu birimde gösterilir</small></div>${seg("base",CURS_BASE.map(c=>[c,c]))}</div>
     ${AUTO()&&market.fx&&+market.fx.USD>0?`<div class="set-row"><div class="lbl"><b>USD / TRY</b><small>Otomatik</small></div><span class="num">${fmtN(rate("USD"),4)}</span></div><div class="set-row"><div class="lbl"><b>EUR / TRY</b><small>Otomatik</small></div><span class="num">${fmtN(rate("EUR"),4)}</span></div>`
       :num("rUSD","USD / TRY",s.rates.USD)+num("rEUR","EUR / TRY",s.rates.EUR)}
+    ${(()=>{const use=fxInUse().filter(c=>c!=="USD"&&c!=="EUR");if(!use.length)return"";const man=use.filter(c=>!(AUTO()&&market.fx&&+market.fx[c]>0));
+      return use.map(c=>AUTO()&&market.fx&&+market.fx[c]>0?`<div class="set-row"><div class="lbl"><b>${c} / TRY</b><small>${esc(FX_NAMES[c]||c)} · otomatik</small></div><span class="num">${fmtN(rate(c),c==="JPY"||c==="RUB"?4:4)}</span></div>`
+        :num("r"+c,c+" / TRY · "+(FX_NAMES[c]||c),s.rates[c]||"")).join("")+(man.length?`<div class="set-row"><div class="lbl"><small>${man.join(", ")} için otomatik kur bulunamadı; elle girdiğin kur kullanılır.</small></div><button class="btn sm" data-act="save-fx">Kurları kaydet</button></div>`:"")})()}
     ${AUTO()&&market.gold&&+market.gold.resatAlis>0?`<div class="set-row"><div class="lbl"><b>Reşat altın alış</b><small>Otomatik · nisap için 7,2'ye bölünür</small></div><span class="num">${fmtN(market.gold.resatAlis,2)}</span></div>`:`<div class="label" style="margin-top:12px">Damgalı altın lira fiyatları (TL), otomatik fiyat yokken kullanılır</div>
     ${COINS.map(([k,n])=>num("coin_"+k,n+(AUTO()&&market.gold&&+market.gold[k]>0?" · oto "+fmtN(market.gold[k],0):""),s.coins[k]||"")).join("")}`}
     <div class="set-row"><div class="lbl"><b>Zekât için gram fiyatı</b><small>${goldInfo().coin?esc(goldInfo().coin.n)+" ÷ 7,2":"En az bir lira fiyatı girin"}</small></div><span class="num">${goldInfo().gram?fmt(goldInfo().gram,"TRY",{dec:2,show:true}):"—"}</span></div>
@@ -2684,7 +2693,7 @@ function holdingSheet(pfId,h){
   const PH={hisse:["Örn. Türk Hava Yolları","THYAO"],abd:["Örn. Apple","AAPL"],fon:["Fon adı","TEFAS kodu, örn. TTE"],ppf:["Örn. ... Para Piyasası Fonu","TEFAS kodu"],kripto:["Örn. Bitcoin","BTC"]};
   formSheet({title:h?"Varlığı düzenle":"Varlık ekle",fields:[
     {id:"pf",label:"Portföy",type:"select",value:pid,options:editPfs().map(p=>[p.id,p.name+(p._shared?" · "+p._shared.from:owners().length>1?" ("+ownerOf(p)+")":"")])},
-    [{id:"kind",label:"Tür",type:"select",value:k0,options:Object.entries(KINDS)},{id:"cur",label:"Para birimi",type:"select",value:h?h.cur:"TRY",options:CURS}],
+    [{id:"kind",label:"Tür",type:"select",value:k0,options:Object.entries(KINDS)},{id:"cur",label:"Para birimi",type:"select",value:h?h.cur:"TRY",options:CUR_OPTS}],
     {id:"preset",label:"Ürün",type:"select",value:curPreset,options:presetOpts(k0),hidden:!PRESETS[k0]},
     [{id:"broker",label:"Aracı kurum",type:"select",value:h?(h.broker||""):(view.lastBroker&&view.lastBroker[pid])||"",options:brokerOpts(pid,h&&h.broker)},{id:"brokerNew",label:"Yeni kurum adı",value:"",ph:"Örn. Midas",list:BROKER_HINT,hidden:true}],
     {id:"name",label:"Varlık adı",value:h?h.name:"",ph:"Adını veya kodunu yazmaya başlayın"},
@@ -3194,7 +3203,7 @@ function txSheet(t,preset){
   const hasCards=state.cards.length>0,mg=(state.goals||[]).filter(g=>g.src==="manual");
   formSheet({title:t?"İşlemi düzenle":"İşlem ekle",fields:[
     {id:"type",label:"Tür",type:"seg",value:type,options:hasCards?[["out","Gider"],["in","Gelir"],["save","Tasarruf"],["card","Kart ödemesi"]]:[["out","Gider"],["in","Gelir"],["save","Tasarruf"]]},
-    [{id:"amount",label:"Tutar",type:"number",big:true,value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CURS}],
+    [{id:"amount",label:"Tutar",type:"number",big:true,value:t?t.amount:(preset&&preset.amount)||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:t?t.cur:"TRY",options:CUR_OPTS}],
     [{id:"cat",label:"Kategori",type:"select",value:t?t.cat:catOpts(type)[0],options:[...new Set([...catOpts(type),...(t&&t.cat?[t.cat]:[])])].map(c=>[c,c]).concat([["__new","Yeni kategori…"]])},{id:"date",label:"Tarih",type:"date",value:t?t.date:todayISO()}],
     {id:"newCat",label:"Yeni kategorinin adı",value:"",ph:"Örn. Evcil hayvan, Spor, Tatil"},
     [{id:"sub",label:"Alt kategori",type:"select",value:t&&t.sub||(preset&&preset.sub)||"",options:[["",""]]},{id:"newSub",label:"Yeni alt kategorinin adı",value:"",ph:"Örn. Spotify"}],
@@ -3321,7 +3330,7 @@ function recSheet(r){
     {id:"type",label:"Tür",type:"seg",value:r?r.type:"out",options:[["out","Ödeme"],["in","Gelir"],["save","Tasarruf"]]},
     {id:"name",label:"Adı",value:r?r.name:"",ph:"Örn. Kira, Elektrik, Maaş, Aylık birikim"},
     [{id:"amount",label:"Tutar (yaklaşık)",type:"number",value:r?r.amount:"",ph:"0"},{id:"day",label:"Ayın kaçında",type:"select",value:r?String(r.day):"1",options:Array.from({length:31},(_,i)=>[String(i+1),String(i+1)])}],
-    [{id:"cat",label:"Kategori",type:"select",value:r?r.cat:CATS.out[0],options:r&&r.type==="in"?CATS.in:r&&r.type==="save"?CATS.save:CATS.out},{id:"cur",label:"Para birimi",type:"select",value:r?r.cur:"TRY",options:CURS}],
+    [{id:"cat",label:"Kategori",type:"select",value:r?r.cat:CATS.out[0],options:r&&r.type==="in"?CATS.in:r&&r.type==="save"?CATS.save:CATS.out},{id:"cur",label:"Para birimi",type:"select",value:r?r.cur:"TRY",options:CUR_OPTS}],
     ...(state.cards.length?[{id:"method",label:"Ödeme şekli",type:"select",value:r?(r.method||"cash"):"cash",options:methodOpts()}]:[])],
     extra:`<div class="note">Her ay listede görünür. "Öde"ye dokununca o ayın tarihiyle işlem olarak eklenir; tutar değiştiyse işlemi açıp düzeltebilirsiniz.</div>`,
     onChange:(form,name)=>{if(name==="type"){const c=form.elements.cat;const ty=form.elements.type.value;c.innerHTML=(ty==="in"?CATS.in:ty==="save"?CATS.save:CATS.out).map(x=>`<option>${esc(x)}</option>`).join("")}},
@@ -3343,7 +3352,7 @@ function cashSheet(){
   const s=S();
   formSheet({title:"Nakit bakiyesi",fields:[
     {id:"link",label:"Ana portföyün zekât hesabına dahil et",type:"seg",value:s.cashLink===false?"0":"1",options:[["1","Dahil"],["0","Hariç"]]},
-    [{id:"start",label:"Başlangıç bakiyesi",type:"number",value:s.cashStart||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:s.cashStartCur||"TRY",options:CURS}],
+    [{id:"start",label:"Başlangıç bakiyesi",type:"number",value:s.cashStart||"",ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:s.cashStartCur||"TRY",options:CUR_OPTS}],
     {id:"date",label:"Başlangıç tarihi (bu tarihten önceki işlemler sayılmaz)",type:"date",value:s.cashStartDate||""}],
     extra:`<div class="note">Bakiye = başlangıç + gelirler − giderler. Yalnızca ana portföyün zekât hesabında kullanılır; Özet ve Portföy ekranlarındaki toplamlara eklenmez. Örneğin bugün hesabınızda ve elinizde toplam ne kadar nakit varsa onu başlangıç bakiyesi olarak bugünün tarihiyle girin; sonraki gelir ve giderler üzerine eklenir. Bankadaki parayı ayrıca "Nakit / Mevduat" varlığı olarak eklediyseniz iki kez sayılmaması için birini kaldırın.</div>`,
     onSave:v=>{const a=v.start.trim()?parseNum(v.start):0;if(isNaN(a))return"Başlangıç bakiyesini kontrol edin.";if(v.date&&v.date>todayISO())return"Tarih ileri olamaz.";
@@ -3551,7 +3560,7 @@ function debtDetail(d){
 function zakatSheet(p){
   const z=zakat();
   formSheet({title:(p?"Zekât ödemesini düzenle":"Zekât ödemesi ekle")+(state.portfolios.length>1?" · "+esc(pfName(p?p.pf:zOwner())):""),fields:[
-    [{id:"amount",label:"Tutar",type:"number",value:p?p.amount:(z.left?Math.round(z.left):""),ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:p?p.cur:S().base,options:CURS}],
+    [{id:"amount",label:"Tutar",type:"number",value:p?p.amount:(z.left?Math.round(z.left):""),ph:"0"},{id:"cur",label:"Para birimi",type:"select",value:p?p.cur:S().base,options:CUR_OPTS}],
     {id:"date",label:"Tarih",type:"date",value:p?p.date:todayISO()},
     {id:"note",label:"Kime / not",value:p?p.note:"",ph:"Örn. Akraba, dernek"}],
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";const x={amount:a,cur:v.cur,date:v.date||todayISO(),note:v.note.trim()};if(p)Object.assign(p,x);else state.zakatPaid.push({id:uid(),pf:zOwner(),...x});commit("Zekât ödemesi kaydedildi")},
@@ -3652,6 +3661,7 @@ document.addEventListener("click",e=>{
   if(a==="rates"||a==="zset"){view.tab="ayarlar";view.setG=a==="rates"?"fiyat":"zekat";render();setNavFix(0);setTimeout(()=>{const el=$(a==="rates"?"#ratesCard":"#zakatCard");el&&el.scrollIntoView({behavior:"smooth",block:"start"})},30);return}
   if(a==="set"){S()[t.dataset.k]=t.dataset.v;commit();return}
   if(a==="nisab"){S().nisabGram=+t.dataset.v;commit();return}
+  if(a==="save-fx"){for(const c of fxInUse()){const el=$("#r"+c);if(!el||c==="USD"||c==="EUR")continue;const v=parseNum(el.value);if(!(v>0)){toast(c+" kuru sıfırdan büyük olmalı");return}S().rates[c]=v}commit("Kurlar kaydedildi");return}
   if(a==="save-rates"){const u=$("#rUSD")?parseNum($("#rUSD").value):S().rates.USD,eu=$("#rEUR")?parseNum($("#rEUR").value):S().rates.EUR;
     if(!(u>0&&eu>0)){toast("Kurlar sıfırdan büyük olmalı");return}
     const c={};for(const [k] of COINS){const el=$("#coin_"+k);const raw=el?el.value.trim():String(S().coins[k]||"");const v=raw?parseNum(raw):0;if(isNaN(v)||v<0){toast("Altın lira fiyatlarını kontrol edin");return}c[k]=v}

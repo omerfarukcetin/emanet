@@ -1,5 +1,5 @@
 /* Emanet servis çalışanı: çevrimiçiyken her zaman en güncel dosyayı alır, çevrimdışıyken önbellekten açar. */
-const V = "emanet-v69";
+const V = "emanet-v70";
 const NC = "emanet-notif";   // gün sonu bildirimi için cihazda tutulan küçük kayıt; sürüm değişince silinmez
 const SHELL = ["./", "index.html", "css/base.css", "css/theme.css", "js/config.js", "js/vendor/supabase.js", "js/app.js",
   "fonts/plus-jakarta-sans-latin.woff2", "fonts/plus-jakarta-sans-latin-ext.woff2", "icons/icon-64.png", "icons/icon-192.png", "icons/badge-96.png", "manifest.webmanifest", "data/ufe.json", "data/tufe.json", "data/market.json"];

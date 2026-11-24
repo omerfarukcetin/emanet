@@ -24,6 +24,8 @@ async function get(url, opts = {}) {
   return res;
 }
 /** Önceki değerden %40'tan fazla sapan değeri kabul etme (bozuk veri koruması). */
+// USD ve EUR dışında kuru tutulan dövizler (js/app.js içindeki FX listesiyle aynı)
+const FX_MORE = ["GBP", "CHF", "JPY", "RUB", "SAR", "AED", "CAD", "AUD", "CNY", "DKK", "SEK", "NOK", "KWD", "QAR", "AZN", "GEL", "BGN", "RON", "KZT"];
 function sane(next, prev) { return next > 0 && (!(prev > 0) || Math.abs(next - prev) / prev <= 0.4); }
 
 // ---------- izleme listesi ----------
@@ -116,6 +118,8 @@ async function goldAndFx(prev) {
     const notes = [];
     const setFx = (c, o) => { const v = sell(o); if (sane(v, fx[c])) fx[c] = +v.toFixed(4); else if (o) notes.push(c + " kuru beklenmedik: " + v); };
     setFx("USD", find("USD", "Amerikan Doları")); setFx("EUR", find("EUR", "Euro"));
+    // diğer dövizler (uygulamada seçilebilenler): bulunamayan sessizce atlanır, önceki değer korunur
+    for (const c of FX_MORE) { const o = find(c); const v = sell(o); if (o && sane(v, fx[c])) fx[c] = +v.toFixed(c === "JPY" || c === "RUB" ? 6 : 4); }
     let n = 0;
     for (const [k, names] of Object.entries(GOLD_NAMES)) {
       const o = find(...names), v = sell(o);
@@ -137,10 +141,11 @@ async function goldAndFx(prev) {
   errors.push("Altın fiyatları alınamadı, önceki değerler korundu (" + fails.join("; ") + ")");
   // yalnızca döviz (Avrupa Merkez Bankası referans kuru)
   try {
-    const d = await (await get("https://api.frankfurter.dev/v1/latest?base=USD&symbols=TRY,EUR")).json();
+    const d = await (await get("https://api.frankfurter.dev/v1/latest?base=USD")).json();
     const usd = +d.rates.TRY, eur = usd / +d.rates.EUR;
     if (sane(usd, fx.USD)) fx.USD = +usd.toFixed(4);
     if (sane(eur, fx.EUR)) fx.EUR = +eur.toFixed(4);
+    for (const c of FX_MORE) { const r = +d.rates[c]; if (r > 0 && sane(usd / r, fx[c])) fx[c] = +(usd / r).toFixed(6); }
   } catch (e) { errors.push("Yedek döviz kaynağı da yanıt vermedi (" + e.message + ")"); }
   return { fx, gold, source: "frankfurter.dev (yalnızca döviz)" };
 }
