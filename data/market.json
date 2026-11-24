@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-24T09:01:06.623Z",
+ "updatedAt": "2026-11-24T09:10:27.455Z",
  "fx": {
-  "EUR": 55.3509,
-  "USD": 50.6334
+  "EUR": 55.3511,
+  "USD": 50.6293
  },
  "gold": {
-  "ata": 41434,
+  "ata": 41410,
   "aziz": null,
-  "ceyrek": 10212,
-  "cumhuriyet": 41434,
-  "gram": 5891.63,
-  "gumus": 68.44,
-  "hamit": 41434,
-  "resat": 41434,
-  "resatAlis": 40152.44,
-  "resatSatis": 40780.45,
-  "tam": 40542,
-  "yarim": 20363,
+  "ceyrek": 10206,
+  "cumhuriyet": 41410,
+  "gram": 5891.39,
+  "gumus": 68.39,
+  "hamit": 41410,
+  "resat": 41410,
+  "resatAlis": 40154.06,
+  "resatSatis": 40743.02,
+  "tam": 40519,
+  "yarim": 20351,
   "resatKaynak": "altin.in",
-  "ayar22": 5758.3,
+  "ayar22": 5756.88,
   "ayar18": 4930,
-  "ayar14": 4495.63
+  "ayar14": 4494.65
  },
  "quotes": {
   "abd:LPTH": {
@@ -32,13 +32,13 @@
   "hisse:SOKE": {
    "p": 6.64,
    "cur": "TRY",
-   "t": "2026-11-24T08:44:48.000Z",
+   "t": "2026-11-24T08:53:56.000Z",
    "pc": 6.63
   },
   "hisse:BALSU": {
    "p": 6.17,
    "cur": "TRY",
-   "t": "2026-11-24T08:44:02.000Z",
+   "t": "2026-11-24T08:55:00.000Z",
    "pc": 6.24
   },
   "ppf:KLU": {
@@ -78,9 +78,9 @@
    "pc": 33.94
   },
   "hisse:OPT25": {
-   "p": 46.38,
+   "p": 46.48,
    "cur": "TRY",
-   "t": "2026-11-24T07:58:30.000Z",
+   "t": "2026-11-24T08:51:56.000Z",
    "pc": 46.42
   },
   "fon:KPA": {
@@ -90,21 +90,21 @@
    "pc": 1.380226
   },
   "hisse:FZLGY": {
-   "p": 6.64,
+   "p": 6.63,
    "cur": "TRY",
-   "t": "2026-11-24T08:44:17.000Z",
+   "t": "2026-11-24T08:55:09.000Z",
    "pc": 6.6
   },
   "hisse:BIMAS": {
-   "p": 372.5,
+   "p": 373,
    "cur": "TRY",
-   "t": "2026-11-24T08:45:15.000Z",
+   "t": "2026-11-24T08:55:09.000Z",
    "pc": 370.25
   },
   "hisse:FROTO": {
-   "p": 71.15,
+   "p": 71.1,
    "cur": "TRY",
-   "t": "2026-11-24T08:45:04.000Z",
+   "t": "2026-11-24T08:55:15.000Z",
    "pc": 71.15
   },
   "abd:OWL": {
@@ -114,15 +114,15 @@
    "pc": 8.8
   },
   "kripto:ETH": {
-   "p": 1688.4,
+   "p": 1677.31,
    "cur": "USD",
-   "t": "2026-11-24T09:00:14.000Z",
+   "t": "2026-11-24T09:10:04.000Z",
    "pc": 1708.85
   },
   "kripto:XRP": {
-   "p": 0.9364,
+   "p": 0.9319,
    "cur": "USD",
-   "t": "2026-11-24T09:00:15.000Z",
+   "t": "2026-11-24T09:10:15.000Z",
    "pc": 0.9396
   },
   "abd:SCHG": {
@@ -148,8 +148,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "ENR: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
