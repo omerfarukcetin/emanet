@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-25T07:20:48.872Z",
+ "updatedAt": "2026-11-25T07:31:08.869Z",
  "fx": {
-  "EUR": 55.4427,
-  "USD": 50.683,
-  "GBP": 66.305,
-  "CHF": 60.6546,
+  "EUR": 55.4289,
+  "USD": 50.6813,
+  "GBP": 66.2684,
+  "CHF": 60.7164,
   "JPY": 0.3186,
-  "RUB": 0.6165,
-  "SAR": 13.5109,
-  "AED": 13.8041,
-  "CAD": 35.4799,
-  "AUD": 33.319,
-  "CNY": 7.594,
-  "DKK": 7.4189,
-  "SEK": 4.9315,
-  "NOK": 5.1459,
-  "KWD": 162.7035,
-  "QAR": 13.9044,
-  "AZN": 29.8135,
-  "GEL": 19.5687,
+  "RUB": 0.6163,
+  "SAR": 13.5106,
+  "AED": 13.8048,
+  "CAD": 35.4763,
+  "AUD": 33.2724,
+  "CNY": 7.5921,
+  "DKK": 7.4168,
+  "SEK": 4.9273,
+  "NOK": 5.1411,
+  "KWD": 162.7253,
+  "QAR": 13.9052,
+  "AZN": 29.8125,
+  "GEL": 19.5681,
   "BGN": 28.9337,
-  "RON": 10.3757,
+  "RON": 10.3745,
   "KZT": 0.1104
  },
  "gold": {
-  "ata": 40536,
+  "ata": 40537,
   "aziz": null,
   "ceyrek": 10021,
-  "cumhuriyet": 40536,
-  "gram": 5734.89,
-  "gumus": 65.69,
-  "hamit": 40536,
-  "resat": 40536,
-  "resatAlis": 39858,
-  "resatSatis": 40536,
+  "cumhuriyet": 40537,
+  "gram": 5735.96,
+  "gumus": 65.55,
+  "hamit": 40537,
+  "resat": 40537,
+  "resatAlis": 39866,
+  "resatSatis": 40537,
   "tam": 40025,
   "yarim": 20043,
   "resatKaynak": "finans.truncgil.com",
-  "ayar22": 5634.75,
-  "ayar18": 4825,
-  "ayar14": 4410.2
+  "ayar22": 5634.89,
+  "ayar18": 4820,
+  "ayar14": 4410.29
  },
  "quotes": {
   "abd:LPTH": {
@@ -49,15 +49,15 @@
    "pc": 5.78
   },
   "hisse:SOKE": {
-   "p": 6.61,
+   "p": 6.5,
    "cur": "TRY",
-   "t": "2026-11-25T07:05:09.000Z",
+   "t": "2026-11-25T07:15:23.000Z",
    "pc": 6.64
   },
   "hisse:BALSU": {
    "p": 6.31,
    "cur": "TRY",
-   "t": "2026-11-25T07:05:21.000Z",
+   "t": "2026-11-25T07:15:27.000Z",
    "pc": 6.27
   },
   "ppf:KLU": {
@@ -97,9 +97,9 @@
    "pc": 34.39
   },
   "hisse:OPT25": {
-   "p": 45.66,
+   "p": 45.78,
    "cur": "TRY",
-   "t": "2026-11-25T07:01:00.000Z",
+   "t": "2026-11-25T07:15:15.000Z",
    "pc": 45.9
   },
   "fon:KPA": {
@@ -109,21 +109,21 @@
    "pc": 1.378534
   },
   "hisse:FZLGY": {
-   "p": 6.89,
+   "p": 6.63,
    "cur": "TRY",
-   "t": "2026-11-25T07:05:31.000Z",
+   "t": "2026-11-25T07:15:26.000Z",
    "pc": 6.72
   },
   "hisse:BIMAS": {
    "p": 368.5,
    "cur": "TRY",
-   "t": "2026-11-25T07:05:35.000Z",
+   "t": "2026-11-25T07:15:30.000Z",
    "pc": 368
   },
   "hisse:FROTO": {
-   "p": 69.65,
+   "p": 69.35,
    "cur": "TRY",
-   "t": "2026-11-25T07:05:35.000Z",
+   "t": "2026-11-25T07:15:33.000Z",
    "pc": 69.9
   },
   "abd:OWL": {
@@ -133,15 +133,15 @@
    "pc": 9.07
   },
   "kripto:ETH": {
-   "p": 1654.46,
+   "p": 1654.14,
    "cur": "USD",
-   "t": "2026-11-25T07:20:32.000Z",
+   "t": "2026-11-25T07:30:33.000Z",
    "pc": 1677.65
   },
   "kripto:XRP": {
-   "p": 0.9182,
+   "p": 0.9187,
    "cur": "USD",
-   "t": "2026-11-25T07:20:35.000Z",
+   "t": "2026-11-25T07:30:34.000Z",
    "pc": 0.9244
   },
   "abd:SCHG": {
@@ -165,7 +165,7 @@
  },
  "source": "finans.truncgil.com, Yahoo Finance, TEFAS",
  "errors": [
-  "Reşat alış fiyatı altin.in'den okunamadı (altin.in 522); nisap için finans.truncgil.com fiyatı kullanıldı",
+  "Reşat alış fiyatı altin.in'den okunamadı (The operation was aborted due to timeout); nisap için finans.truncgil.com fiyatı kullanıldı",
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
