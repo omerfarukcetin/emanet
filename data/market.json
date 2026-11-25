@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-25T22:00:33.209Z",
+ "updatedAt": "2026-11-25T22:11:17.152Z",
  "fx": {
-  "EUR": 55.643,
-  "USD": 50.6941,
-  "GBP": 66.4776,
-  "CHF": 61.0258,
+  "EUR": 55.8938,
+  "USD": 50.6917,
+  "GBP": 66.8246,
+  "CHF": 61.084,
   "JPY": 0.3184,
   "RUB": 0.6138,
   "SAR": 13.5137,
-  "AED": 13.8088,
-  "CAD": 35.6653,
-  "AUD": 33.6051,
-  "CNY": 7.6034,
-  "DKK": 7.4462,
-  "SEK": 4.9563,
-  "NOK": 5.177,
+  "AED": 13.8094,
+  "CAD": 35.6758,
+  "AUD": 33.5985,
+  "CNY": 7.6041,
+  "DKK": 7.4467,
+  "SEK": 4.955,
+  "NOK": 5.1782,
   "KWD": 162.6715,
-  "QAR": 14.4619,
-  "AZN": 29.8201,
-  "GEL": 19.573,
+  "QAR": 14.4625,
+  "AZN": 29.8186,
+  "GEL": 19.5721,
   "BGN": 28.9337,
-  "RON": 10.4261,
+  "RON": 10.4285,
   "KZT": 0.1108
  },
  "gold": {
-  "ata": 41661,
+  "ata": 41695,
   "aziz": null,
-  "ceyrek": 10322,
-  "cumhuriyet": 41661,
-  "gram": 5841.93,
-  "gumus": 67.36,
-  "hamit": 41661,
-  "resat": 41661,
-  "resatAlis": 40352.71,
-  "resatSatis": 41203.56,
-  "tam": 41041,
-  "yarim": 20644,
+  "ceyrek": 10331,
+  "cumhuriyet": 41695,
+  "gram": 5849.49,
+  "gumus": 67.5,
+  "hamit": 41695,
+  "resat": 41695,
+  "resatAlis": 40363.99,
+  "resatSatis": 41215,
+  "tam": 41075,
+  "yarim": 20662,
   "resatKaynak": "altin.in",
-  "ayar22": 5804.73,
-  "ayar18": 4980,
-  "ayar14": 4527.74
+  "ayar22": 5809.6,
+  "ayar18": 4985,
+  "ayar14": 4531.11
  },
  "quotes": {
   "abd:LPTH": {
@@ -133,15 +133,15 @@
    "pc": 9.12
   },
   "kripto:ETH": {
-   "p": 1682.37,
+   "p": 1682.74,
    "cur": "USD",
-   "t": "2026-11-25T22:00:20.000Z",
+   "t": "2026-11-25T22:10:17.000Z",
    "pc": 1677.65
   },
   "kripto:XRP": {
-   "p": 0.9391,
+   "p": 0.9379,
    "cur": "USD",
-   "t": "2026-11-25T22:00:12.000Z",
+   "t": "2026-11-25T22:10:14.000Z",
    "pc": 0.9244
   },
   "abd:SCHG": {
@@ -167,6 +167,8 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "ENR: fon fiyatı alınamadı (fetch failed)",
+  "GSP: fon fiyatı alınamadı (fetch failed)"
  ]
 }
