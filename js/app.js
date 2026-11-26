@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.31";
+const APP_VERSION="3.32";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -61,8 +61,18 @@ const MONTHS=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağust
 let HCAL="islamic-umalqura";
 try{if(new Intl.DateTimeFormat("en-u-ca-islamic-umalqura").resolvedOptions().calendar!=="islamic-umalqura")HCAL="islamic"}catch(e){HCAL="islamic"}
 const HF=new Intl.DateTimeFormat("en-US-u-ca-"+HCAL+"-nu-latn",{year:"numeric",month:"numeric",day:"numeric",timeZone:"UTC"});
-function toH(iso){const p=HF.formatToParts(new Date(iso+"T00:00:00Z"));const g=t=>+((p.find(x=>x.type===t)||{}).value||"").replace(/\D/g,"");return{y:g("year"),m:g("month"),d:g("day")}}
+/* Diyanet takvimi (data/hicri.json, günlük): hicri ay başlarının miladi günleri. Tabloda olan tarihler Diyanet'e göre,
+   olmayanlar (çok eski / ileri tarihler) tarayıcının Ümmü'l-Kura takvimine göre hesaplanır. */
+let HTAB=(()=>{try{return JSON.parse(localStorage.getItem("emanet-hicri")||"null")}catch(e){return null}})();
+function hTab(){if(!HTAB||!HTAB.starts)return null;if(!HTAB._s)HTAB._s=Object.entries(HTAB.starts).map(([k,v])=>{const[y,m]=k.split("-").map(Number);return{y,m,s:v}}).sort((a,b)=>a.s.localeCompare(b.s));return HTAB._s}
+function hTabFind(iso){const L=hTab();if(!L)return null;let i=-1;for(let k=0;k<L.length&&L[k].s<=iso;k++)i=k;if(i<0)return null;
+  const b=L[i],nx=L[i+1],d=Math.round((Date.parse(iso)-Date.parse(b.s))/864e5)+1,nm=b.m===12?[b.y+1,1]:[b.y,b.m+1];
+  if(nx&&nx.y===nm[0]&&nx.m===nm[1])return iso<nx.s?{y:b.y,m:b.m,d}:null;
+  return d<=29?{y:b.y,m:b.m,d}:null}
+async function loadHicri(){for(const u of marketUrls().map(x=>x.replace("market.json","hicri.json"))){try{const d=await getJSON(u);if(d&&d.starts){const ch=!HTAB||JSON.stringify(HTAB.starts)!==JSON.stringify(d.starts);HTAB=d;try{localStorage.setItem("emanet-hicri",JSON.stringify(d))}catch(e){}if(ch&&ready)render();return}}catch(e){}}}
+function toH(iso){const t=hTabFind(iso);if(t)return t;const p=HF.formatToParts(new Date(iso+"T00:00:00Z"));const g=t=>+((p.find(x=>x.type===t)||{}).value||"").replace(/\D/g,"");return{y:g("year"),m:g("month"),d:g("day")}}
 function fromH(y,m,d){
+  {const L=hTab(),b=L&&L.find(x=>x.y===y&&x.m===m);if(b){const iso=new Date(Date.parse(b.s)+(d-1)*864e5).toISOString().slice(0,10),h=hTabFind(iso);if(h&&h.y===y&&h.m===m&&h.d===d)return iso;if(d>29)return fromH(y,m,29)}}
   const ap=Date.UTC(622,6,16)+((y-1)*354.36667+(m-1)*29.5306+(d-1))*864e5;
   for(let k=0;k<=50;k++)for(const s of k?[k,-k]:[0]){const iso=new Date(ap+s*864e5).toISOString().slice(0,10);const h=toH(iso);if(h.y===y&&h.m===m&&h.d===d)return iso}
   return d>29?fromH(y,m,29):null;
@@ -974,7 +984,7 @@ function hashTab(){const h=location.hash.slice(1);if(TABS.some(t=>t[0]===h)||h==
 window.addEventListener("hashchange",()=>{if(hashTab()&&ready)render()});
 async function boot(){
   hashTab();
-  loadMarket();loadUfe();loadTufe();loadBench();loadTech();
+  loadMarket();loadUfe();loadTufe();loadBench();loadHicri();loadTech();
   setInterval(()=>{if(!document.hidden)loadMarket()},3*6e4);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadMarket();pull()}});
   const net=()=>{if(!navigator.onLine)setSync("local","Çevrimdışı · değişiklikler cihazda");else if(cloudOn()){pull()}else if(ready)setSync("local",sb?"Girişsiz · bu cihazda":"Bu cihazda tutuluyor")};
