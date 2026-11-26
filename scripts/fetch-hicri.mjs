@@ -11,7 +11,11 @@ if (!process.argv.includes("--force") && process.env.GITHUB_EVENT_NAME !== "work
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 const AY = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"];
 const HM = ["muharrem", "safer", "rebiülevvel", "rebiülahir", "cemaziyelevvel", "cemaziyelahir", "recep", "şaban", "ramazan", "şevval", "zilkade", "zilhicce"];
-const fold = s => s.toLocaleLowerCase("tr").replace(/\s+/g, "").replace(/î/g, "i").replace(/â/g, "a").replace(/û/g, "u").replace(/'/g, "");
+const fold = s => s.toLocaleLowerCase("tr").replace(/\s+/g, "").replace(/î/g, "i").replace(/â/g, "a").replace(/û/g, "u").replace(/['’\-]/g, "");
+// hicri ay adı → sıra (yazım farklarına dayanıklı: Rebiülevvel / Rebiyülevvel / Rebîulevvel …)
+const hIdx = w => { const k = fold(w).replace(/[üu]/g, "u").replace(/[ıi]/g, "i").replace(/ş/g, "s").replace(/y/g, "");
+  const ev = /evv?el/.test(k), ah = /ah[ie]r|sani/.test(k);
+  return /^muh/.test(k) ? 0 : /^saf/.test(k) ? 1 : /^reb/.test(k) ? (ev ? 2 : ah ? 3 : -1) : /^cem/.test(k) ? (ev ? 4 : ah ? 5 : -1) : /^rec/.test(k) ? 6 : /^sab/.test(k) ? 7 : /^ram/.test(k) ? 8 : /^sev/.test(k) ? 9 : /^zilk/.test(k) ? 10 : /^zilh/.test(k) ? 11 : -1; };
 const iso = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 const rows = [];   // [miladi ISO, hicri yıl, ay, gün]
 
@@ -30,8 +34,8 @@ async function diyanet() {
   if (!r.ok) throw new Error("diyanet " + r.status);
   const t = (await r.text()).replace(/<[^>]+>/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
   // haftalık / aylık / yıllık tablolar: "26 Kasım 2026 Perşembe 17 Cemaziyelahir 1448"
-  for (const m of t.matchAll(/(\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşü]+) (\d{4}) [A-Za-zÇĞİÖŞÜçğıöşü]+ (\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû']+) (\d{4})/g)) {
-    const gm = AY.indexOf(fold(m[2])), hm = HM.indexOf(fold(m[5])); if (gm >= 0 && hm >= 0) rows.push([iso(+m[1], gm + 1, +m[3]), +m[6], hm + 1, +m[4]]);
+  for (const m of t.matchAll(/(\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşü]+) (\d{4}) [A-Za-zÇĞİÖŞÜçğıöşü]+ (\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû'’\-]+) (\d{4})/g)) {
+    const gm = AY.indexOf(fold(m[2])), hm = hIdx(m[5]); if (gm >= 0 && hm >= 0) rows.push([iso(+m[1], gm + 1, +m[3]), +m[6], hm + 1, +m[4]]);
   }
 }
 for (const f of [diyanet, ezan]) { try { await f(); if (rows.length >= 7) break; } catch (e) { console.log("Hicri:", e.message); } }
