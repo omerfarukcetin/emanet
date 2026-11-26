@@ -28,7 +28,7 @@ async function diyanet() {
   const r = await fetch("https://namazvakitleri.diyanet.gov.tr/tr-TR/9541", { headers: { "user-agent": UA, accept: "text/html" }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error("diyanet " + r.status);
   const t = (await r.text()).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
-  if (process.env.HICRI_DEBUG) { const i = t.search(/Cemaziyel|Recep|Şaban|Hicri/i); console.log("örnek:", t.slice(Math.max(0, i - 600), i + 600)); }
+  if (process.env.HICRI_DEBUG) { const all = [...t.matchAll(/Cemaziyelahir 1448/g)].map(m => m.index); console.log("adet:", all.length); const i = all[3] || all[1] || 0; console.log("örnek:", t.slice(Math.max(0, i - 500), i + 700)); }
   for (const m of t.matchAll(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû']+)\s+(\d{4})/g)) {
     const mi = HM.indexOf(fold(m[5])); if (mi >= 0) rows.push([iso(+m[1], +m[2], +m[3]), +m[6], mi + 1, +m[4]]);
   }
