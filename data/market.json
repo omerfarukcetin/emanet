@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-25T23:50:50.710Z",
+ "updatedAt": "2026-11-26T00:00:43.171Z",
  "fx": {
-  "EUR": 55.8448,
-  "USD": 50.6823,
-  "GBP": 66.753,
-  "CHF": 61.0042,
+  "EUR": 55.8298,
+  "USD": 50.6876,
+  "GBP": 66.7418,
+  "CHF": 60.9886,
   "JPY": 0.3184,
   "RUB": 0.614,
   "SAR": 13.5151,
-  "AED": 13.8059,
-  "CAD": 35.6591,
-  "AUD": 33.5922,
-  "CNY": 7.6028,
-  "DKK": 7.4424,
-  "SEK": 4.9536,
-  "NOK": 5.1738,
+  "AED": 13.8062,
+  "CAD": 35.6601,
+  "AUD": 33.5955,
+  "CNY": 7.6025,
+  "DKK": 7.4415,
+  "SEK": 4.9534,
+  "NOK": 5.172,
   "KWD": 162.7255,
-  "QAR": 14.4588,
-  "AZN": 29.8131,
-  "GEL": 19.5685,
+  "QAR": 14.4591,
+  "AZN": 29.8162,
+  "GEL": 19.5705,
   "BGN": 28.9337,
-  "RON": 10.4229,
+  "RON": 10.4203,
   "KZT": 0.1109
  },
  "gold": {
-  "ata": 41616,
+  "ata": 41561,
   "aziz": null,
-  "ceyrek": 10311,
-  "cumhuriyet": 41616,
-  "gram": 5834.01,
-  "gumus": 67.5,
-  "hamit": 41616,
-  "resat": 41616,
-  "resatAlis": 40256.89,
-  "resatSatis": 41105.95,
-  "tam": 40997,
-  "yarim": 20622,
+  "ceyrek": 10297,
+  "cumhuriyet": 41561,
+  "gram": 5826.9,
+  "gumus": 67.56,
+  "hamit": 41561,
+  "resat": 41561,
+  "resatAlis": 40248.51,
+  "resatSatis": 41096.86,
+  "tam": 40942,
+  "yarim": 20595,
   "resatKaynak": "altin.in",
-  "ayar22": 5798.01,
+  "ayar22": 5790.74,
   "ayar18": 4970,
-  "ayar14": 4523.1
+  "ayar14": 4518.07
  },
  "quotes": {
   "abd:LPTH": {
@@ -133,15 +133,15 @@
    "pc": 9.12
   },
   "kripto:ETH": {
-   "p": 1691.2,
+   "p": 1690.42,
    "cur": "USD",
-   "t": "2026-11-25T23:50:12.000Z",
+   "t": "2026-11-26T00:00:14.000Z",
    "pc": 1677.65
   },
   "kripto:XRP": {
-   "p": 0.9363,
+   "p": 0.9367,
    "cur": "USD",
-   "t": "2026-11-25T23:50:11.000Z",
+   "t": "2026-11-26T00:00:14.000Z",
    "pc": 0.9244
   },
   "abd:SCHG": {
@@ -167,7 +167,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ZPO: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
