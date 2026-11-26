@@ -9,6 +9,7 @@ const prev = await fs.readFile(OUT, "utf8").then(JSON.parse).catch(() => ({ star
 if (!process.argv.includes("--force") && process.env.GITHUB_EVENT_NAME !== "workflow_dispatch" && prev.updatedAt && Date.now() - Date.parse(prev.updatedAt) < 20 * 3600e3) { console.log("Hicri takvim güncel, atlandı."); process.exit(0); }
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+const AY = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"];
 const HM = ["muharrem", "safer", "rebiülevvel", "rebiülahir", "cemaziyelevvel", "cemaziyelahir", "recep", "şaban", "ramazan", "şevval", "zilkade", "zilhicce"];
 const fold = s => s.toLocaleLowerCase("tr").replace(/\s+/g, "").replace(/î/g, "i").replace(/â/g, "a").replace(/û/g, "u").replace(/'/g, "");
 const iso = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -27,13 +28,13 @@ async function ezan() {
 async function diyanet() {
   const r = await fetch("https://namazvakitleri.diyanet.gov.tr/tr-TR/9541", { headers: { "user-agent": UA, accept: "text/html" }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error("diyanet " + r.status);
-  const t = (await r.text()).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
-  if (process.env.HICRI_DEBUG) { const all = [...t.matchAll(/Cemaziyelahir 1448/g)].map(m => m.index); console.log("adet:", all.length); const i = all[3] || all[1] || 0; console.log("örnek:", t.slice(Math.max(0, i - 500), i + 700)); }
-  for (const m of t.matchAll(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû']+)\s+(\d{4})/g)) {
-    const mi = HM.indexOf(fold(m[5])); if (mi >= 0) rows.push([iso(+m[1], +m[2], +m[3]), +m[6], mi + 1, +m[4]]);
+  const t = (await r.text()).replace(/<[^>]+>/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+  // haftalık / aylık / yıllık tablolar: "26 Kasım 2026 Perşembe 17 Cemaziyelahir 1448"
+  for (const m of t.matchAll(/(\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşü]+) (\d{4}) [A-Za-zÇĞİÖŞÜçğıöşü]+ (\d{1,2}) ([A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû']+) (\d{4})/g)) {
+    const gm = AY.indexOf(fold(m[2])), hm = HM.indexOf(fold(m[5])); if (gm >= 0 && hm >= 0) rows.push([iso(+m[1], gm + 1, +m[3]), +m[6], hm + 1, +m[4]]);
   }
 }
-for (const f of [ezan, diyanet]) { try { await f(); if (rows.length >= 7) break; } catch (e) { console.log("Hicri:", e.message); } }
+for (const f of [diyanet, ezan]) { try { await f(); if (rows.length >= 7) break; } catch (e) { console.log("Hicri:", e.message); } }
 if (rows.length < 7) { console.log("Hicri takvim alınamadı; önceki dosya korunur."); process.exit(0); }
 
 // ay başları: miladi gün − (hicri gün − 1). Aynı ay için farklı sonuç çıkarsa en sık görüleni alınır.

@@ -35,8 +35,6 @@ jobs:
         run: node scripts/fetch-symbols.mjs
       - name: Diyanet hicri takvimini yenile (günde bir)
         continue-on-error: true
-        env:
-          HICRI_DEBUG: "1"
         run: node scripts/fetch-hicri.mjs
       - name: Piyasa haberlerini yenile (yarım saatte bir)
         continue-on-error: true
