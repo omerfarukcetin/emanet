@@ -7,7 +7,7 @@ const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).sli
 const todayISO=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const LS="emanet-state-v1",MK="emanet-market-v1",FXK="emanet-fx-v1",WK="emanet-watch-v1",OWN="emanet-owner",GUEST="emanet-guest";
 const CFG=window.EMANET_CONFIG||{};
-const APP_VERSION="3.30";
+const APP_VERSION="3.31";
 
 const KINDS={hisse:"Hisse (BIST)",abd:"ABD hissesi",fon:"Yatırım fonu (TEFAS)",ppf:"Para piyasası fonu",altin:"Altın",gumus:"Gümüş",doviz:"Döviz",kripto:"Kripto",nakit:"Nakit",mevduat:"Mevduat / katılım hesabı",bes:"BES",emlak:"Gayrimenkul",diger:"Diğer"};
 const CASH_LBL="Nakit (bütçe)";
@@ -2956,12 +2956,16 @@ function holdingDetail(pfId,h){
 const defTax=h=>{const r=(S().whtRates||{})[h.kind];return r!=null&&r!==""?r:""};
 function divSheet(pfId,h,tr){
   const isMain=mainPf()&&mainPf().id===pfId,linked=tr&&tr.txId&&state.tx.find(x=>x.id===tr.txId);
+  // gelen para: portföyün aynı para birimindeki Nakit satırına (satıştaki gibi); yeni kayıtta sorulur, son seçim hatırlanır
+  const cashOpts=!tr&&!CASH_KINDS.includes(h.kind)?[...cashPfs(pfId).slice().sort((a,b)=>(b.id===pfId)-(a.id===pfId)).map(p=>["pf:"+p.id,p.id===pfId?"Bu portföyün nakdine ekle":p.name+" portföyünün nakdine ekle"]),["none","Nakde ekleme"]]:[];
+  const cashDef=S().divCash==="none"?"none":"pf:"+pfId;
   formSheet({title:(tr?"Temettüyü düzenle":"Temettü / kâr payı ekle")+" · "+esc(h.name),fields:[
     [{id:"amount",label:"Hesaba geçen net tutar ("+h.cur+")",type:"number",big:true,value:tr?tr.amount:"",ph:"0"},{id:"date",label:"Ödeme tarihi",type:"date",value:tr?(tr.date||""):todayISO()}],
     {id:"tax",label:"Kesilen stopaj (isteğe bağlı)",type:"number",value:tr&&tr.tax?tr.tax:"",ph:"0"},
+    ...(cashOpts.length?[{id:"cashTo",label:"Gelen para ("+h.cur+" nakit)",type:"select",value:cashDef,options:cashOpts}]:[]),
     ...(isMain&&!tr?[{id:"toTx",label:"Bütçe'ye de gelir olarak yazılsın mı",type:"seg",value:"no",options:[["no","Hayır"],["yes","Evet"]]}]:[]),
     {id:"note",label:"Not",value:tr?(tr.note||""):"",ph:"İsteğe bağlı"}],
-    extra:`<div class="note">Temettü varlığın toplam kâr/zararına eklenir; adedi ve ortalama maliyeti değiştirmez. Para aracı kurumda kalıyorsa Bütçe'ye yazmanız gerekmez; bankanıza geçtiyse yazın, böylece nakit bakiyeniz doğru kalır.${linked?" Bu kayıt Bütçe'deki bir gelirle bağlı; tutarı ve tarihi orada da güncellenir.":""}</div>`,
+    extra:`<div class="note">Temettü varlığın toplam kâr/zararına eklenir; adedi ve ortalama maliyeti değiştirmez. Para aracı kurumda kaldıysa portföyün nakdine ekle; bankana geçtiyse Bütçe'ye gelir olarak yaz, böylece nakit bakiyen doğru kalır.${linked?" Bu kayıt Bütçe'deki bir gelirle bağlı; tutarı ve tarihi orada da güncellenir.":""}${tr&&tr.cash?" Bu temettü portföy nakdine eklendi; tutarı ve tarihi orada da güncellenir.":""}</div>`,
     onSave:v=>{const a=parseNum(v.amount);if(!(a>0))return"Tutar sıfırdan büyük olmalı.";if(!v.date)return"Tarih seçin.";if(v.date>todayISO())return"Tarih ileri olamaz.";
       const tx_=v.tax.trim()?parseNum(v.tax):0;if(isNaN(tx_)||tx_<0)return"Stopajı kontrol edin.";
       ensureTrades(h);let t=tr&&h.trades.find(x=>x.id===tr.id);if(!t){t={id:uid(),type:"div"};h.trades.push(t)}
@@ -2969,15 +2973,17 @@ function divSheet(pfId,h,tr){
       Object.assign(t,{date:v.date,amount:a,tax:tx_||undefined,note:v.note.trim()||undefined});if(h.cur!=="TRY"&&!t.fx){const f=fxLookup(v.date);if(f)t.fx=f}
       if(!tr&&v.toTx==="yes"){const cat=CATS.in.find(c=>/yatırım|temettü/i.test(c))||CATS.in[0],id=uid();state.tx.push({id,type:"in",amount:a,cur:h.cur,cat,date:v.date,note:h.name+" temettüsü",method:""});t.txId=id}
       if(linked){linked.amount=a;linked.date=v.date}
-      rebuild(h);commit(tr?"Temettü güncellendi":"Temettü eklendi · "+fmt(a,h.cur)+(t.txId&&!tr?" · gelire de yazıldı":""))},
-    onDelete:tr?()=>{h.trades=h.trades.filter(x=>x.id!==tr.id);if(linked)state.tx=state.tx.filter(x=>x!==linked);rebuild(h);commit("Temettü silindi"+(linked?" · bağlı gelir kaydı da silindi":""))}:null});
+      let cm="";if(tr&&t.cash)cashLinkSync(t,h);
+      else if(!tr&&v.cashTo){S().divCash=v.cashTo==="none"?"none":"pf";const dest=state.portfolios.find(p=>"pf:"+p.id===v.cashTo);if(dest){const n=cashLinkSet(t,h,dest);if(typeof n==="number"&&n)cm=" · "+fmt(n,h.cur)+" nakde eklendi"}}
+      rebuild(h);commit(tr?"Temettü güncellendi":"Temettü eklendi · "+fmt(a,h.cur)+(t.txId&&!tr?" · gelire de yazıldı":"")+cm)},
+    onDelete:tr?()=>{if(tr.cash)cashLinkDrop(tr);h.trades=h.trades.filter(x=>x.id!==tr.id);if(linked)state.tx=state.tx.filter(x=>x!==linked);rebuild(h);commit("Temettü silindi"+(linked?" · bağlı gelir kaydı da silindi":""))}:null});
 }
 /* satıştan gelen para / alımda ödenen para: seçilen portföyün aynı para birimindeki "Nakit" satırına
    satışta alım olarak eklenir, alımda satış olarak düşülür; işlem düzenlenir/silinirse o da güncellenir */
 function cashHolding(pf,cur,make){let c=pf.holdings.find(x=>x.kind==="nakit"&&x.cur===cur);
   if(!c&&make){c={id:uid(),name:cur==="TRY"?"Nakit":"Nakit ("+cur+")",symbol:"",kind:"nakit",cur,qty:0,cost:1,price:1,trades:[]};pf.holdings.push(c)}return c}
 function cashLinkFind(L){const pf=L&&state.portfolios.find(p=>p.id===L.pf),c=pf&&pf.holdings.find(x=>x.id===L.h),t=c&&(c.trades||[]).find(x=>x.id===L.t);return t?{pf,c,t}:null}
-const cashAmt=t=>Math.round((t.type==="buy"?(+t.qty||0)*(+t.price||0)+(+t.fee||0):(+t.qty||0)*(+t.price||0)-(+t.fee||0)-(+t.tax||0))*100)/100;
+const cashAmt=t=>Math.round((t.type==="div"?+t.amount||0:t.type==="buy"?(+t.qty||0)*(+t.price||0)+(+t.fee||0):(+t.qty||0)*(+t.price||0)-(+t.fee||0)-(+t.tax||0))*100)/100;
 /* alımda kullanılabilecek nakit satırları: [değer, etiket] */
 const cashPfs=pfId=>{const p=state.portfolios.find(x=>x.id===pfId);return p&&p._shared?[p]:ownPfs()};
 function cashFromOpts(pfId,cur){const own=cashPfs(pfId),o=[];
@@ -2986,7 +2992,7 @@ function cashFromOpts(pfId,cur){const own=cashPfs(pfId),o=[];
 /* bağlantıyı kurar; tutar (sayı) ya da hata metni döndürür */
 function cashLinkSet(t,h,pfDest){const amt=cashAmt(t);if(!(amt>0))return 0;const buy=t.type==="buy";
   const c=cashHolding(pfDest,h.cur,!buy);if(!c)return pfDest.name+" portföyünde "+h.cur+" nakit yok.";
-  ensureTrades(c);const ct={id:uid(),type:buy?"sell":"buy",date:t.date,qty:amt,price:1,fee:0,note:(h.symbol||h.name)+(buy?" alımı":" satışı")};if(buy)ct.taxRate=0;
+  ensureTrades(c);const ct={id:uid(),type:buy?"sell":"buy",date:t.date,qty:amt,price:1,fee:0,note:(h.symbol||h.name)+(buy?" alımı":t.type==="div"?" temettüsü":" satışı")};if(buy)ct.taxRate=0;
   c.trades.push(ct);const err=rebuild(c);
   if(err){c.trades=c.trades.filter(x=>x!==ct);rebuild(c);return "Nakit yetmiyor: "+pfDest.name+" portföyünde "+(t.date?fmtDate(t.date)+" tarihinde ":"")+fmt(+c.qty,h.cur,{show:true})+" var, alım "+fmt(amt,h.cur,{show:true})+" tutuyor."}
   t.cash={pf:pfDest.id,h:c.id,t:ct.id};return amt}
