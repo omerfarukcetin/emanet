@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-27T18:54:36.733Z",
+ "updatedAt": "2026-11-27T19:01:23.423Z",
  "fx": {
-  "EUR": 55.584,
-  "USD": 50.7831,
-  "GBP": 66.5601,
-  "CHF": 60.7268,
+  "EUR": 55.5779,
+  "USD": 50.7833,
+  "GBP": 66.562,
+  "CHF": 60.7333,
   "JPY": 0.3191,
   "RUB": 0.6187,
   "SAR": 13.5385,
-  "AED": 13.8328,
-  "CAD": 35.6467,
-  "AUD": 33.752,
-  "CNY": 7.6314,
-  "DKK": 7.4305,
-  "SEK": 4.9482,
-  "NOK": 5.1811,
+  "AED": 13.832,
+  "CAD": 35.6474,
+  "AUD": 33.7545,
+  "CNY": 7.6317,
+  "DKK": 7.4307,
+  "SEK": 4.9502,
+  "NOK": 5.1799,
   "KWD": 162.663,
-  "QAR": 14.4734,
-  "AZN": 29.8724,
-  "GEL": 19.6074,
+  "QAR": 14.4725,
+  "AZN": 29.8725,
+  "GEL": 19.6075,
   "BGN": 28.9337,
-  "RON": 10.3978,
+  "RON": 10.3982,
   "KZT": 0.1109
  },
  "gold": {
-  "ata": 41086,
+  "ata": 41092,
   "aziz": null,
-  "ceyrek": 10164,
-  "cumhuriyet": 41086,
-  "gram": 5945.77,
-  "gumus": 71.01,
-  "hamit": 41086,
-  "resat": 41086,
-  "resatAlis": 39821.02,
-  "resatSatis": 40532.01,
-  "tam": 40229,
-  "yarim": 20329,
+  "ceyrek": 10166,
+  "cumhuriyet": 41092,
+  "gram": 5946.43,
+  "gumus": 71.06,
+  "hamit": 41092,
+  "resat": 41092,
+  "resatAlis": 39828.03,
+  "resatSatis": 40539.03,
+  "tam": 40235,
+  "yarim": 20332,
   "resatKaynak": "altin.in",
-  "ayar22": 5732.48,
+  "ayar22": 5733.77,
   "ayar18": 4905,
-  "ayar14": 4477.78
+  "ayar14": 4478.67
  },
  "quotes": {
   "abd:LPTH": {
@@ -133,15 +133,15 @@
    "pc": 9.21
   },
   "kripto:ETH": {
-   "p": 1670.22,
+   "p": 1669.11,
    "cur": "USD",
-   "t": "2026-11-27T18:54:20.000Z",
+   "t": "2026-11-27T19:00:26.000Z",
    "pc": 1687.75
   },
   "kripto:XRP": {
-   "p": 0.9494,
+   "p": 0.9495,
    "cur": "USD",
-   "t": "2026-11-27T18:54:20.000Z",
+   "t": "2026-11-27T19:00:30.000Z",
    "pc": 0.9429
   },
   "abd:SCHG": {
@@ -163,10 +163,12 @@
    "pc": 49.68
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
+  "ENR: fon fiyatı alınamadı (fetch failed)",
+  "ZPO: fon fiyatı alınamadı (fetch failed)"
  ]
 }
