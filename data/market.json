@@ -1,26 +1,26 @@
 {
- "updatedAt": "2026-11-27T19:20:29.089Z",
+ "updatedAt": "2026-11-27T19:30:39.483Z",
  "fx": {
-  "EUR": 55.5789,
-  "USD": 50.7873,
-  "GBP": 66.56,
-  "CHF": 60.7358,
-  "JPY": 0.3191,
+  "EUR": 55.5876,
+  "USD": 50.7808,
+  "GBP": 66.5553,
+  "CHF": 60.7338,
+  "JPY": 0.319,
   "RUB": 0.6187,
-  "SAR": 13.5392,
-  "AED": 13.8327,
-  "CAD": 35.6454,
-  "AUD": 33.7532,
+  "SAR": 13.5386,
+  "AED": 13.8313,
+  "CAD": 35.6465,
+  "AUD": 33.7489,
   "CNY": 7.6319,
-  "DKK": 7.431,
-  "SEK": 4.9489,
-  "NOK": 5.1809,
+  "DKK": 7.4307,
+  "SEK": 4.949,
+  "NOK": 5.1813,
   "KWD": 162.663,
-  "QAR": 14.4733,
-  "AZN": 29.8725,
-  "GEL": 19.609,
+  "QAR": 14.4718,
+  "AZN": 29.8711,
+  "GEL": 19.6065,
   "BGN": 28.9337,
-  "RON": 10.398,
+  "RON": 10.3976,
   "KZT": 0.1109
  },
  "gold": {
@@ -28,18 +28,18 @@
   "aziz": null,
   "ceyrek": 10169,
   "cumhuriyet": 41106,
-  "gram": 5950.65,
+  "gram": 5949.73,
   "gumus": 71.11,
   "hamit": 41106,
   "resat": 41106,
-  "resatAlis": 39852.99,
-  "resatSatis": 40563.99,
+  "resatAlis": 39849.93,
+  "resatSatis": 40561.98,
   "tam": 40249,
   "yarim": 20339,
   "resatKaynak": "altin.in",
-  "ayar22": 5735.72,
+  "ayar22": 5735.7,
   "ayar18": 4905,
-  "ayar14": 4480.02
+  "ayar14": 4480.01
  },
  "quotes": {
   "abd:LPTH": {
@@ -133,15 +133,15 @@
    "pc": 9.21
   },
   "kripto:ETH": {
-   "p": 1672.17,
+   "p": 1671.71,
    "cur": "USD",
-   "t": "2026-11-27T19:20:15.000Z",
+   "t": "2026-11-27T19:30:25.000Z",
    "pc": 1687.75
   },
   "kripto:XRP": {
-   "p": 0.9521,
+   "p": 0.9514,
    "cur": "USD",
-   "t": "2026-11-27T19:20:14.000Z",
+   "t": "2026-11-27T19:30:23.000Z",
    "pc": 0.9429
   },
   "abd:SCHG": {
@@ -163,7 +163,7 @@
    "pc": 49.68
   }
  },
- "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
