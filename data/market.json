@@ -1,45 +1,45 @@
 {
- "updatedAt": "2026-11-27T12:01:11.026Z",
+ "updatedAt": "2026-11-27T12:10:27.617Z",
  "fx": {
-  "EUR": 55.7443,
-  "USD": 50.7894,
-  "GBP": 66.731,
-  "CHF": 60.8841,
+  "EUR": 55.7462,
+  "USD": 50.7879,
+  "GBP": 66.7523,
+  "CHF": 60.8682,
   "JPY": 0.3184,
-  "RUB": 0.6197,
-  "SAR": 13.5395,
-  "AED": 13.8335,
-  "CAD": 35.6643,
-  "AUD": 33.8715,
-  "CNY": 7.6324,
-  "DKK": 7.4521,
-  "SEK": 4.9711,
-  "NOK": 5.2177,
+  "RUB": 0.6193,
+  "SAR": 13.541,
+  "AED": 13.8351,
+  "CAD": 35.6632,
+  "AUD": 33.8809,
+  "CNY": 7.6325,
+  "DKK": 7.4527,
+  "SEK": 4.9721,
+  "NOK": 5.2167,
   "KWD": 162.7297,
-  "QAR": 14.4795,
-  "AZN": 29.8761,
-  "GEL": 19.6098,
+  "QAR": 14.4812,
+  "AZN": 29.8752,
+  "GEL": 19.6092,
   "BGN": 28.9337,
-  "RON": 10.425,
+  "RON": 10.4262,
   "KZT": 0.1108
  },
  "gold": {
-  "ata": 41021,
+  "ata": 41015,
   "aziz": null,
-  "ceyrek": 10148,
-  "cumhuriyet": 41021,
-  "gram": 5996.84,
-  "gumus": 72.02,
-  "hamit": 41021,
-  "resat": 41021,
-  "resatAlis": 39898.97,
-  "resatSatis": 40525.96,
-  "tam": 40288,
-  "yarim": 20297,
+  "ceyrek": 10147,
+  "cumhuriyet": 41015,
+  "gram": 5996.24,
+  "gumus": 71.86,
+  "hamit": 41015,
+  "resat": 41015,
+  "resatAlis": 39859.71,
+  "resatSatis": 40479.6,
+  "tam": 40282,
+  "yarim": 20294,
   "resatKaynak": "altin.in",
-  "ayar22": 5723.82,
-  "ayar18": 4900,
-  "ayar14": 4471.79
+  "ayar22": 5722.97,
+  "ayar18": 4895,
+  "ayar14": 4471.2
  },
  "quotes": {
   "abd:LPTH": {
@@ -49,15 +49,15 @@
    "pc": 5.31
   },
   "hisse:SOKE": {
-   "p": 6.43,
+   "p": 6.42,
    "cur": "TRY",
-   "t": "2026-11-27T11:43:46.000Z",
+   "t": "2026-11-27T11:52:07.000Z",
    "pc": 6.41
   },
   "hisse:BALSU": {
-   "p": 6.65,
+   "p": 6.64,
    "cur": "TRY",
-   "t": "2026-11-27T11:45:08.000Z",
+   "t": "2026-11-27T11:55:05.000Z",
    "pc": 6.29
   },
   "ppf:KLU": {
@@ -109,21 +109,21 @@
    "pc": 1.337919
   },
   "hisse:FZLGY": {
-   "p": 7.33,
+   "p": 7.34,
    "cur": "TRY",
-   "t": "2026-11-27T11:44:40.000Z",
+   "t": "2026-11-27T11:55:09.000Z",
    "pc": 7.15
   },
   "hisse:BIMAS": {
-   "p": 373.25,
+   "p": 371.5,
    "cur": "TRY",
-   "t": "2026-11-27T11:45:16.000Z",
+   "t": "2026-11-27T11:55:13.000Z",
    "pc": 360
   },
   "hisse:FROTO": {
-   "p": 68.2,
+   "p": 68.05,
    "cur": "TRY",
-   "t": "2026-11-27T11:45:14.000Z",
+   "t": "2026-11-27T11:55:01.000Z",
    "pc": 65.8
   },
   "abd:OWL": {
@@ -133,15 +133,15 @@
    "pc": 9.12
   },
   "kripto:ETH": {
-   "p": 1721.48,
+   "p": 1721.56,
    "cur": "USD",
-   "t": "2026-11-27T12:00:15.000Z",
+   "t": "2026-11-27T12:10:11.000Z",
    "pc": 1687.75
   },
   "kripto:XRP": {
    "p": 0.9747,
    "cur": "USD",
-   "t": "2026-11-27T12:00:15.000Z",
+   "t": "2026-11-27T12:10:12.000Z",
    "pc": 0.9429
   },
   "abd:SCHG": {
@@ -167,8 +167,6 @@
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)",
-  "KLU: fon fiyatı alınamadı (fetch failed)",
-  "GSP: fon fiyatı alınamadı (fetch failed)"
+  "ETHEREUM: fiyat alınamadı (query2.finance.yahoo.com 404)"
  ]
 }
