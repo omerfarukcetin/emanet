@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-28T12:00:38.646Z",
+ "updatedAt": "2026-11-28T12:10:31.791Z",
  "fx": {
   "EUR": 55.5956,
   "USD": 50.7842,
@@ -133,15 +133,15 @@
    "pc": 9.21
   },
   "kripto:ETH": {
-   "p": 1647.03,
+   "p": 1649.44,
    "cur": "USD",
-   "t": "2026-11-28T12:00:24.000Z",
+   "t": "2026-11-28T12:10:13.000Z",
    "pc": 1661.04
   },
   "kripto:XRP": {
-   "p": 0.939,
+   "p": 0.9406,
    "cur": "USD",
-   "t": "2026-11-28T12:00:24.000Z",
+   "t": "2026-11-28T12:09:56.000Z",
    "pc": 0.948
   },
   "abd:SCHG": {
@@ -163,7 +163,7 @@
    "pc": 49.68
   }
  },
- "source": "finans.truncgil.com (v3), altin.in (Reşat alış), Yahoo Finance, TEFAS",
+ "source": "finans.truncgil.com, altin.in (Reşat alış), Yahoo Finance, TEFAS",
  "errors": [
   "KPA: fiyat alınamadı (query2.finance.yahoo.com 404)",
   "SPMP: fiyat alınamadı (query2.finance.yahoo.com 404)",
